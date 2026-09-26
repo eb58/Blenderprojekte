@@ -160,6 +160,26 @@ for i, x in enumerate((-9, -3, 3, 9)):
     ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
 mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
 
+# --- Kassettendecke: Balkenraster unter der Decke, kleiner Rahmen in jedem Feld, Oberlicht in der Mitte --------
+ccol = D.collections.new("Kassettendecke"); S.collection.children.link(ccol)
+NX, NY, X0, Y0, DX, DY, ZD = 10, 10, -16.45, -17.0, 3.29, 3.8, 13.2  # Felder, Ursprung, Feldgroesse, Unterkante der Decke
+bm = bmesh.new()
+def bx(c, sz): bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation(c) @ Matrix.Diagonal((*sz, 1)))
+for i in range(NX + 1): bx((X0 + i * DX, Y0 + NY * DY / 2, ZD - 0.2), (0.32, NY * DY, 0.4))   # Balken laengs
+for j in range(NY + 1): bx((0, Y0 + j * DY, ZD - 0.2), (NX * DX, 0.32, 0.4))                   # Balken quer
+SKY = {(i, j) for i in (4, 5) for j in (4, 5)}                                                  # Felder des Oberlichts
+for i in range(NX):
+    for j in range(NY):
+        if (i, j) in SKY: continue
+        cx, cy = X0 + (i + .5) * DX, Y0 + (j + .5) * DY; fx, fy = DX - 1.1, DY - 1.1
+        for dx, dy, sx, sy in ((0, fy / 2, fx, .12), (0, -fy / 2, fx, .12), (fx / 2, 0, .12, fy), (-fx / 2, 0, .12, fy)): bx((cx + dx, cy + dy, ZD - 0.075), (sx, sy, 0.15))
+        bx((cx, cy, ZD - 0.05), (0.5, 0.5, 0.1))
+me = D.meshes.new("Kassettendecke"); bm.to_mesh(me); bm.free(); ko = D.objects.new("Kassettendecke", me); ccol.objects.link(ko); me.materials.append(mat("Heller Naturstein"))
+sw, sh = 2 * DX - 0.32, 2 * DY - 0.32
+bpy.ops.mesh.primitive_plane_add(size=1, location=(X0 + 5 * DX, Y0 + 5 * DY, ZD - 0.02), rotation=(math.pi, 0, 0)); sk = C.active_object; sk.name = "Oberlicht"; sk.scale = (sw, sh, 1); link(sk, ccol)
+om = D.materials.new("Oberlicht"); om.use_nodes = True; onm = om.node_tree; onm.nodes.clear(); em, oo = onm.nodes.new("ShaderNodeEmission"), onm.nodes.new("ShaderNodeOutputMaterial")
+em.inputs["Color"].default_value, em.inputs["Strength"].default_value = (1.0, 0.94, 0.82, 1), 7.0; onm.links.new(em.outputs[0], oo.inputs[0]); sk.data.materials.append(om)
+
 # --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
 vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
 pv, vo = nt_.nodes.new("ShaderNodeVolumePrincipled"), nt_.nodes.new("ShaderNodeOutputMaterial")
