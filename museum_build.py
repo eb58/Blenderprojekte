@@ -160,6 +160,18 @@ for i, x in enumerate((-9, -3, 3, 9)):
     ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
 mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
 
+# --- Echte Marmorbueste (Poly Haven "Marble Bust 01", CC0) statt der Platzhalter-Figuren -------------
+BUSTE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Modelle", "marble_bust_01")
+if os.path.exists(os.path.join(BUSTE, "marble_bust_01.blend")):
+    with D.libraries.load(os.path.join(BUSTE, "marble_bust_01.blend"), link=False) as (src, dst): dst.objects = list(src.objects)
+    for im in D.images:
+        if "marble_bust_01" in im.name: im.filepath = os.path.join(BUSTE, "textures", os.path.basename(im.filepath)); im.reload()
+    base = dst.objects[0]; BS = 3.4; zmin = min(v[2] for v in base.bound_box) * BS
+    for i, x in enumerate((-9, -3, 3, 9)):
+        D.objects.remove(D.objects[f"Statue {i}"])
+        o = base if i == 0 else base.copy(); scol.objects.link(o)
+        o.scale = (BS,) * 3; o.location = (x, 18.2, 1.1 + 0.12 - zmin); o.rotation_euler = (0, 0, math.radians((-1) ** i * 9))
+
 # --- Kassettendecke: Balkenraster unter der Decke, kleiner Rahmen in jedem Feld, Oberlicht in der Mitte --------
 ccol = D.collections.new("Kassettendecke"); S.collection.children.link(ccol)
 NX, NY, X0, Y0, DX, DY, ZD = 10, 10, -16.45, -17.0, 3.29, 3.8, 13.2  # Felder, Ursprung, Feldgroesse, Unterkante der Decke
