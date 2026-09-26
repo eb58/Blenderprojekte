@@ -82,6 +82,36 @@ for a, b_ in ((tc.outputs["Generated"], ck.inputs["Vector"]), (tc.outputs["Gener
               (mix.outputs["Result"], p.inputs["Base Color"]), (nz.outputs["Fac"], rr.inputs["Value"]), (rr.outputs["Result"], p.inputs["Roughness"])): L.new(a, b_)
 p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.03
 
+# --- Skulptur: prozeduraler brauner Granit (aus BlendKit ausgelesen, siehe granit_material.json) --------
+def load_nodes(nt, spec):
+    if spec["interface"]:
+        for i in spec["interface"]:
+            s = nt.interface.new_socket(i["name"], in_out=i["in_out"], socket_type=i["socket_type"])
+            for k, a in (("default", "default_value"), ("min_value", "min_value"), ("max_value", "max_value")):
+                if k in i: setattr(s, a, i[k])
+    nt.nodes.clear(); ns = {}
+    for d in spec["nodes"]:
+        n = nt.nodes.new(d["idname"]); n.name = d["name"]; n.location = d["loc"]; ns[d["name"]] = n
+        for k, v in d["props"].items():
+            try: setattr(n, k, v)
+            except (AttributeError, TypeError, ValueError): pass
+        if "group" in d: g = D.node_groups.new(d["group"]["name"], "ShaderNodeTree"); load_nodes(g, d["group"]); n.node_tree = g
+        for k, v in d["in"].items():
+            try: n.inputs[int(k)].default_value = v
+            except (TypeError, ValueError, IndexError): pass
+        if "ramp" in d:
+            r = n.color_ramp; r.interpolation, r.color_mode = d["ramp"]["interp"], d["ramp"]["mode"]
+            for j, (pos, col) in enumerate(d["ramp"]["els"]):
+                e = r.elements[j] if j < len(r.elements) else r.elements.new(pos); e.position, e.color = pos, col
+    for d in spec["nodes"]:
+        if d["parent"]: ns[d["name"]].parent = ns[d["parent"]]
+    for fn, fi, tn, ti in spec["links"]: nt.links.new(ns[fn].outputs[fi], ns[tn].inputs[ti])
+
+import json
+gm = D.materials.new("Procedural Brown Granite"); gm.use_nodes = True
+load_nodes(gm.node_tree, json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "granit_material.json"), encoding="utf-8")))
+D.objects["Kusner p=7"].material_slots[0].material = gm
+
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
 cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
 k = D.objects["Kusner p=7"]
