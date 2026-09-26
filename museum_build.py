@@ -180,6 +180,46 @@ bpy.ops.mesh.primitive_plane_add(size=1, location=(X0 + 5 * DX, Y0 + 5 * DY, ZD 
 om = D.materials.new("Oberlicht"); om.use_nodes = True; onm = om.node_tree; onm.nodes.clear(); em, oo = onm.nodes.new("ShaderNodeEmission"), onm.nodes.new("ShaderNodeOutputMaterial")
 em.inputs["Color"].default_value, em.inputs["Strength"].default_value = (1.0, 0.94, 0.82, 1), 7.0; onm.links.new(em.outputs[0], oo.inputs[0]); sk.data.materials.append(om)
 
+# --- Wellenbank: ~70 Nussholz-Lamellen, Sitz und Lehne schwingen als Welle; Messing-Klingenbeine -----------
+bcol = D.collections.new("Bank"); S.collection.children.link(bcol)
+def profil(hoehe):  # Querschnitt (y, z): flacher Sitz, sanft in die Lehne aufgebogen; hoehe skaliert die Lehne
+    pts = [(-0.28 + 0.4 * u / 6, 0.0) for u in range(7)]
+    for k in range(1, 10): t = k / 9; pts.append(((1 - t) ** 2 * 0.12 + 2 * t * (1 - t) * 0.33 + t * t * 0.36, (t * t * 0.52) * hoehe))
+    return pts
+def streifen(bm, pts, x0, x1, z0, d=0.02):
+    ring = []
+    for k, (y, z) in enumerate(pts):  # Normale des Querschnitts -> oben/unten Kante
+        a, b = pts[max(k - 1, 0)], pts[min(k + 1, len(pts) - 1)]; ty, tz = b[0] - a[0], b[1] - a[1]; n = math.hypot(ty, tz) or 1; ny, nz = -tz / n, ty / n
+        ring.append(((y + ny * d, z0 + z + nz * d), (y - ny * d, z0 + z - nz * d)))
+    for x in (x0, x1): pass
+    o = [[bm.verts.new((x, *r[0])) for r in ring] for x in (x0, x1)]; u = [[bm.verts.new((x, *r[1])) for r in ring] for x in (x0, x1)]
+    for k in range(len(pts) - 1):
+        bm.faces.new((o[0][k], o[0][k + 1], o[1][k + 1], o[1][k])); bm.faces.new((u[0][k], u[1][k], u[1][k + 1], u[0][k + 1]))
+    for i in (0, 1): bm.faces.new(o[i] + u[i][::-1])
+    bm.faces.new((o[0][0], o[1][0], u[1][0], u[0][0])); bm.faces.new((o[0][-1], u[0][-1], u[1][-1], o[1][-1]))
+BL, NS = 3.2, 72; bm = bmesh.new()
+for i in range(NS):
+    x = -BL / 2 + (i + .5) * BL / NS; w = math.sin(2 * math.pi * 1.5 * x / BL)
+    streifen(bm, profil(1.0 + 0.4 * w), x - 0.018, x + 0.018, 0.44 + 0.06 * w)
+bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+wme = D.meshes.new("Bank Holz"); bm.to_mesh(wme); bm.free()
+bm = bmesh.new()
+for x in (-1.1, 1.1): bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation((x, -0.05, 0.19)) @ Matrix.Diagonal((0.035, 0.42, 0.38, 1)))
+bme = D.meshes.new("Bank Messing"); bm.to_mesh(bme); bm.free()
+wood = D.materials.new("Nussholz"); wood.use_nodes = True; wn = wood.node_tree; wp = wn.nodes["Principled BSDF"]
+wt, wm, ww, wr = wn.nodes.new("ShaderNodeTexCoord"), wn.nodes.new("ShaderNodeMapping"), wn.nodes.new("ShaderNodeTexWave"), wn.nodes.new("ShaderNodeValToRGB")
+wm.inputs["Scale"].default_value = (1, 40, 40); ww.wave_type, ww.bands_direction = 'BANDS', 'Y'; ww.inputs["Scale"].default_value = 3; ww.inputs["Distortion"].default_value = 5; ww.inputs["Detail"].default_value = 4
+wr.color_ramp.elements[0].color, wr.color_ramp.elements[1].color = (0.11, 0.055, 0.025, 1), (0.30, 0.16, 0.07, 1)
+for a, b_ in ((wt.outputs["Object"], wm.inputs["Vector"]), (wm.outputs["Vector"], ww.inputs["Vector"]), (ww.outputs["Color"], wr.inputs["Fac"]), (wr.outputs["Color"], wp.inputs["Base Color"])): wn.links.new(a, b_)
+wp.inputs["Roughness"].default_value = 0.32; wp.inputs["Coat Weight"].default_value = 0.4
+brass = D.materials.new("Messing"); brass.use_nodes = True; bp = brass.node_tree.nodes["Principled BSDF"]
+bp.inputs["Base Color"].default_value = (0.85, 0.62, 0.25, 1); bp.inputs["Metallic"].default_value = 1.0; bp.inputs["Roughness"].default_value = 0.18
+wme.materials.append(wood); bme.materials.append(brass)
+for n, (bx_, by_, rot) in enumerate(((11.6, -2.5, -90), (-11.6, 5.0, 90))):  # Ruecken zur Wand, Blick zur Skulptur
+    for me_, nm in ((wme, "Holz"), (bme, "Messing")):
+        o = D.objects.new(f"Wellenbank {n + 1} {nm}", me_); bcol.objects.link(o); o.location = (bx_, by_, 0); o.rotation_euler.z = math.radians(rot)
+        for pl in o.data.polygons: pl.use_smooth = False
+
 # --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
 vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
 pv, vo = nt_.nodes.new("ShaderNodeVolumePrincipled"), nt_.nodes.new("ShaderNodeOutputMaterial")
