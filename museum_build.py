@@ -9,6 +9,7 @@ from mathutils import Vector, Matrix
 
 D, S, C = bpy.data, bpy.context.scene, bpy.context
 OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else None
+BODEN = "parkett"  # "parkett" oder "marmor" (Schachbrett)
 if "Kusner p=7" not in D.objects: runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "museum_szene.py"))  # Szene neu erzeugen
 mat = lambda n: next(m for m in D.materials if m.name == n or m.name.startswith(n + "."))  # Namen tragen in alten Dateien Suffixe (.011)
 
@@ -71,7 +72,7 @@ sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z'
 for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
 
-# --- Boden: polierter Marmor mit Schachbrett und Maserung ---------------------------------
+# --- Boden: polierter Marmor mit Schachbrett oder Parkett (BODEN) ----------------------------- ---------------------------------
 nt = mat("Polierter Museumsboden").node_tree; N, L = nt.nodes, nt.links; p = N["Principled BSDF"]
 tc, ck, nz, mix, rr = (N.new(t) for t in ("ShaderNodeTexCoord", "ShaderNodeTexChecker", "ShaderNodeTexNoise", "ShaderNodeMix", "ShaderNodeMapRange"))
 ck.inputs["Scale"].default_value = 11; ck.inputs["Color1"].default_value = (0.82, 0.76, 0.66, 1); ck.inputs["Color2"].default_value = (0.66, 0.60, 0.51, 1)
@@ -81,6 +82,15 @@ rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.06, 0.1
 for a, b_ in ((tc.outputs["Generated"], ck.inputs["Vector"]), (tc.outputs["Generated"], nz.inputs["Vector"]), (ck.outputs["Color"], mix.inputs["A"]), (nz.outputs["Color"], mix.inputs["B"]),
               (mix.outputs["Result"], p.inputs["Base Color"]), (nz.outputs["Fac"], rr.inputs["Value"]), (rr.outputs["Result"], p.inputs["Roughness"])): L.new(a, b_)
 p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.03
+if BODEN == "parkett":  # Dielen im Halbverband: Brick-Textur, pro Diele leicht anderer Ton, Maserung quer zur Dielenlaenge
+    bk, wv2, gm2 = (N.new(t) for t in ("ShaderNodeTexBrick", "ShaderNodeTexWave", "ShaderNodeMix"))
+    bk.offset, bk.offset_frequency, bk.squash = 0.5, 2, 1.0
+    for k, v in (("Scale", 30), ("Color1", (0.60, 0.38, 0.19, 1)), ("Color2", (0.42, 0.25, 0.12, 1)), ("Mortar", (0.05, 0.03, 0.02, 1)), ("Mortar Size", 0.006), ("Mortar Smooth", 0.1), ("Brick Width", 1.0), ("Row Height", 0.12)): bk.inputs[k].default_value = v
+    wv2.wave_type, wv2.bands_direction = 'BANDS', 'Y'
+    for k, v in (("Scale", 250), ("Distortion", 3.0), ("Detail", 3.0), ("Detail Scale", 3.0), ("Detail Roughness", 0.6)): wv2.inputs[k].default_value = v
+    gm2.data_type, gm2.blend_type = 'RGBA', 'MULTIPLY'; gm2.inputs["Factor"].default_value = 0.45
+    mix.inputs["Factor"].default_value = 0.25; rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.2, 0.32; p.inputs["Coat Weight"].default_value = 0.3
+    for a, b_ in ((tc.outputs["Generated"], bk.inputs["Vector"]), (tc.outputs["Generated"], wv2.inputs["Vector"]), (bk.outputs["Color"], gm2.inputs["A"]), (wv2.outputs["Color"], gm2.inputs["B"]), (gm2.outputs["Result"], mix.inputs["A"])): L.new(a, b_)
 
 # --- Skulptur: prozeduraler brauner Granit (aus BlendKit ausgelesen, siehe granit_material.json) --------
 def load_nodes(nt, spec):
