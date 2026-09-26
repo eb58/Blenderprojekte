@@ -74,9 +74,9 @@ for o in D.objects:
 # --- Boden: polierter Marmor mit Schachbrett und Maserung ---------------------------------
 nt = mat("Polierter Museumsboden").node_tree; N, L = nt.nodes, nt.links; p = N["Principled BSDF"]
 tc, ck, nz, mix, rr = (N.new(t) for t in ("ShaderNodeTexCoord", "ShaderNodeTexChecker", "ShaderNodeTexNoise", "ShaderNodeMix", "ShaderNodeMapRange"))
-ck.inputs["Scale"].default_value = 11; ck.inputs["Color1"].default_value = (0.78, 0.70, 0.58, 1); ck.inputs["Color2"].default_value = (0.36, 0.30, 0.25, 1)
+ck.inputs["Scale"].default_value = 11; ck.inputs["Color1"].default_value = (0.82, 0.76, 0.66, 1); ck.inputs["Color2"].default_value = (0.66, 0.60, 0.51, 1)
 nz.inputs["Scale"].default_value = 6; nz.inputs["Detail"].default_value = 12; nz.inputs["Roughness"].default_value = 0.6
-mix.data_type, mix.blend_type = 'RGBA', 'MULTIPLY'; mix.inputs["Factor"].default_value = 0.35
+mix.data_type, mix.blend_type = 'RGBA', 'MULTIPLY'; mix.inputs["Factor"].default_value = 0.6
 rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.06, 0.16
 for a, b_ in ((tc.outputs["Generated"], ck.inputs["Vector"]), (tc.outputs["Generated"], nz.inputs["Vector"]), (ck.outputs["Color"], mix.inputs["A"]), (nz.outputs["Color"], mix.inputs["B"]),
               (mix.outputs["Result"], p.inputs["Base Color"]), (nz.outputs["Fac"], rr.inputs["Value"]), (rr.outputs["Result"], p.inputs["Roughness"])): L.new(a, b_)
@@ -144,7 +144,11 @@ def statue(i, x, y, h, arm_up):
     sp = D.lights.new(f"Statuenlicht {i}", "SPOT"); sp.energy, sp.spot_size, sp.spot_blend, sp.color, sp.shadow_soft_size = 900, math.radians(38), 0.6, (1.0, 0.86, 0.68), 0.3
     so = D.objects.new(f"Statuenlicht {i}", sp); scol.objects.link(so); so.location = (x, y - 4.5, 8.5); so.rotation_euler = (Vector((0, 4.5, -8.5 + h + 1.4)).to_track_quat('-Z', 'Y')).to_euler()
     kp = box(f"Statuensockel Deckplatte {i}", (x, y, h + 0.06), (1.7, 1.7, 0.12), scol); kp.data.materials.append(mm)
-for i, x in enumerate((-9, -3, 3, 9)): statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
+for i, x in enumerate((-9, -3, 3, 9)):
+    statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
+    al = D.lights.new(f"Nischenlicht {i}", "AREA"); al.energy, al.size, al.color = 700, 2.5, (1.0, 0.85, 0.66)
+    ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
+mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
 
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
 cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
