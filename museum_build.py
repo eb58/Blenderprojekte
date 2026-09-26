@@ -227,7 +227,7 @@ wp.inputs["Roughness"].default_value = 0.32; wp.inputs["Coat Weight"].default_va
 brass = D.materials.new("Messing"); brass.use_nodes = True; bp = brass.node_tree.nodes["Principled BSDF"]
 bp.inputs["Base Color"].default_value = (0.85, 0.62, 0.25, 1); bp.inputs["Metallic"].default_value = 1.0; bp.inputs["Roughness"].default_value = 0.18
 wme.materials.append(wood); bme.materials.append(brass)
-for n, (bx_, by_, rot) in enumerate(((11.6, -2.5, -90), (-11.6, 5.0, 90))):  # Ruecken zur Wand, Blick zur Skulptur
+for n, (bx_, by_, rot) in enumerate(((9.5, -3.0, -90), (-9.5, 3.0, 90))):  # Ruecken zur Wand, Blick zur Skulptur
     for me_, nm in ((wme, "Holz"), (bme, "Messing")):
         o = D.objects.new(f"Wellenbank {n + 1} {nm}", me_); bcol.objects.link(o); o.location = (bx_, by_, 0); o.rotation_euler.z = math.radians(rot)
         for pl in o.data.polygons: pl.use_smooth = False
@@ -259,10 +259,10 @@ def person(name, pos, ziel, sitzend, oben, hose, haut, haar, scale=1.0, rot=None
         o = D.objects.new(f"{name} {k}", me_); vcol.objects.link(o); o.location, o.rotation_euler.z, o.scale = (*pos, 0), z, (scale,) * 3
         for pl in me_.polygons: pl.use_smooth = True
 SKIN, SKIN2 = (0.72, 0.52, 0.40), (0.55, 0.38, 0.28)
-person("Besucher Bank", (-11.54, 4.467), None, True, (0.12, 0.42, 0.45), (0.06, 0.06, 0.08), SKIN, (0.35, 0.22, 0.12), rot=90)  # sitzt im Wellental der linken Bank
-person("Besucher 1", (4.6, -5.2), (0, 0), False, (0.07, 0.10, 0.22), (0.45, 0.38, 0.28), SKIN, (0.10, 0.08, 0.07), 1.03)
-person("Besucher 2", (-6.4, -4.0), (0, 0), False, (0.55, 0.12, 0.10), (0.05, 0.05, 0.06), SKIN2, (0.05, 0.04, 0.03), 0.96)
-person("Besucher 3", (6.8, 4.6), (0, 0), False, (0.55, 0.55, 0.52), (0.12, 0.18, 0.32), SKIN, (0.55, 0.42, 0.22), 0.98)
+person("Besucher Bank", (-9.44, 2.467), None, True, (0.12, 0.42, 0.45), (0.06, 0.06, 0.08), SKIN, (0.35, 0.22, 0.12), rot=90)  # sitzt im Wellental der linken Bank
+person("Besucher 1", (3.4, -3.6), (0, 0), False, (0.07, 0.10, 0.22), (0.45, 0.38, 0.28), SKIN, (0.10, 0.08, 0.07), 1.03)
+person("Besucher 2", (-3.6, -2.8), (0, 0), False, (0.55, 0.12, 0.10), (0.05, 0.05, 0.06), SKIN2, (0.05, 0.04, 0.03), 0.96)
+person("Besucher 3", (3.8, 3.2), (0, 0), False, (0.55, 0.55, 0.52), (0.12, 0.18, 0.32), SKIN, (0.55, 0.42, 0.22), 0.98)
 
 # --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
 vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
@@ -276,7 +276,13 @@ for i, y in enumerate(YS):
 S.cycles.volume_bounces = 0
 
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
-cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
+# --- Massstab: Skulptur ist real nur ~3,6 m hoch (im Original 6,15 m) -> Skulptur und Sockel verkleinern, Kamera naeher ---
+SK = 0.58
+k = D.objects["Kusner p=7"]; k.scale = (SK,) * 3
+k.location.z += 0.72 - (k.location.z + min(v[2] for v in k.bound_box) * SK)  # Unterkante auf den Sockel (Oberkante z=0.76)
+for n in ("Sockel unten", "Sockel oben"): D.objects[n].scale.x *= 0.6; D.objects[n].scale.y *= 0.6
+ZC = 0.72 + 6.149 * SK / 2; D.objects["Kamera Ziel"].location.z = ZC  # Blickziel = Skulpturmitte
+cam = D.objects["Museumskamera"]; cam.location.y, cam.location.z = -6.9, ZC + 0.2; cam.data.lens = 35
 k = D.objects["Kusner p=7"]
 if not any(m.type == 'SUBSURF' for m in k.modifiers): sm = k.modifiers.new("Subdivision", "SUBSURF"); sm.levels, sm.render_levels = 1, 2
 
