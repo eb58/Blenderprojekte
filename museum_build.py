@@ -5,7 +5,7 @@ Aufruf aus dem Nichts:  blender -b --factory-startup --python museum_build.py --
 Ohne Ausgabepfad wird die geöffnete Datei überschrieben.
 """
 import bpy, math, sys, runpy, os
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 D, S, C = bpy.data, bpy.context.scene, bpy.context
 OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else None
@@ -111,6 +111,40 @@ import json
 gm = D.materials.new("Procedural Brown Granite"); gm.use_nodes = True
 load_nodes(gm.node_tree, json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "granit_material.json"), encoding="utf-8")))
 D.objects["Kusner p=7"].material_slots[0].material = gm
+
+# --- Weisser Marmor (Sockel der Skulptur, Statuen) ---------------------------------------------
+import bmesh
+mm = D.materials.new("Weisser Marmor"); mm.use_nodes = True; N, L = mm.node_tree.nodes, mm.node_tree.links; p = N["Principled BSDF"]
+tc, mp, wv, ramp = N.new("ShaderNodeTexCoord"), N.new("ShaderNodeMapping"), N.new("ShaderNodeTexWave"), N.new("ShaderNodeValToRGB")
+mp.inputs["Scale"].default_value = (0.5, 0.5, 0.5); wv.wave_type, wv.bands_direction = 'BANDS', 'DIAGONAL'
+for k, v in (("Scale", 0.9), ("Distortion", 6.0), ("Detail", 8.0), ("Detail Scale", 1.2), ("Detail Roughness", 0.65)): wv.inputs[k].default_value = v
+ramp.color_ramp.elements[0].position, ramp.color_ramp.elements[0].color = 0.0, (0.55, 0.52, 0.49, 1)
+ramp.color_ramp.elements[1].position, ramp.color_ramp.elements[1].color = 0.035, (0.88, 0.86, 0.81, 1)
+e = ramp.color_ramp.elements.new(0.965); e.color = (0.88, 0.86, 0.81, 1); e = ramp.color_ramp.elements.new(1.0); e.color = (0.55, 0.52, 0.49, 1)
+p.inputs["Roughness"].default_value = 0.18; p.inputs["Coat Weight"].default_value = 0.25
+for a, b_ in ((tc.outputs["Object"], mp.inputs["Vector"]), (mp.outputs["Vector"], wv.inputs["Vector"]), (wv.outputs["Color"], ramp.inputs["Fac"]), (ramp.outputs["Color"], p.inputs["Base Color"])): L.new(a, b_)
+for n in ("Sockel unten", "Sockel oben"): D.objects[n].material_slots[0].material = mm
+
+# --- Statuen in den Arkadennischen: Drehprofil (Gewand, Rumpf, Kopf) + Arme, auf Marmorsockel ---
+scol = D.collections.new("Statuen"); S.collection.children.link(scol)
+PROFIL = [(0, 0), (.34, 0), (.36, .05), (.31, .5), (.27, .9), (.21, 1.15), (.24, 1.3), (.26, 1.42), (.27, 1.5), (.13, 1.58), (.075, 1.62), (.085, 1.67), (.11, 1.75), (.09, 1.84), (0, 1.87)]
+def statue(i, x, y, h, arm_up):
+    bm = bmesh.new(); vs = [bm.verts.new((r, 0, z)) for r, z in PROFIL]; es = [bm.edges.new((vs[j], vs[j + 1])) for j in range(len(vs) - 1)]
+    bmesh.ops.spin(bm, geom=vs + es, cent=(0, 0, 0), axis=(0, 0, 1), angle=2 * math.pi, steps=32, use_merge=True)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    for j, (sx, up) in enumerate(((-1, False), (1, arm_up))):  # Arme als schlanke Kegel, einer erhoben
+        a = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.06, radius2=0.04, depth=0.75, matrix=Matrix.Translation((0, 0, -0.375)))
+        rot = Matrix.Rotation(math.radians(sx * (150 if up else 18)), 4, 'Y')
+        bmesh.ops.transform(bm, verts=a["verts"], matrix=Matrix.Translation((sx * 0.29, 0, 1.47)) @ rot)
+    me = D.meshes.new(f"Statue {i}"); bm.to_mesh(me); bm.free()
+    o = D.objects.new(f"Statue {i}", me); scol.objects.link(o); o.location = (x, y, h); o.scale = (1.5, 1.5, 1.5); o.rotation_euler.z = math.radians((-1) ** i * 12)
+    for pl in me.polygons: pl.use_smooth = True
+    sm = o.modifiers.new("Glatt", "SUBSURF"); sm.levels = sm.render_levels = 1; me.materials.append(mm)
+    sk = box(f"Statuensockel {i}", (x, y, h / 2), (1.5, 1.5, h), scol); sk.data.materials.append(mm)
+    sp = D.lights.new(f"Statuenlicht {i}", "SPOT"); sp.energy, sp.spot_size, sp.spot_blend, sp.color, sp.shadow_soft_size = 900, math.radians(38), 0.6, (1.0, 0.86, 0.68), 0.3
+    so = D.objects.new(f"Statuenlicht {i}", sp); scol.objects.link(so); so.location = (x, y - 4.5, 8.5); so.rotation_euler = (Vector((0, 4.5, -8.5 + h + 1.4)).to_track_quat('-Z', 'Y')).to_euler()
+    kp = box(f"Statuensockel Deckplatte {i}", (x, y, h + 0.06), (1.7, 1.7, 0.12), scol); kp.data.materials.append(mm)
+for i, x in enumerate((-9, -3, 3, 9)): statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
 
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
 cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
