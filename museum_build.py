@@ -63,12 +63,12 @@ nt = S.world.node_tree; nt.nodes.clear()
 out, bg, sky, lp, mul = (nt.nodes.new(t) for t in ("ShaderNodeOutputWorld", "ShaderNodeBackground", "ShaderNodeTexSky", "ShaderNodeLightPath", "ShaderNodeMath"))
 sky.sky_type = 'MULTIPLE_SCATTERING' if 'MULTIPLE_SCATTERING' in sky.bl_rna.properties['sky_type'].enum_items else 'NISHITA'
 sky.sun_disc, sky.sun_elevation, sky.sun_rotation = False, math.radians(38), math.radians(90)
-mul.operation = 'MULTIPLY_ADD'; mul.inputs[1].default_value = 1.2; mul.inputs[2].default_value = 0.7
+mul.operation = 'MULTIPLY_ADD'; mul.inputs[1].default_value = 1.6; mul.inputs[2].default_value = 0.4
 for a, b_ in ((lp.outputs["Is Camera Ray"], mul.inputs[0]), (sky.outputs[0], bg.inputs["Color"]), (mul.outputs[0], bg.inputs["Strength"]), (bg.outputs[0], out.inputs[0])): nt.links.new(a, b_)
 
 # --- Sonne flach durch die +X-Fenster, alte Flaechenlichter dimmen ---------------------------
 sun = D.objects["Sonne"]
-sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z', 'Y').to_euler(); sun.data.energy = 12; sun.data.angle = math.radians(0.6)
+sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z', 'Y').to_euler(); sun.data.energy = 22; sun.data.angle = math.radians(0.6)
 for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
 
@@ -156,9 +156,20 @@ def statue(i, x, y, h, arm_up):
     kp = box(f"Statuensockel Deckplatte {i}", (x, y, h + 0.06), (1.7, 1.7, 0.12), scol); kp.data.materials.append(mm)
 for i, x in enumerate((-9, -3, 3, 9)):
     statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
-    al = D.lights.new(f"Nischenlicht {i}", "AREA"); al.energy, al.size, al.color = 700, 2.5, (1.0, 0.85, 0.66)
+    al = D.lights.new(f"Nischenlicht {i}", "AREA"); al.energy, al.size, al.color = 350, 2.5, (1.0, 0.85, 0.66)
     ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
 mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
+
+# --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
+vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
+pv, vo = nt_.nodes.new("ShaderNodeVolumePrincipled"), nt_.nodes.new("ShaderNodeOutputMaterial")
+pv.inputs["Density"].default_value, pv.inputs["Anisotropy"].default_value = 0.12, 0.6
+nt_.links.new(pv.outputs["Volume"], vo.inputs["Volume"])
+SUNDIR = Vector((-0.8, 0.22, -0.56)).normalized(); LEN = 10.0
+for i, y in enumerate(YS):
+    o = box(f"Lichtschacht {i + 1}", Vector((16.0, y, (Z0 + ZA) / 2)) + SUNDIR * LEN / 2, (LEN, W - 0.3, ZA - Z0 - 0.3), fcol)
+    o.rotation_euler = SUNDIR.to_track_quat('X', 'Z').to_euler(); o.data.materials.append(vm); o.visible_shadow = False; o.display_type = 'WIRE'
+S.cycles.volume_bounces = 0
 
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
 cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
