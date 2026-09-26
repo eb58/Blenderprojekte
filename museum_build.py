@@ -1,13 +1,16 @@
 """Baut aus dem Original die Museumsszene um (Fenster, Tageslicht, Waende, Decke, Marmorboden).
 
-Aufruf:  blender -b "Möbius im Museum - Backup vor KI-Änderungen.blend" --python museum_build.py -- "ausgabe.blend"
-Ohne Ausgabepfad wird die geöffnete Datei überschrieben. Immer auf das Original/Backup anwenden, nicht auf eine schon umgebaute Datei.
+Aufruf aus dem Nichts:  blender -b --factory-startup --python museum_build.py -- "Möbius im Museum.blend"
+(führt museum_szene.py aus, falls noch keine Szene da ist). Alternativ auf das Backup anwenden statt auf eine schon umgebaute Datei.
+Ohne Ausgabepfad wird die geöffnete Datei überschrieben.
 """
-import bpy, math, sys
+import bpy, math, sys, runpy, os
 from mathutils import Vector
 
 D, S, C = bpy.data, bpy.context.scene, bpy.context
 OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else None
+if "Kusner p=7" not in D.objects: runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "museum_szene.py"))  # Szene neu erzeugen
+mat = lambda n: next(m for m in D.materials if m.name == n or m.name.startswith(n + "."))  # Namen tragen in alten Dateien Suffixe (.011)
 
 
 def link(o, col):
@@ -50,7 +53,7 @@ for side, x in (("L", -16.2), ("R", 16.2)):
     bm.operation, bm.object, bm.solver, bm.use_self = 'DIFFERENCE', c, 'EXACT', True  # use_self: Schnittkoerper ueberlappen sich
 
 # --- Decke, Rueckwand hinter den Arkaden, Vorderwand -----------------------------------------
-kalk = D.materials["Warmer Kalkstein.011"]
+kalk = mat("Warmer Kalkstein")
 for n, loc, dim in (("Decke", (0, 2, 13.45), (32.9, 38, 0.5)), ("Rueckwand hinten", (0, 20.75, 6.6), (32.9, 0.5, 13.2)), ("Vorderwand", (0, -17.25, 6.6), (32.9, 0.5, 13.2))):
     bpy.ops.mesh.primitive_cube_add(location=loc); o = C.active_object; o.name = n; o.dimensions = dim; o.data.materials.append(kalk)
 
@@ -69,7 +72,7 @@ for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
 
 # --- Boden: polierter Marmor mit Schachbrett und Maserung ---------------------------------
-nt = D.materials["Polierter Museumsboden.013"].node_tree; N, L = nt.nodes, nt.links; p = N["Principled BSDF"]
+nt = mat("Polierter Museumsboden").node_tree; N, L = nt.nodes, nt.links; p = N["Principled BSDF"]
 tc, ck, nz, mix, rr = (N.new(t) for t in ("ShaderNodeTexCoord", "ShaderNodeTexChecker", "ShaderNodeTexNoise", "ShaderNodeMix", "ShaderNodeMapRange"))
 ck.inputs["Scale"].default_value = 11; ck.inputs["Color1"].default_value = (0.78, 0.70, 0.58, 1); ck.inputs["Color2"].default_value = (0.36, 0.30, 0.25, 1)
 nz.inputs["Scale"].default_value = 6; nz.inputs["Detail"].default_value = 12; nz.inputs["Roughness"].default_value = 0.6
@@ -78,5 +81,10 @@ rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.06, 0.1
 for a, b_ in ((tc.outputs["Generated"], ck.inputs["Vector"]), (tc.outputs["Generated"], nz.inputs["Vector"]), (ck.outputs["Color"], mix.inputs["A"]), (nz.outputs["Color"], mix.inputs["B"]),
               (mix.outputs["Result"], p.inputs["Base Color"]), (nz.outputs["Fac"], rr.inputs["Value"]), (rr.outputs["Result"], p.inputs["Roughness"])): L.new(a, b_)
 p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.03
+
+# --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
+cam = D.objects["Museumskamera"]; cam.location.y = -11.8; cam.data.lens = 35
+k = D.objects["Kusner p=7"]
+if not any(m.type == 'SUBSURF' for m in k.modifiers): sm = k.modifiers.new("Subdivision", "SUBSURF"); sm.levels, sm.render_levels = 1, 2
 
 bpy.ops.wm.save_as_mainfile(filepath=OUT) if OUT else bpy.ops.wm.save_mainfile()
