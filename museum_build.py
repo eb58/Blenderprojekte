@@ -10,8 +10,34 @@ from mathutils import Vector, Matrix
 D, S, C = bpy.data, bpy.context.scene, bpy.context
 OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else None
 BODEN = "parkett"  # "parkett" oder "marmor" (Schachbrett)
-if "Kusner p=7" not in D.objects: runpy.run_path(os.path.join(os.path.dirname(os.path.abspath(__file__)), "museum_szene.py"))  # Szene neu erzeugen
-mat = lambda n: next(m for m in D.materials if m.name == n or m.name.startswith(n + "."))  # Namen tragen in alten Dateien Suffixe (.011)
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def obj_by_name(name, *, required=True):
+    obj = D.objects.get(name)
+    if obj is None and required:
+        raise RuntimeError(f"Objekt '{name}' wurde in der Szene nicht gefunden.")
+    return obj
+
+
+def ensure_world():
+    if S.world is None:
+        S.world = D.worlds.new("World")
+    if S.world.node_tree is None:
+        S.world.use_nodes = True
+    return S.world
+
+
+def material_by_name(name):
+    material = D.materials.get(name)
+    if material is None:
+        material = D.materials.new(name)
+    return material
+
+
+if not obj_by_name("Kusner p=7", required=False):
+    runpy.run_path(os.path.join(SCRIPT_DIR, "museum_szene.py"))  # Szene neu erzeugen
+mat = lambda n: next((m for m in D.materials if m.name == n or m.name.startswith(n + ".")), material_by_name(n))  # Namen tragen in alten Dateien Suffixe (.011)
 
 
 def link(o, col):
@@ -50,7 +76,8 @@ for side, x in (("L", -16.2), ("R", 16.2)):
         bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.05, minor_radius=0.07, major_segments=48, minor_segments=8, location=(x, y, ZA), rotation=(0, math.pi / 2, 0))
         t = C.active_object; t.name = f"Fensterbogen {side}{i + 1}"; t.data.materials.append(frame); link(t, fcol)
     c = join(cut); c.name = f"Fensterschnitt {side}"; c.display_type = 'WIRE'; c.hide_render = True
-    bm = D.objects["Seitenwand links" if side == "L" else "Seitenwand rechts"].modifiers.new("Fenster", "BOOLEAN")
+    wall = obj_by_name("Seitenwand links" if side == "L" else "Seitenwand rechts")
+    bm = wall.modifiers.new("Fenster", "BOOLEAN")
     bm.operation, bm.object, bm.solver, bm.use_self = 'DIFFERENCE', c, 'EXACT', True  # use_self: Schnittkoerper ueberlappen sich
 
 # --- Decke, Rueckwand hinter den Arkaden, Vorderwand -----------------------------------------
@@ -59,6 +86,7 @@ for n, loc, dim in (("Decke", (0, 2, 13.45), (32.9, 38, 0.5)), ("Rueckwand hinte
     bpy.ops.mesh.primitive_cube_add(location=loc); o = C.active_object; o.name = n; o.dimensions = dim; o.data.materials.append(kalk)
 
 # --- Himmel: fuer die Kamera hell (Strength 1.9), als Beleuchtung gedaempft (0.7) ---------------
+ensure_world()
 nt = S.world.node_tree; nt.nodes.clear()
 out, bg, sky, lp, mul = (nt.nodes.new(t) for t in ("ShaderNodeOutputWorld", "ShaderNodeBackground", "ShaderNodeTexSky", "ShaderNodeLightPath", "ShaderNodeMath"))
 sky.sky_type = 'MULTIPLE_SCATTERING' if 'MULTIPLE_SCATTERING' in sky.bl_rna.properties['sky_type'].enum_items else 'NISHITA'
@@ -67,7 +95,7 @@ mul.operation = 'MULTIPLY_ADD'; mul.inputs[1].default_value = 1.6; mul.inputs[2]
 for a, b_ in ((lp.outputs["Is Camera Ray"], mul.inputs[0]), (sky.outputs[0], bg.inputs["Color"]), (mul.outputs[0], bg.inputs["Strength"]), (bg.outputs[0], out.inputs[0])): nt.links.new(a, b_)
 
 # --- Sonne flach durch die +X-Fenster, alte Flaechenlichter dimmen ---------------------------
-sun = D.objects["Sonne"]
+sun = obj_by_name("Sonne")
 sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z', 'Y').to_euler(); sun.data.energy = 22; sun.data.angle = math.radians(0.6)
 for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
@@ -92,7 +120,7 @@ if BODEN == "parkett":  # Dielen im Halbverband: Brick-Textur, pro Diele leicht 
     mix.inputs["Factor"].default_value = 0.25; rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.2, 0.32; p.inputs["Coat Weight"].default_value = 0.3
     for a, b_ in ((tc.outputs["Generated"], bk.inputs["Vector"]), (tc.outputs["Generated"], wv2.inputs["Vector"]), (bk.outputs["Color"], gm2.inputs["A"]), (wv2.outputs["Color"], gm2.inputs["B"]), (gm2.outputs["Result"], mix.inputs["A"])): L.new(a, b_)
 
-# --- Skulptur: prozeduraler brauner Granit (aus BlendKit ausgelesen, siehe granit_material.json) --------
+# --- Material-Import fuer prozedurale Materialien (z. B. granit_material.json) ----------------
 def load_nodes(nt, spec):
     if spec["interface"]:
         for i in spec["interface"]:
@@ -117,10 +145,20 @@ def load_nodes(nt, spec):
         if d["parent"]: ns[d["name"]].parent = ns[d["parent"]]
     for fn, fi, tn, ti in spec["links"]: nt.links.new(ns[fn].outputs[fi], ns[tn].inputs[ti])
 
-import json
-gm = D.materials.new("Procedural Brown Granite"); gm.use_nodes = True
-load_nodes(gm.node_tree, json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "granit_material.json"), encoding="utf-8")))
-D.objects["Kusner p=7"].material_slots[0].material = gm
+# --- Skulptur: spiegelndes Chrom ------------------------------------------------------------
+chrome = material_by_name("Spiegelndes Chrom")
+chrome.use_nodes = True
+nt = chrome.node_tree
+nt.nodes.clear()
+p = nt.nodes.new("ShaderNodeBsdfPrincipled")
+out = nt.nodes.new("ShaderNodeOutputMaterial")
+p.inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1.0)
+p.inputs["Metallic"].default_value = 1.0
+p.inputs["Roughness"].default_value = 0.02
+nt.links.new(p.outputs["BSDF"], out.inputs["Surface"])
+sculpture = obj_by_name("Kusner p=7")
+sculpture.data.materials.clear()
+sculpture.data.materials.append(chrome)
 
 # --- Weisser Marmor (Sockel der Skulptur, Statuen) ---------------------------------------------
 import bmesh
@@ -278,12 +316,12 @@ S.cycles.volume_bounces = 0
 # --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
 # --- Massstab: Skulptur ist real nur ~3,6 m hoch (im Original 6,15 m) -> Skulptur und Sockel verkleinern, Kamera naeher ---
 SK = 0.58
-k = D.objects["Kusner p=7"]; k.scale = (SK,) * 3
+k = obj_by_name("Kusner p=7"); k.scale = (SK,) * 3
 k.location.z += 0.72 - (k.location.z + min(v[2] for v in k.bound_box) * SK)  # Unterkante auf den Sockel (Oberkante z=0.76)
-for n in ("Sockel unten", "Sockel oben"): D.objects[n].scale.x *= 0.6; D.objects[n].scale.y *= 0.6
-ZC = 0.72 + 6.149 * SK / 2; D.objects["Kamera Ziel"].location.z = ZC  # Blickziel = Skulpturmitte
-cam = D.objects["Museumskamera"]; cam.location.y, cam.location.z = -6.9, ZC + 0.2; cam.data.lens = 35
-k = D.objects["Kusner p=7"]
+for n in ("Sockel unten", "Sockel oben"): obj_by_name(n).scale.x *= 0.6; obj_by_name(n).scale.y *= 0.6
+ZC = 0.72 + 6.149 * SK / 2; obj_by_name("Kamera Ziel").location.z = ZC  # Blickziel = Skulpturmitte
+cam = obj_by_name("Museumskamera"); cam.location.y, cam.location.z = -6.9, ZC + 0.2; cam.data.lens = 35
+k = obj_by_name("Kusner p=7")
 if not any(m.type == 'SUBSURF' for m in k.modifiers): sm = k.modifiers.new("Subdivision", "SUBSURF"); sm.levels, sm.render_levels = 1, 2
 
 bpy.ops.wm.save_as_mainfile(filepath=OUT) if OUT else bpy.ops.wm.save_mainfile()
