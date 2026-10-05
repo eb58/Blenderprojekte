@@ -3,5 +3,8 @@
 *.blend2
 *.png
 *.mp4
+Render/
 Modelle/
 blenderkit_data/
+__pycache__/
+*.py[cod]

@@ -7,22 +7,42 @@ import json
 
 # Einstellungen fuer den gesamten Aufbau
 PROJECT_DIR = r"C:\Users\erich\OneDrive\Blenderprojekte"
-BODEN = "parkett"  # "parkett" oder "marmor"
-RENDER_PRESET = "animation"  # "test", "final_fast", "animation", "quality"
+BODEN = "marmor"  # "parkett" oder "marmor"
+RENDER_PRESET = "test"  # "test", "final_fast", "animation", "quality"
 P = 7
 
-# False = Testbild mit F12; True = Video mit Strg+F12
+# False = Testbild mit F12; True = PNG-Bildfolge mit Strg+F12
 MAKE_VIDEO = True
 
 FPS = 24
-DURATION = 12
+DURATION = 5
 ORBIT_DEGREES = 360
 
-SCULPTURE_SCALE = 3.25
+SCULPTURE_SCALE = 3.55
 THICKNESS = 0.060
 
-STILL_OUTPUT = "//kusner_p7_museum_test.png"
-VIDEO_OUTPUT = "//kusner_p7_granit_museum.mp4"
+OUTPUT_DIR = os.path.join(PROJECT_DIR, "Render", "kusner_p7_granit_museum")
+FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
+STILL_OUTPUT = os.path.join(OUTPUT_DIR, "kusner_p7_museum_test.png")
+ANIMATION_OUTPUT = os.path.join(FRAMES_DIR, "frame_####")
+# Vorhandene Frames beim erneuten Animationsrendern ueberspringen.
+# Fuer eine geaenderte Szene einen neuen OUTPUT_DIR verwenden.
+RESUME_RENDER = True
+
+# Optionale Einstellungen der Windows-Oberflaeche.
+RESOLUTION_X, RESOLUTION_Y = 1280, 800
+config_path = os.environ.get("MUSEUM_CONFIG")
+if config_path:
+    with open(config_path, encoding="utf-8-sig") as config_file:
+        config = json.load(config_file)
+    for setting in ("BODEN", "RENDER_PRESET", "MAKE_VIDEO", "FPS", "DURATION",
+                    "ORBIT_DEGREES", "SCULPTURE_SCALE", "THICKNESS",
+                    "OUTPUT_DIR", "RESUME_RENDER", "RESOLUTION_X", "RESOLUTION_Y"):
+        if setting in config:
+            globals()[setting] = config[setting]
+    FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
+    STILL_OUTPUT = os.path.join(OUTPUT_DIR, "kusner_p7_museum_test.png")
+    ANIMATION_OUTPUT = os.path.join(FRAMES_DIR, "frame_####")
 
 
 
@@ -87,27 +107,30 @@ scene.cycles.use_denoising = True
 scene.cycles.max_bounces = 8
 scene.cycles.diffuse_bounces = 4
 scene.cycles.glossy_bounces = 6
-scene.render.resolution_x = 1280
-scene.render.resolution_y = 800
+scene.render.resolution_x = RESOLUTION_X
+scene.render.resolution_y = RESOLUTION_Y
 scene.render.resolution_percentage = 100
 scene.render.fps = FPS
 scene.frame_start = 1
-scene.frame_end = FPS * DURATION
+scene.frame_end = max(2, round(FPS * DURATION))
 
 if MAKE_VIDEO:
     scene.cycles.samples = 48
-    scene.render.filepath = VIDEO_OUTPUT
-    scene.render.image_settings.media_type = "VIDEO"
-    scene.render.ffmpeg.format = "MPEG4"
-    scene.render.ffmpeg.codec = "H264"
-    scene.render.ffmpeg.constant_rate_factor = "MEDIUM"
-    scene.render.ffmpeg.audio_codec = "NONE"
+    os.makedirs(FRAMES_DIR, exist_ok=True)
+    scene.render.filepath = ANIMATION_OUTPUT
+    scene.render.use_overwrite = not RESUME_RENDER
 else:
     scene.cycles.samples = 64
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
     scene.render.filepath = STILL_OUTPUT
-    scene.render.image_settings.media_type = "IMAGE"
-    scene.render.image_settings.file_format = "PNG"
-    scene.render.image_settings.color_mode = "RGBA"
+    scene.render.use_overwrite = True
+
+scene.render.image_settings.media_type = "IMAGE"
+scene.render.image_settings.file_format = "PNG"
+scene.render.image_settings.color_mode = "RGB"
+scene.render.image_settings.color_depth = "8"
+scene.render.use_file_extension = True
+scene.render.use_placeholder = False
 
 try:
     scene.view_settings.look = "AgX - Medium High Contrast"
@@ -565,7 +588,7 @@ driver.expression = (
 )
 
 scene.frame_set(1)
-print("KUSNER p=7: TESTBILD BEREIT" if not MAKE_VIDEO else "KUSNER p=7: VIDEO BEREIT")
+print("KUSNER p=7: TESTBILD BEREIT" if not MAKE_VIDEO else "KUSNER p=7: PNG-BILDFOLGE BEREIT")
 print("F12 rendert das Testbild; bei MAKE_VIDEO=True startet Strg+F12 die 360°-Fahrt.")
 
 # MUSEUMSAUSBAU
@@ -983,4 +1006,4 @@ for screen in bpy.data.screens:
         if area.type == "VIEW_3D":
             area.spaces.active.region_3d.view_perspective = "CAMERA"
 print("Museum mit Granit und ohne Besucher bereit. F12: Bild; Strg+F12: Animation.")
-
+print("Renderausgabe: " + scene.render.filepath)
