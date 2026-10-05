@@ -1,5 +1,6 @@
 """Lokales Museum Studio. Start mit Blenders mitgeliefertem Python."""
 import argparse
+import atexit
 import json
 import math
 import os
@@ -9,6 +10,7 @@ import shutil
 import subprocess
 import threading
 import time
+import uuid
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = Path(__file__).resolve().parent
@@ -19,8 +21,10 @@ DEFAULTS = dict(RENDER_PRESET="test", BODEN="marmor", RESOLUTION_X=1280,
                 OUTPUT_DIR=str(ROOT / "Render" / "kusner_p7_granit_museum"))
 TOKEN = secrets.token_urlsafe(24)
 LOCK = threading.Lock()
-STATE = dict(process=None, settings=DEFAULTS.copy(), kind="", log=None,
-             started=0, preview=None, video=None)
+WORK_DIR = ROOT / "Render" / ".museum_worker"
+STATE = dict(process=None, worker=None, worker_signature=None, worker_job=None,
+             settings=DEFAULTS.copy(), kind="", log=None, started=0,
+             preview=None, video=None, code=None)
 
 
 def find_ffmpeg():
@@ -69,29 +73,110 @@ def validate(data):
     return result
 
 
+def blender_path():
+    blender = str(BLENDER) if BLENDER.exists() else shutil.which("blender")
+    if not blender:
+        raise ValueError("Blender wurde nicht gefunden.")
+    return blender
+
+
+def worker_signature(settings):
+    """Nur Änderungen am Szenenaufbau erfordern einen neuen Worker."""
+    scene_version = (ROOT / "museum_komplett.py").stat().st_mtime_ns
+    return (settings["BODEN"], settings["SCULPTURE_SCALE"], settings["THICKNESS"],
+            scene_version)
+
+
+def stop_worker():
+    worker = STATE.get("worker")
+    if worker and worker.poll() is None:
+        worker.terminate()
+        try:
+            worker.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            worker.kill()
+    STATE.update(worker=None, worker_signature=None, worker_job=None)
+
+
+def ensure_worker(settings):
+    signature = worker_signature(settings)
+    worker = STATE.get("worker")
+    if worker and worker.poll() is None and STATE.get("worker_signature") == signature:
+        return
+    stop_worker()
+    WORK_DIR.mkdir(parents=True, exist_ok=True)
+    for path in list(WORK_DIR.glob("result_*.json")) + [WORK_DIR / "command.json", WORK_DIR / "ready.json"]:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+    worker_settings = settings.copy()
+    worker_settings.update(MAKE_VIDEO=False, RESUME_RENDER=True)
+    config = WORK_DIR / "settings.json"
+    config.write_text(json.dumps(worker_settings, indent=2), encoding="utf-8")
+    log_path = WORK_DIR / "worker.log"
+    env = os.environ.copy()
+    env["MUSEUM_CONFIG"] = str(config)
+    env["MUSEUM_WORKER_DIR"] = str(WORK_DIR)
+    args = [blender_path(), "--background", "--factory-startup", "--python-exit-code", "1",
+            "--python", str(ROOT / "museum_worker.py")]
+    with log_path.open("wb") as log:
+        worker = subprocess.Popen(args, cwd=ROOT, env=env, stdout=log, stderr=subprocess.STDOUT,
+                                  creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    STATE.update(worker=worker, worker_signature=signature, log=log_path)
+    ready = WORK_DIR / "ready.json"
+    deadline = time.time() + 45
+    while time.time() < deadline:
+        if ready.exists():
+            return
+        if worker.poll() is not None:
+            raise ValueError("Blender-Worker konnte die Szene nicht aufbauen. Details stehen im Render-Log.")
+        time.sleep(0.1)
+    stop_worker()
+    raise ValueError("Blender-Worker war nach 45 Sekunden noch nicht bereit.")
+
+
+def write_command(command):
+    temporary = WORK_DIR / "command.json.tmp"
+    temporary.write_text(json.dumps(command), encoding="utf-8")
+    os.replace(temporary, WORK_DIR / "command.json")
+
+
 def start_job(kind, data):
     with LOCK:
         process = STATE["process"]
-        if process and process.poll() is None:
+        if (process and process.poll() is None) or STATE.get("worker_job"):
             raise ValueError("Ein Auftrag läuft bereits.")
         settings = validate(data)
         folder = Path(settings["OUTPUT_DIR"])
         folder.mkdir(parents=True, exist_ok=True)
         env = os.environ.copy()
-        if kind in ("still", "animation"):
-            settings.update(MAKE_VIDEO=kind == "animation", RESUME_RENDER=True)
-            config = folder / ("settings.json" if kind == "animation" else "test-settings.json")
-            if kind == "animation" and any((folder / "frames").glob("frame_*.png")):
+        if kind == "still":
+            settings.update(MAKE_VIDEO=False, RESUME_RENDER=True)
+            (folder / "test-settings.json").write_text(
+                json.dumps(settings, indent=2), encoding="utf-8")
+            ensure_worker(settings)
+            job_id = uuid.uuid4().hex
+            output = folder / f"kusner_p7_museum_test_{job_id}.png"
+            result = WORK_DIR / f"result_{job_id}.json"
+            command = {key: settings[key] for key in
+                       ("START_ANGLE", "RESOLUTION_X", "RESOLUTION_Y", "RENDER_PRESET")}
+            command.update(id=job_id, output=str(output))
+            write_command(command)
+            STATE.update(process=None, worker_job=dict(result=result, output=output), settings=settings,
+                         kind=kind, started=time.time(), preview=None, video=None, code=None)
+            return
+        if kind == "animation":
+            stop_worker()
+            settings.update(MAKE_VIDEO=True, RESUME_RENDER=True)
+            config = folder / "settings.json"
+            if any((folder / "frames").glob("frame_*.png")):
                 if not config.exists() or json.loads(config.read_text(encoding="utf-8-sig")) != settings:
                     raise ValueError("Vorhandene Frames gehören zu anderen Einstellungen. Bitte einen neuen Ausgabeordner wählen.")
-            blender = str(BLENDER) if BLENDER.exists() else shutil.which("blender")
-            if not blender:
-                raise ValueError("Blender wurde nicht gefunden.")
             config.write_text(json.dumps(settings, indent=2), encoding="utf-8")
             env["MUSEUM_CONFIG"] = str(config)
-            args = [blender, "--background", "--factory-startup", "--python-exit-code", "1",
-                    "--python", str(ROOT / "museum_komplett.py")]
-            args += ["--render-anim"] if kind == "animation" else ["--render-frame", "1"]
+            args = [blender_path(), "--background", "--factory-startup", "--python-exit-code", "1",
+                    "--python", str(ROOT / "museum_komplett.py"), "--render-anim"]
             STATE["preview"] = None
             STATE["video"] = None
         elif kind == "video":
@@ -121,24 +206,37 @@ def start_job(kind, data):
         with log_path.open("wb") as log:
             process = subprocess.Popen(args, cwd=folder, env=env, stdout=log, stderr=subprocess.STDOUT,
                                        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-        STATE.update(process=process, settings=settings, kind=kind, log=log_path, started=time.time())
+        STATE.update(process=process, worker_job=None, settings=settings, kind=kind, log=log_path,
+                     started=time.time(), code=None)
 
 
 def status():
     with LOCK:
+        job = STATE.get("worker_job")
+        if job:
+            worker = STATE.get("worker")
+            if job["result"].exists():
+                result = json.loads(job["result"].read_text(encoding="utf-8"))
+                STATE["code"] = 0 if result.get("ok") else 1
+                if result.get("ok") and job["output"].exists():
+                    STATE["preview"] = job["output"]
+                STATE["worker_job"] = None
+            elif not worker or worker.poll() is not None:
+                STATE["code"] = 1
+                STATE["worker_job"] = None
         settings = STATE["settings"]
         folder = Path(settings["OUTPUT_DIR"])
         frames = sorted((folder / "frames").glob("frame_*.png"))
-        # Blender appends the frame number when invoked with --render-frame,
-        # even when the configured output path already ends in ".png".
-        # Select the newest matching render instead of showing a stale image.
         stills = list(folder.glob("kusner_p7_museum_test*.png"))
         still = max(stills, key=lambda path: path.stat().st_mtime_ns) if stills else None
         preview = still if STATE["kind"] != "animation" and still else (frames[-1] if frames else None)
         STATE["preview"] = preview
         process = STATE["process"]
-        code = process.poll() if process else None
-        running = bool(process and code is None)
+        process_code = process.poll() if process else None
+        if process and process_code is not None:
+            STATE["code"] = process_code
+        code = STATE["code"]
+        running = bool((process and process_code is None) or STATE.get("worker_job"))
         log = STATE["log"]
         tail = ""
         if log and log.exists():
@@ -149,7 +247,7 @@ def status():
         return dict(running=running, code=code, kind=STATE["kind"], frames=len(frames), total=total,
                     preview=preview.stat().st_mtime_ns if preview else None,
                     video=bool(STATE["video"] and STATE["video"].exists() and code == 0),
-                    log=tail, elapsed=int(time.time()-STATE["started"]) if process else 0,
+                    log=tail, elapsed=int(time.time()-STATE["started"]) if running else 0,
                     ffmpeg=bool(find_ffmpeg()))
 
 
@@ -199,6 +297,9 @@ class Handler(BaseHTTPRequestHandler):
                     process = STATE["process"]
                     if process and process.poll() is None:
                         process.terminate()
+                    if STATE.get("worker_job"):
+                        stop_worker()
+                        STATE["code"] = -15
             else:
                 raise ValueError("Unbekannte Aktion.")
             self.send(200, b'{"ok":true}')
@@ -211,5 +312,9 @@ if __name__ == "__main__":
     parser.add_argument("--port", type=int, default=8765)
     options = parser.parse_args()
     server = ThreadingHTTPServer(("127.0.0.1", options.port), Handler)
+    atexit.register(stop_worker)
     print(f"Museum Studio: http://127.0.0.1:{server.server_port}", flush=True)
-    server.serve_forever()
+    try:
+        server.serve_forever()
+    finally:
+        stop_worker()

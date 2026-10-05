@@ -1192,8 +1192,11 @@ work_centers = [work.location.z + (min(v[2] for v in work.bound_box) +
 ZC = sum(work_centers) / len(work_centers)
 obj_by_name("Kamera Ziel").location = (0, 0, ZC)
 cam = obj_by_name("Museumskamera")
-cam.location = (0, -14.5, ZC + 0.25)
-cam.data.lens = 35
+# Die Bahn liegt innerhalb der seitlichen Säulenreihe. Bei größerem Radius
+# schnitt die Kamera um 75°/285° durch eine Säule und zeigte nur deren Oberfläche.
+# Die kürzere Brennweite erhält dabei ungefähr denselben Bildausschnitt.
+cam.location = (0, -12.0, ZC + 0.25)
+cam.data.lens = 29
 
 
 

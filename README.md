@@ -119,6 +119,8 @@ Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen.
 
 Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nächsten Öffnen wiederhergestellt.
 
+Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
+
 ## Parameter
 
 | Parameter | Bedeutung |
@@ -169,6 +171,7 @@ PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation ka
 
 - `museum_studio.ps1` startet den lokalen Dienst und öffnet die Weboberfläche.
 - `museum_studio.py` validiert Einstellungen, startet Blender beziehungsweise FFmpeg und stellt die lokale API bereit.
+- `museum_worker.py` hält die aufgebaute Szene für aufeinanderfolgende Testbilder in Blender bereit.
 - `museum_studio.html` enthält Benutzeroberfläche und Statusanzeige.
 - `museum_komplett.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
 - `Archiv_Einzelskripte/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte.
