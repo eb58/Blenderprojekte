@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent
 BLENDER = Path(r"C:\Program Files\Blender Foundation\Blender 5.2\blender.exe")
 DEFAULTS = dict(RENDER_PRESET="test", BODEN="marmor", RESOLUTION_X=1280,
                 RESOLUTION_Y=800, FPS=24, DURATION=5, SCULPTURE_SCALE=3.55,
-                THICKNESS=0.06, ORBIT_DEGREES=360,
+                THICKNESS=0.06, START_ANGLE=158, ORBIT_DEGREES=360,
                 OUTPUT_DIR=str(ROOT / "Render" / "kusner_p7_granit_museum"))
 TOKEN = secrets.token_urlsafe(24)
 LOCK = threading.Lock()
@@ -49,7 +49,8 @@ def validate(data):
         raise ValueError("Unbekannter Boden.")
     limits = dict(RESOLUTION_X=(64, 8192), RESOLUTION_Y=(64, 8192), FPS=(1, 120),
                   DURATION=(0.1, 3600), SCULPTURE_SCALE=(0.1, 10),
-                  THICKNESS=(0.001, 1), ORBIT_DEGREES=(-3600, 3600))
+                  THICKNESS=(0.001, 1), START_ANGLE=(-3600, 3600),
+                  ORBIT_DEGREES=(-3600, 3600))
     for key, (low, high) in limits.items():
         value = float(str(result[key]).replace(",", "."))
         if not math.isfinite(value) or not low <= value <= high:

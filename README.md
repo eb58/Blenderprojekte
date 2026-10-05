@@ -1,6 +1,6 @@
 # Museum Studio
 
-Museum Studio erzeugt mit Blender eine virtuelle Museumsszene mit einer mathematischen Granitskulptur. Eine lokale Weboberfläche steuert Material, Größe, Kamerafahrt, Renderqualität und Ausgabe. Animationen werden zunächst als PNG-Bildfolge gerendert und anschließend mit FFmpeg zu einem MP4 zusammengefügt.
+Museum Studio erzeugt mit Blender eine virtuelle Museumsszene mit zwei mathematischen Granitskulpturen: der Kusner-Fläche für `p=7` und der nichtorientierbaren Minimalfläche `S41_7_5`. Eine lokale Weboberfläche steuert Material, Größe, Kamerafahrt, Renderqualität und Ausgabe. Animationen werden zunächst als PNG-Bildfolge gerendert und anschließend mit FFmpeg zu einem MP4 zusammengefügt.
 
 ## Voraussetzungen
 
@@ -124,15 +124,18 @@ Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nä
 | Parameter | Bedeutung |
 | --- | --- |
 | Boden | Marmor- oder Parkettboden |
-| Skulpturgröße | Skalierung der Granitskulptur |
-| Granitdicke | Stärke der mittels Solidify erzeugten Oberfläche |
+| Skulpturgröße | Gemeinsame Skalierung der beiden Granitskulpturen |
+| Granitdicke | Stärke der mittels Solidify erzeugten Oberflächen |
 | Dauer | Länge der Animation in Sekunden |
 | Bilder/Sekunde | Bildrate des Renders und des MP4-Videos |
+| Startposition/Grad | Startpunkt auf der kreisförmigen Kamerafahrt und Perspektive des Testbilds |
 | Umlauf/Grad | Drehwinkel der Kamerafahrt |
 | Breite/Höhe | Ausgabeauflösung in Pixeln |
 | Ausgabeordner | Ziel für Einstellungen, Bilder, Frames, Logs und Videos |
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
+
+Auf der geschlossenen Museumswand gegenüber den Arkaden hängt ein großer, gewebter Wandteppich mit einer kupfer- und petrolfarbenen Mandelbrot-Welt. Das Motiv liegt als Projekt-Asset unter `Assets/mandelbrot_tapestry.png`.
 
 ## Render-Presets
 

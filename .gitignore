@@ -2,6 +2,8 @@
 *.blend1
 *.blend2
 *.png
+!Assets/
+!Assets/*.png
 *.mp4
 Render/
 Modelle/

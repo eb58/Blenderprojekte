@@ -8,6 +8,7 @@ import json
 # Einstellungen fuer den gesamten Aufbau
 PROJECT_DIR = r"C:\Users\erich\OneDrive\Blenderprojekte"
 BODEN = "marmor"  # "parkett" oder "marmor"
+WANDGESTALTUNG = "wandteppich"
 RENDER_PRESET = "test"  # "test", "final_fast", "animation", "quality"
 P = 7
 
@@ -17,6 +18,7 @@ MAKE_VIDEO = True
 FPS = 24
 DURATION = 5
 ORBIT_DEGREES = 360
+START_ANGLE = 158
 
 SCULPTURE_SCALE = 3.55
 THICKNESS = 0.060
@@ -36,7 +38,7 @@ if config_path:
     with open(config_path, encoding="utf-8-sig") as config_file:
         config = json.load(config_file)
     for setting in ("BODEN", "RENDER_PRESET", "MAKE_VIDEO", "FPS", "DURATION",
-                    "ORBIT_DEGREES", "SCULPTURE_SCALE", "THICKNESS",
+                    "ORBIT_DEGREES", "START_ANGLE", "SCULPTURE_SCALE", "THICKNESS",
                     "OUTPUT_DIR", "RESUME_RENDER", "RESOLUTION_X", "RESOLUTION_Y"):
         if setting in config:
             globals()[setting] = config[setting]
@@ -453,16 +455,110 @@ bevel.segments = 2
 
 
 # ============================================================
+# S41_7_5 – ZWEITE NICHTORIENTIERBARE MINIMALFLÄCHE
+# ============================================================
+
+# Dieselbe Weierstrass-Darstellung und derselbe Ringbereich wie in
+# https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
+S41_M, S41_N = 7, 5
+s41_r1, s41_r2 = 1.1, 1.3
+s41_u_segments, s41_v_segments = 58, 221
+s41_u_count = s41_u_segments + 1
+s41_v_count = s41_v_segments + 1
+
+
+def s41_f(z):
+    return 1j * (z**S41_N + 1)**2 / z**(S41_M + 1)
+
+
+def s41_g(z):
+    return z**(S41_M - S41_N) * (z**S41_N - 1) / (z**S41_N + 1)
+
+
+def s41_segment_delta(z0, z1):
+    z = (z0 + z1) * 0.5
+    dz = z1 - z0
+    f = s41_f(z)
+    g = s41_g(z)
+    x = (f * (1 - g * g) * 0.5 * dz).real
+    y = (1j * f * (1 + g * g) * 0.5 * dz).real
+    zz = (f * g * dz).real
+    return Vector((x, y, zz)) if all(map(math.isfinite, (x, y, zz))) else Vector()
+
+
+s41_radii = [s41_r1 + (s41_r2 - s41_r1) * i / s41_u_segments
+             for i in range(s41_u_count)]
+s41_angles = [(2 * math.pi + SEAM_OVERLAP) * j / s41_v_segments
+              for j in range(s41_v_count)]
+s41_grid = [[Vector() for _ in range(s41_u_count)] for _ in range(s41_v_count)]
+
+for i in range(1, s41_u_count):
+    s41_grid[0][i] = s41_grid[0][i - 1] + s41_segment_delta(
+        complex(s41_radii[i - 1], 0), complex(s41_radii[i], 0))
+
+for j in range(1, s41_v_count):
+    e0 = cmath.exp(1j * s41_angles[j - 1])
+    e1 = cmath.exp(1j * s41_angles[j])
+    for i, radial in enumerate(s41_radii):
+        s41_grid[j][i] = s41_grid[j - 1][i] + s41_segment_delta(radial * e0, radial * e1)
+
+s41_points = [point for row in s41_grid for point in row]
+s41_center = Vector(tuple(sum(getattr(point, axis) for point in s41_points) / len(s41_points)
+                           for axis in ("x", "y", "z")))
+s41_centered = [point - s41_center for point in s41_points]
+s41_radius = max(point.length for point in s41_centered)
+s41_centered = [point / s41_radius for point in s41_centered]
+s41_vertices = [
+    (point.x * SCULPTURE_SCALE, -point.z * SCULPTURE_SCALE, point.y * SCULPTURE_SCALE)
+    for point in s41_centered
+]
+s41_faces = []
+for j in range(s41_v_count - 1):
+    for i in range(s41_u_count - 1):
+        a = j * s41_u_count + i
+        b = (j + 1) * s41_u_count + i
+        s41_faces.append((a, b, b + 1, a + 1))
+
+s41_mesh = bpy.data.meshes.new("S41_7_5_Mesh")
+s41_mesh.from_pydata(s41_vertices, [], s41_faces)
+s41_mesh.update()
+s41 = bpy.data.objects.new("S41_7_5", s41_mesh)
+bpy.context.collection.objects.link(s41)
+s41.data.materials.append(granite)
+for polygon in s41_mesh.polygons:
+    polygon.use_smooth = True
+
+s41_solidify = s41.modifiers.new("Granitdicke", "SOLIDIFY")
+s41_solidify.thickness = THICKNESS
+s41_solidify.offset = 0
+s41_solidify.use_even_offset = True
+s41_bevel = s41.modifiers.new("Sanfte Kanten", "BEVEL")
+s41_bevel.width = 0.012
+s41_bevel.segments = 2
+
+
+# ============================================================
 # SOCKEL UND POSITION
 # ============================================================
 
-add_box("Sockel unten", (0, 0, 0.30), (7.2, 4.8, 0.60), base_material, 0.07)
-add_box("Sockel oben", (0, 0, 0.68), (6.6, 4.2, 0.16), base_material, 0.04)
+EXHIBIT_X = 4.4
+add_box("Sockel unten", (-EXHIBIT_X, 0, 0.30), (7.2, 4.8, 0.60), base_material, 0.07)
+add_box("Sockel oben", (-EXHIBIT_X, 0, 0.68), (6.6, 4.2, 0.16), base_material, 0.04)
+add_box("S41 Sockel unten", (EXHIBIT_X, 0, 0.30), (7.2, 4.8, 0.60), base_material, 0.07)
+add_box("S41 Sockel oben", (EXHIBIT_X, 0, 0.68), (6.6, 4.2, 0.16), base_material, 0.04)
 plinth_top = 0.77
 min_z = min(vertex[2] for vertex in vertices)
+kusner.location.x = -EXHIBIT_X
 kusner.location.z = plinth_top - min_z + 0.03
 kusner.rotation_euler.z = math.radians(10)
-sculpture_center_z = kusner.location.z + (min(v[2] for v in vertices) + max(v[2] for v in vertices)) / 2
+s41_min_z = min(vertex[2] for vertex in s41_vertices)
+s41.location.x = EXHIBIT_X
+s41.location.z = plinth_top - s41_min_z + 0.03
+s41.rotation_euler.z = math.radians(-10)
+sculpture_center_z = max(
+    kusner.location.z + (min(v[2] for v in vertices) + max(v[2] for v in vertices)) / 2,
+    s41.location.z + (min(v[2] for v in s41_vertices) + max(v[2] for v in s41_vertices)) / 2,
+)
 
 
 # ============================================================
@@ -578,7 +674,8 @@ constraint.up_axis = "UP_Y"
 camera.parent = orbit
 scene.camera = camera
 
-start_angle = math.radians(-22)
+# Frei wählbare Startposition auf der kreisförmigen Kamerafahrt.
+start_angle = math.radians(START_ANGLE)
 rotation_amount = math.radians(ORBIT_DEGREES)
 driver = orbit.driver_add("rotation_euler", 2).driver
 driver.type = "SCRIPTED"
@@ -760,7 +857,51 @@ ramp.color_ramp.elements[1].position, ramp.color_ramp.elements[1].color = 0.035,
 e = ramp.color_ramp.elements.new(0.965); e.color = (0.88, 0.86, 0.81, 1); e = ramp.color_ramp.elements.new(1.0); e.color = (0.55, 0.52, 0.49, 1)
 p.inputs["Roughness"].default_value = 0.18; p.inputs["Coat Weight"].default_value = 0.25
 for a, b_ in ((tc.outputs["Object"], mp.inputs["Vector"]), (mp.outputs["Vector"], wv.inputs["Vector"]), (wv.outputs["Color"], ramp.inputs["Fac"]), (ramp.outputs["Color"], p.inputs["Base Color"])): L.new(a, b_)
-for n in ("Sockel unten", "Sockel oben"): D.objects[n].material_slots[0].material = mm
+# Ruhiger, geschliffener Kalkstein für die beiden Hauptsockel. Er hebt die
+# dunklen Granitflächen ab, ohne mit starken Marmoradern zu konkurrieren.
+plinth_stone = D.materials.new("Geschliffener Elfenbein-Kalkstein")
+plinth_stone.use_nodes = True
+pn, pl = plinth_stone.node_tree.nodes, plinth_stone.node_tree.links
+pbsdf = pn["Principled BSDF"]
+ptc = pn.new("ShaderNodeTexCoord")
+pnoise = pn.new("ShaderNodeTexNoise")
+pdetail = pn.new("ShaderNodeTexNoise")
+pramp = pn.new("ShaderNodeValToRGB")
+prough = pn.new("ShaderNodeMapRange")
+pbump = pn.new("ShaderNodeBump")
+pnoise.noise_dimensions = '3D'
+pnoise.inputs["Scale"].default_value = 2.6
+pnoise.inputs["Detail"].default_value = 7.0
+pnoise.inputs["Roughness"].default_value = 0.62
+pdetail.noise_dimensions = '3D'
+pdetail.inputs["Scale"].default_value = 135.0
+pdetail.inputs["Detail"].default_value = 3.0
+pdetail.inputs["Roughness"].default_value = 0.68
+pramp.color_ramp.elements[0].position = 0.22
+pramp.color_ramp.elements[0].color = (0.25, 0.17, 0.095, 1)
+pramp.color_ramp.elements[1].position = 0.78
+pramp.color_ramp.elements[1].color = (0.58, 0.45, 0.28, 1)
+mid = pramp.color_ramp.elements.new(0.50)
+mid.color = (0.42, 0.31, 0.18, 1)
+prough.inputs["To Min"].default_value = 0.46
+prough.inputs["To Max"].default_value = 0.68
+pbump.inputs["Strength"].default_value = 0.28
+pbump.inputs["Distance"].default_value = 0.035
+pbsdf.inputs["Roughness"].default_value = 0.56
+pbsdf.inputs["Coat Weight"].default_value = 0.04
+for source, target in (
+        (ptc.outputs["Generated"], pnoise.inputs["Vector"]),
+        (ptc.outputs["Generated"], pdetail.inputs["Vector"]),
+        (pnoise.outputs["Fac"], pramp.inputs["Fac"]),
+        (pramp.outputs["Color"], pbsdf.inputs["Base Color"]),
+        (pnoise.outputs["Fac"], prough.inputs["Value"]),
+        (prough.outputs["Result"], pbsdf.inputs["Roughness"]),
+        (pdetail.outputs["Fac"], pbump.inputs["Height"]),
+        (pbump.outputs["Normal"], pbsdf.inputs["Normal"])):
+    pl.new(source, target)
+
+for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
+    D.objects[n].material_slots[0].material = plinth_stone
 
 # --- Statuen in den Arkadennischen: Drehprofil (Gewand, Rumpf, Kopf) + Arme, auf Marmorsockel ---
 scol = D.collections.new("Statuen"); S.collection.children.link(scol)
@@ -798,6 +939,162 @@ if os.path.exists(os.path.join(BUSTE, "marble_bust_01.blend")):
         D.objects.remove(D.objects[f"Statue {i}"])
         o = base if i == 0 else base.copy(); scol.objects.link(o)
         o.scale = (BS,) * 3; o.location = (x, 18.2, 1.1 + 0.12 - zmin); o.rotation_euler = (0, 0, math.radians((-1) ** i * 9))
+
+# --- Gestaltbare, geschlossene Museumswand gegenüber den Arkaden ----------------------------
+gcol = D.collections.new("Wandgestaltung"); S.collection.children.link(gcol)
+WALL_Y = -16.96  # Innenseite der Vorderwand; sichtbar in der zweiten Hälfte des Orbits.
+
+
+def wall_material(name, color, roughness=0.4, metallic=0.0):
+    material = D.materials.new(name); material.use_nodes = True
+    shader = material.node_tree.nodes["Principled BSDF"]
+    shader.inputs["Base Color"].default_value = color
+    shader.inputs["Roughness"].default_value = roughness
+    shader.inputs["Metallic"].default_value = metallic
+    return material
+
+
+anthracite = wall_material("Wandtafel Anthrazit", (0.012, 0.016, 0.015, 1), 0.38)
+brass = wall_material("Wandtafel Messing", (0.72, 0.43, 0.12, 1), 0.22, 0.9)
+relief_stone = wall_material("Relief Naturstein", (0.70, 0.61, 0.47, 1), 0.48)
+parchment = wall_material("Historisches Pergament", (0.42, 0.25, 0.11, 1), 0.62)
+
+
+def wall_box(name, x, z, width, height, depth, material, y=WALL_Y):
+    bpy.ops.mesh.primitive_cube_add(location=(x, y, z))
+    obj = C.active_object; obj.name = name; obj.dimensions = (width, depth, height)
+    obj.data.materials.append(material); link(obj, gcol)
+    return obj
+
+
+def wall_text(name, body, x, z, size, material, y=WALL_Y + 0.09):
+    curve = D.curves.new(name, "FONT"); curve.body = body
+    curve.align_x = 'CENTER'; curve.align_y = 'CENTER'; curve.size = size
+    curve.extrude = 0.008; curve.bevel_depth = 0.002; curve.materials.append(material)
+    obj = D.objects.new(name, curve); gcol.objects.link(obj)
+    obj.location = (x, y, z)
+    obj.rotation_euler.x = math.radians(90)
+    obj.scale.x = -1
+    obj.scale.z = -1
+    return obj
+
+
+def wall_frame(name, x, z, width, height, material=brass):
+    for index, (dx, dz, w, h) in enumerate(((0, height / 2, width, 0.06),
+                                             (0, -height / 2, width, 0.06),
+                                             (-width / 2, 0, 0.06, height),
+                                             (width / 2, 0, 0.06, height))):
+        wall_box(f"{name} {index}", x + dx, z + dz, w, h, 0.05, material, WALL_Y + 0.07)
+
+
+def wall_ring(name, x, z, radius, material, scale_x=1.0, scale_z=1.0):
+    bpy.ops.mesh.primitive_torus_add(major_radius=radius, minor_radius=0.055,
+                                    major_segments=64, minor_segments=8,
+                                    location=(x, WALL_Y + 0.11, z), rotation=(math.pi / 2, 0, 0))
+    obj = C.active_object; obj.name = name; obj.scale = (scale_x, scale_z, 1)
+    obj.data.materials.append(material); link(obj, gcol)
+    return obj
+
+
+if WANDGESTALTUNG == "mathe_tafeln":
+    for index, (x, title, subtitle) in enumerate((
+            (-5.1, "WEIERSTRASS", "X(z) = Re integral Phi"),
+            (0.0, "PARAMETERLINIEN", "u = |z|     v = arg(z)"),
+            (5.1, "MINIMALFLAECHEN", "KUSNER p=7     S41_7_5")), 1):
+        wall_box(f"Mathematiktafel {index}", x, 8.9, 4.45, 2.25, 0.13, anthracite)
+        wall_frame(f"Tafelrahmen {index}", x, 8.9, 4.55, 2.35)
+        wall_text(f"Tafeltitel {index}", title, x, 9.35, 0.28, brass)
+        wall_box(f"Tafeltrennlinie {index}", x, 8.95, 3.7, 0.025, 0.04, brass, WALL_Y + 0.09)
+        wall_text(f"Tafeltext {index}", subtitle, x, 8.48, 0.20, brass)
+
+elif WANDGESTALTUNG == "steinreliefs":
+    for index, x in enumerate((-5.2, 0, 5.2), 1):
+        wall_box(f"Reliefplatte {index}", x, 8.5, 4.4, 4.4, 0.18, trim_material)
+        wall_ring(f"Reliefring {index}a", x, 8.5, 1.35, relief_stone, 1.0, 0.72)
+        wall_ring(f"Reliefring {index}b", x, 8.5, 1.05, relief_stone, 0.62, 1.0)
+        wall_ring(f"Reliefring {index}c", x, 8.5, 0.72, brass, 1.15, 0.55)
+
+elif WANDGESTALTUNG == "historische_tafel":
+    wall_box("Historische Mathematiktafel", 0, 8.4, 13.2, 5.2, 0.16, parchment)
+    wall_frame("Historischer Rahmen", 0, 8.4, 13.35, 5.35, relief_stone)
+    wall_text("Historischer Titel", "THEORIA SUPERFICIERUM MINIMALIUM", 0, 10.05, 0.43, relief_stone)
+    wall_text("Historische Formel 1", "Phi = ( f(1-g^2)/2,  i f(1+g^2)/2,  f g ) dz", 0, 8.75, 0.30, relief_stone)
+    wall_text("Historische Formel 2", "X(z) = Re integral Phi", 0, 7.65, 0.38, relief_stone)
+    wall_text("Historische Signatur", "Kusner p=7   |   S41 m=7 n=5", 0, 6.65, 0.24, relief_stone)
+
+elif WANDGESTALTUNG == "flaechen_triptychon":
+    for index, x in enumerate((-5.1, 0, 5.1), 1):
+        wall_box(f"Triptychon {index}", x, 8.6, 4.35, 4.9, 0.15, anthracite)
+        wall_frame(f"Triptychonrahmen {index}", x, 8.6, 4.48, 5.03)
+        for ring_index, (dx, dz, radius, sx, sz) in enumerate((
+                (0, 0.45, 1.25, 1.0, 0.55), (-0.55, -0.45, 0.82, 0.65, 1.0),
+                (0.65, -0.38, 0.72, 1.0, 0.7))):
+            wall_ring(f"Flaechenlinie {index}-{ring_index}", x + dx, 8.6 + dz,
+                      radius, brass, sx, sz)
+        wall_text(f"Triptychontext {index}", ("KRÜMMUNG", "TOPOLOGIE", "SYMMETRIE")[index - 1],
+                  x, 6.75, 0.24, brass)
+
+elif WANDGESTALTUNG == "messing_formeln":
+    wall_text("Messing Formel 1", "X(z) = Re integral Phi", 0, 10.2, 0.72, brass)
+    wall_text("Messing Formel 2", "f(z) = i (z^5 + 1)^2 / z^8", 0, 8.55, 0.58, brass)
+    wall_text("Messing Formel 3", "g(z) = z^2 (z^5 - 1) / (z^5 + 1)", 0, 7.05, 0.48, brass)
+    wall_box("Messing Horizont", 0, 5.95, 13.0, 0.045, 0.05, brass, WALL_Y + 0.08)
+
+elif WANDGESTALTUNG == "digitales_panel":
+    digital = D.materials.new("Digitales Leuchten"); digital.use_nodes = True
+    nodes = digital.node_tree.nodes; links = digital.node_tree.links; nodes.clear()
+    emission = nodes.new("ShaderNodeEmission"); output = nodes.new("ShaderNodeOutputMaterial")
+    emission.inputs["Color"].default_value = (0.05, 0.55, 0.80, 1); emission.inputs["Strength"].default_value = 4.0
+    links.new(emission.outputs[0], output.inputs[0])
+    wall_box("Digitalwand", 0, 8.5, 14.0, 5.6, 0.14, anthracite)
+    wall_frame("Digitalrahmen", 0, 8.5, 14.15, 5.75, brass)
+    for index, (x, z, radius, sx, sz) in enumerate(((-4.2, 8.7, 1.55, 1, .65),
+                                                    (0, 8.7, 1.65, .7, 1),
+                                                    (4.2, 8.7, 1.55, 1, .65)), 1):
+        wall_ring(f"Digitale Minimalflaeche {index}", x, z, radius, digital, sx, sz)
+    wall_text("Digitaltitel", "NON-ORIENTABLE MINIMAL SURFACES", 0, 6.35, 0.32, digital)
+
+elif WANDGESTALTUNG == "wandteppich":
+    textile = D.materials.new("Mandelbrot Wandteppich"); textile.use_nodes = True
+    nodes = textile.node_tree.nodes; links = textile.node_tree.links; nodes.clear()
+    output = nodes.new("ShaderNodeOutputMaterial")
+    shader = nodes.new("ShaderNodeBsdfPrincipled")
+    image_node = nodes.new("ShaderNodeTexImage")
+    grayscale = nodes.new("ShaderNodeRGBToBW")
+    bump = nodes.new("ShaderNodeBump")
+    image_path = os.path.join(PROJECT_DIR, "Assets", "mandelbrot_tapestry.png")
+    image_node.image = D.images.load(image_path, check_existing=True)
+    image_node.interpolation = 'Linear'
+    shader.inputs["Roughness"].default_value = 0.68
+    bump.inputs["Strength"].default_value = 0.16
+    bump.inputs["Distance"].default_value = 0.025
+    links.new(image_node.outputs["Color"], shader.inputs["Base Color"])
+    links.new(image_node.outputs["Color"], grayscale.inputs["Color"])
+    links.new(grayscale.outputs["Val"], bump.inputs["Height"])
+    links.new(bump.outputs["Normal"], shader.inputs["Normal"])
+    links.new(shader.outputs["BSDF"], output.inputs["Surface"])
+
+    # Größer als die frühere Variante und deutlich tiefer an der Wand.
+    tapestry_center_z = hall_height / 2
+    bpy.ops.mesh.primitive_plane_add(size=2, location=(0, WALL_Y + 0.10, tapestry_center_z),
+                                    rotation=(math.pi / 2, 0, 0))
+    tapestry = C.active_object; tapestry.name = "Mandelbrot Wandteppich"
+    tapestry.scale = (-7.4, 3.3, 1)  # negative X gleicht die Betrachtung der Rückseite aus
+    tapestry.data.materials.append(textile); link(tapestry, gcol)
+    solidify = tapestry.modifiers.new("Gewebedicke", "SOLIDIFY"); solidify.thickness = 0.055
+    bevel = tapestry.modifiers.new("Weicher Teppichrand", "BEVEL"); bevel.width = 0.035; bevel.segments = 3
+    wall_frame("Teppichsaum", 0, tapestry_center_z, 14.95, 6.75, brass)
+    for x in (-6.8, -5.8, -4.8, -3.8, -2.8, -1.8, -0.8, 0.2, 1.2, 2.2, 3.2, 4.2, 5.2, 6.2):
+        wall_box("Teppichfranse", x, tapestry_center_z - 3.57, 0.04, 0.38, 0.03, brass, WALL_Y + 0.11)
+
+# Warmes, flaches Museumslicht für den Wandteppich.
+for index, x in enumerate((-5.5, 0, 5.5), 1):
+    lamp_data = D.lights.new(f"Wandlicht {index}", "AREA")
+    lamp_data.energy = 220; lamp_data.shape = 'RECTANGLE'; lamp_data.size = 3.2
+    lamp_data.size_y = 0.4; lamp_data.color = (1.0, 0.72, 0.42)
+    lamp = D.objects.new(f"Wandlicht {index}", lamp_data); gcol.objects.link(lamp)
+    lamp.location = (x, -14.8, 11.8)
+    lamp.rotation_euler = Vector((0, -2.2, -3.0)).to_track_quat('-Z', 'Y').to_euler()
 
 # --- Kassettendecke: Balkenraster unter der Decke, kleiner Rahmen in jedem Feld, Oberlicht in der Mitte --------
 ccol = D.collections.new("Kassettendecke"); S.collection.children.link(ccol)
@@ -875,16 +1172,28 @@ for i, y in enumerate(YS):
     o.rotation_euler = SUNDIR.to_track_quat('X', 'Z').to_euler(); o.data.materials.append(vm); o.visible_shadow = False; o.display_type = 'WIRE'
 S.cycles.volume_bounces = 0
 
-# --- Kamera naeher, Flaeche weich unterteilt (bisher von Hand bzw. per Einzeiler gesetzt) ---
-# --- Massstab: Skulptur ist real nur ~3,6 m hoch (im Original 6,15 m) -> Skulptur und Sockel verkleinern, Kamera naeher ---
+# --- Zwei Hauptwerke gemeinsam inszenieren -----------------------------------------------
+# Beide Minimalflaechen stehen als Paar auf getrennten Sockeln; die Kamera erfasst beide.
 SK = 0.58
-k = obj_by_name("Kusner p=7"); k.scale = (SK,) * 3
-k.location.z += 0.72 - (k.location.z + min(v[2] for v in k.bound_box) * SK)  # Unterkante auf den Sockel (Oberkante z=0.76)
-for n in ("Sockel unten", "Sockel oben"): obj_by_name(n).scale.x *= 0.6; obj_by_name(n).scale.y *= 0.6
-ZC = 0.72 + 6.149 * SK / 2; obj_by_name("Kamera Ziel").location.z = ZC  # Blickziel = Skulpturmitte
-cam = obj_by_name("Museumskamera"); cam.location.y, cam.location.z = -6.9, ZC + 0.2; cam.data.lens = 35
-k = obj_by_name("Kusner p=7")
-if not any(m.type == 'SUBSURF' for m in k.modifiers): sm = k.modifiers.new("Subdivision", "SUBSURF"); sm.levels, sm.render_levels = 1, 2
+main_works = (obj_by_name("Kusner p=7"), obj_by_name("S41_7_5"))
+for work in main_works:
+    work.scale = (SK,) * 3
+    work.location.z += 0.80 - (work.location.z + min(v[2] for v in work.bound_box) * SK)
+    if not any(modifier.type == 'SUBSURF' for modifier in work.modifiers):
+        modifier = work.modifiers.new("Subdivision", "SUBSURF")
+        modifier.levels, modifier.render_levels = 1, 2
+for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
+    obj_by_name(n).scale.x *= 0.6
+    obj_by_name(n).scale.y *= 0.6
+
+work_centers = [work.location.z + (min(v[2] for v in work.bound_box) +
+                                   max(v[2] for v in work.bound_box)) * SK / 2
+                for work in main_works]
+ZC = sum(work_centers) / len(work_centers)
+obj_by_name("Kamera Ziel").location = (0, 0, ZC)
+cam = obj_by_name("Museumskamera")
+cam.location = (0, -14.5, ZC + 0.25)
+cam.data.lens = 35
 
 
 
