@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parent
 WORK_DIR = Path(os.environ["MUSEUM_WORKER_DIR"])
 COMMAND = WORK_DIR / "command.json"
 READY = WORK_DIR / "ready.json"
+MODEL = WORK_DIR / "museum_preview.glb"
 
 
 def write_json(path, value):
@@ -36,6 +37,33 @@ def render(command):
     bpy.ops.render.render(write_still=True)
 
 
+def export_preview():
+    """Exportiert die sichtbare Museumsgeometrie für die Browser-Vorschau."""
+    # Bei --factory-startup ist selbst das mit Blender ausgelieferte Kern-Add-on
+    # zunächst deaktiviert und der Export-Operator noch nicht registriert.
+    bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
+    bpy.ops.object.select_all(action="DESELECT")
+    selected = []
+    for obj in bpy.context.scene.objects:
+        if (obj.type in {"MESH", "CURVE"} and not obj.hide_render
+                and not obj.name.startswith("Lichtschacht")):
+            obj.select_set(True)
+            selected.append(obj)
+    if not selected:
+        raise RuntimeError("Keine Geometrie für die 3D-Vorschau gefunden.")
+    bpy.context.view_layer.objects.active = selected[0]
+    print("3D-Vorschaumodell wird exportiert.", flush=True)
+    bpy.ops.export_scene.gltf(
+        filepath=str(MODEL),
+        export_format="GLB",
+        use_selection=True,
+        export_apply=True,
+        export_cameras=False,
+        export_lights=False,
+    )
+    print(f"3D-Vorschaumodell gespeichert: {MODEL}", flush=True)
+
+
 WORK_DIR.mkdir(parents=True, exist_ok=True)
 namespace = runpy.run_path(str(ROOT / "museum_komplett.py"))
 presets = {
@@ -53,7 +81,9 @@ try:
 except TypeError:
     pass
 
-write_json(READY, {"pid": os.getpid(), "ready": True})
+export_preview()
+write_json(READY, {"pid": os.getpid(), "ready": True,
+                   "model_mtime": MODEL.stat().st_mtime_ns})
 print("Museum-Worker bereit.", flush=True)
 last_id = None
 

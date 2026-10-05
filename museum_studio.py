@@ -22,6 +22,7 @@ DEFAULTS = dict(RENDER_PRESET="test", BODEN="marmor", RESOLUTION_X=1280,
 TOKEN = secrets.token_urlsafe(24)
 LOCK = threading.Lock()
 WORK_DIR = ROOT / "Render" / ".museum_worker"
+MODEL = WORK_DIR / "museum_preview.glb"
 STATE = dict(process=None, worker=None, worker_signature=None, worker_job=None,
              settings=DEFAULTS.copy(), kind="", log=None, started=0,
              preview=None, video=None, code=None)
@@ -110,6 +111,10 @@ def ensure_worker(settings):
             path.unlink()
         except FileNotFoundError:
             pass
+    try:
+        MODEL.unlink()
+    except FileNotFoundError:
+        pass
     worker_settings = settings.copy()
     worker_settings.update(MAKE_VIDEO=False, RESUME_RENDER=True)
     config = WORK_DIR / "settings.json"
@@ -277,6 +282,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send(200, path.read_bytes(), "image/png" if route == "/preview" else "video/mp4")
             else:
                 self.send(404, b"Not found", "text/plain")
+        elif route == "/model.glb":
+            if MODEL.exists():
+                self.send(200, MODEL.read_bytes(), "model/gltf-binary")
+            else:
+                self.send(404, b"Not found", "text/plain")
+        elif route == "/museum_viewer.js":
+            self.send(200, (ROOT / "museum_viewer.js").read_bytes(), "text/javascript; charset=utf-8")
         else:
             self.send(404, b"{}")
 
@@ -292,6 +304,14 @@ class Handler(BaseHTTPRequestHandler):
             data = json.loads(self.rfile.read(length))
             if self.path == "/api/start":
                 start_job(data["kind"], data["settings"])
+            elif self.path == "/api/model":
+                with LOCK:
+                    settings = validate(data["settings"])
+                    process = STATE["process"]
+                    if process and process.poll() is None:
+                        raise ValueError("Während einer Animation ist keine 3D-Vorschau verfügbar.")
+                    ensure_worker(settings)
+                    STATE["settings"] = settings
             elif self.path == "/api/stop":
                 with LOCK:
                     process = STATE["process"]
