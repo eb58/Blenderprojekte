@@ -121,7 +121,9 @@ Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nä
 
 Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
 
-Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Blender exportiert dafür beim Aufbau des Workers ein lokales GLB-Modell. **Position übernehmen & rendern** überträgt den horizontalen Blickwinkel an das Kamerarad und startet ein hochwertiges Cycles-Testbild. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
+Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Blender exportiert dafür beim Aufbau des Workers ein lokales GLB-Modell. **Mit Cycles rendern** überträgt den horizontalen Blickwinkel an das Kamerarad und startet ein hochwertiges Cycles-Testbild. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
+
+Im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. **Mit Cycles rendern** bleibt als Qualitätsvergleich verfügbar. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
 ## Parameter
 

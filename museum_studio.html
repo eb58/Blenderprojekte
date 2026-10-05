@@ -130,19 +130,32 @@
         }
 
         .viewer-apply {
+            box-shadow: 0 5px 18px #0008
+        }
+
+        .viewer-actions {
             position: absolute;
             z-index: 4;
             left: 50%;
             bottom: 14px;
             transform: translateX(-50%);
-            box-shadow: 0 5px 18px #0008
+            display: flex;
+            gap: 7px;
+            white-space: nowrap
+        }
+
+        .viewer-actions button {
+            padding: 8px 11px;
+            font-size: 11px;
+            background: #0c100ddd;
+            backdrop-filter: blur(8px)
         }
 
         .viewer-angle {
             position: absolute;
             z-index: 4;
             left: 14px;
-            bottom: 14px;
+            bottom: 62px;
             padding: 6px 9px;
             border-radius: 7px;
             background: #0c100ddd;
@@ -450,8 +463,8 @@
                     <div class="symbol">∿</div><strong>Hier entsteht dein Museum.</strong><small>Ein Testbild zeigt
                         Licht, Material und Perspektive.</small>
                 </div><canvas id="viewer" hidden></canvas>
-                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><button class="viewer-apply" id="viewerApply"
-                    type="button" hidden>Position übernehmen &amp; rendern</button><img id="preview"
+                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button class="viewer-apply" id="viewerApply"
+                    type="button">Mit Cycles rendern</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
                     alt="Gerendertes Museum" hidden>
             </div>
             <div class="actions"><button class="primary job" onclick="start('still')">Testbild rendern</button><button
