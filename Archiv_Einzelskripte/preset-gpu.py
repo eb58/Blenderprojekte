@@ -48,29 +48,6 @@ def setup_cycles():
     scene.render.use_persistent_data = True
 
 
-def preset_quality():
-    c = scene.cycles
-
-    c.adaptive_threshold = 0.01
-    c.samples = 128
-
-    c.denoising_prefilter = 'ACCURATE'
-    c.denoising_quality = 'HIGH'
-
-    c.max_bounces = 8
-    c.diffuse_bounces = 4
-    c.glossy_bounces = 6
-    c.transmission_bounces = 8
-    c.transparent_max_bounces = 8
-
-    c.sample_clamp_indirect = 10.0
-
-    c.caustics_reflective = True
-    c.caustics_refractive = True
-
-    print("Preset aktiviert: QUALITÄT")
-
-
 def preset_test():
     c = scene.cycles
 
@@ -92,6 +69,29 @@ def preset_test():
     c.caustics_refractive = False
 
     print("Preset aktiviert: SCHNELLER TEST")
+
+
+def preset_final_fast():
+    c = scene.cycles
+
+    c.adaptive_threshold = 0.03
+    c.samples = 32
+
+    c.denoising_prefilter = 'FAST'
+    c.denoising_quality = 'BALANCED'
+
+    c.max_bounces = 5
+    c.diffuse_bounces = 2
+    c.glossy_bounces = 3
+    c.transmission_bounces = 3
+    c.transparent_max_bounces = 3
+
+    c.sample_clamp_indirect = 4.0
+
+    c.caustics_reflective = False
+    c.caustics_refractive = False
+
+    print("Preset aktiviert: FINAL FAST")
 
 
 def preset_animation():
@@ -116,27 +116,30 @@ def preset_animation():
 
     print("Preset aktiviert: ANIMATION SCHNELL")
 
-def preset_final_fast():
+
+def preset_quality():
     c = scene.cycles
 
-    c.adaptive_threshold = 0.03
-    c.samples = 32
+    c.adaptive_threshold = 0.01
+    c.samples = 128
 
-    c.denoising_prefilter = 'FAST'
-    c.denoising_quality = 'BALANCED'
+    c.denoising_prefilter = 'ACCURATE'
+    c.denoising_quality = 'HIGH'
 
-    c.max_bounces = 5
-    c.diffuse_bounces = 2
-    c.glossy_bounces = 3
-    c.transmission_bounces = 3
-    c.transparent_max_bounces = 3
+    c.max_bounces = 8
+    c.diffuse_bounces = 4
+    c.glossy_bounces = 6
+    c.transmission_bounces = 8
+    c.transparent_max_bounces = 8
 
-    c.sample_clamp_indirect = 4.0
+    c.sample_clamp_indirect = 10.0
 
-    c.caustics_reflective = False
-    c.caustics_refractive = False
+    c.caustics_reflective = True
+    c.caustics_refractive = True
 
-    print("Preset aktiviert: FINAL FAST")
+    print("Preset aktiviert: QUALITÄT")
+
+
 # -------------------------------------------------
 # HIER NUR EINE ZEILE AKTIV LASSEN
 # -------------------------------------------------
@@ -144,7 +147,8 @@ def preset_final_fast():
 enable_optix()
 setup_cycles()
 
-# preset_quality()
-# preset_test()
+preset_test()
+# preset_final_fast()
 # preset_animation()
-preset_final_fast()
+# preset_quality()
+    

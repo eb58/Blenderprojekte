@@ -1,0 +1,1094 @@
+{
+ "interface": [],
+ "links": [
+  [
+   "Group",
+   0,
+   "Material Output",
+   0
+  ]
+ ],
+ "name": "Shader Nodetree",
+ "nodes": [
+  {
+   "idname": "ShaderNodeOutputMaterial",
+   "in": {
+    "2": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "3": 0.0
+   },
+   "loc": [
+    1599,
+    420
+   ],
+   "name": "Material Output",
+   "parent": null,
+   "props": {
+    "height": 100.0,
+    "label": "",
+    "name": "Material Output",
+    "target": "ALL",
+    "width": 140.0
+   }
+  },
+  {
+   "group": {
+    "interface": [
+     {
+      "in_out": "OUTPUT",
+      "name": "BSDF",
+      "socket_type": "NodeSocketShader"
+     },
+     {
+      "default": 1.0,
+      "in_out": "INPUT",
+      "max_value": 3.4028234663852886e+38,
+      "min_value": -3.4028234663852886e+38,
+      "name": "Scale",
+      "socket_type": "NodeSocketFloat"
+     },
+     {
+      "default": [
+       0.17788739502429962,
+       0.07036018371582031,
+       0.031896062195301056,
+       1.0
+      ],
+      "in_out": "INPUT",
+      "name": "Color 1",
+      "socket_type": "NodeSocketColor"
+     },
+     {
+      "default": [
+       0.31398674845695496,
+       0.24228137731552124,
+       0.11953852325677872,
+       1.0
+      ],
+      "in_out": "INPUT",
+      "name": "Color 2",
+      "socket_type": "NodeSocketColor"
+     },
+     {
+      "default": [
+       0.05612814798951149,
+       0.036889489740133286,
+       0.02315337210893631,
+       1.0
+      ],
+      "in_out": "INPUT",
+      "name": "Color 3",
+      "socket_type": "NodeSocketColor"
+     },
+     {
+      "default": [
+       0.3231411874294281,
+       0.23074033856391907,
+       0.1620294749736786,
+       1.0
+      ],
+      "in_out": "INPUT",
+      "name": "Color 4",
+      "socket_type": "NodeSocketColor"
+     },
+     {
+      "default": [
+       0.31854474544525146,
+       0.2874411344528198,
+       0.14126339554786682,
+       1.0
+      ],
+      "in_out": "INPUT",
+      "name": "Color 5",
+      "socket_type": "NodeSocketColor"
+     },
+     {
+      "default": 15.0,
+      "in_out": "INPUT",
+      "max_value": 15.0,
+      "min_value": 0.0,
+      "name": "Detail",
+      "socket_type": "NodeSocketFloat"
+     },
+     {
+      "default": 1.0,
+      "in_out": "INPUT",
+      "max_value": 2.0,
+      "min_value": 0.0,
+      "name": "Rougness",
+      "socket_type": "NodeSocketFloat"
+     }
+    ],
+    "links": [
+     [
+      "Color Ramp.002",
+      0,
+      "Mix.003",
+      0
+     ],
+     [
+      "Color Ramp",
+      0,
+      "Mix",
+      0
+     ],
+     [
+      "Voronoi Texture",
+      0,
+      "Color Ramp.002",
+      0
+     ],
+     [
+      "Mix.002",
+      2,
+      "Mix.003",
+      6
+     ],
+     [
+      "Hue/Saturation/Value",
+      0,
+      "Principled BSDF",
+      2
+     ],
+     [
+      "Noise Texture.001",
+      0,
+      "Color Ramp.001",
+      0
+     ],
+     [
+      "Noise Texture",
+      0,
+      "Color Ramp",
+      0
+     ],
+     [
+      "Mix.003",
+      2,
+      "Color Ramp.003",
+      0
+     ],
+     [
+      "Mix.001",
+      2,
+      "Mix.002",
+      6
+     ],
+     [
+      "Mapping",
+      0,
+      "Noise Texture",
+      0
+     ],
+     [
+      "Texture Coordinate",
+      3,
+      "Mapping",
+      0
+     ],
+     [
+      "Mapping",
+      0,
+      "Noise Texture.001",
+      0
+     ],
+     [
+      "Color Ramp.001",
+      0,
+      "Mix.001",
+      0
+     ],
+     [
+      "Mapping",
+      0,
+      "Noise Texture.002",
+      0
+     ],
+     [
+      "Mix",
+      2,
+      "Mix.002",
+      7
+     ],
+     [
+      "Mix.003",
+      2,
+      "Principled BSDF",
+      0
+     ],
+     [
+      "Color Ramp.003",
+      0,
+      "Hue/Saturation/Value",
+      4
+     ],
+     [
+      "Noise Texture.002",
+      1,
+      "Voronoi Texture",
+      0
+     ],
+     [
+      "Principled BSDF",
+      0,
+      "Group Output",
+      0
+     ],
+     [
+      "Group Input",
+      0,
+      "Mapping",
+      3
+     ],
+     [
+      "Group Input",
+      1,
+      "Mix.001",
+      6
+     ],
+     [
+      "Group Input",
+      2,
+      "Mix.001",
+      7
+     ],
+     [
+      "Group Input",
+      3,
+      "Mix",
+      6
+     ],
+     [
+      "Group Input",
+      4,
+      "Mix",
+      7
+     ],
+     [
+      "Group Input",
+      5,
+      "Mix.003",
+      7
+     ],
+     [
+      "Group Input",
+      6,
+      "Noise Texture.002",
+      3
+     ],
+     [
+      "Group Input",
+      6,
+      "Noise Texture.001",
+      3
+     ],
+     [
+      "Group Input",
+      6,
+      "Noise Texture",
+      3
+     ],
+     [
+      "Group Input",
+      7,
+      "Hue/Saturation/Value",
+      2
+     ]
+    ],
+    "name": "Procedural Brown Granite",
+    "nodes": [
+     {
+      "idname": "NodeGroupOutput",
+      "in": {},
+      "loc": [
+       1485,
+       0
+      ],
+      "name": "Group Output",
+      "parent": null,
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Group Output",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "NodeGroupInput",
+      "in": {},
+      "loc": [
+       -1095,
+       -573
+      ],
+      "name": "Group Input",
+      "parent": null,
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Group Input",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeBsdfPrincipled",
+      "in": {
+       "1": 0.0,
+       "10": [
+        1.0,
+        0.20000000298023224,
+        0.10000000149011612
+       ],
+       "11": 0.05000000074505806,
+       "12": 1.399999976158142,
+       "13": 0.0,
+       "14": 0.5,
+       "15": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+       ],
+       "16": 0.0,
+       "17": 0.0,
+       "18": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "19": 0.0,
+       "20": 0.0,
+       "21": 0.029999999329447746,
+       "22": 1.5,
+       "23": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+       ],
+       "24": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "25": 0.0,
+       "26": 0.5,
+       "27": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+       ],
+       "28": [
+        1.0,
+        1.0,
+        1.0,
+        1.0
+       ],
+       "29": 0.0,
+       "3": 1.5,
+       "30": 0.0,
+       "31": 1.3300000429153442,
+       "4": 1.0,
+       "5": false,
+       "6": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "7": 0.0,
+       "8": 0.0,
+       "9": 0.0
+      },
+      "loc": [
+       1195,
+       108
+      ],
+      "name": "Principled BSDF",
+      "parent": null,
+      "props": {
+       "distribution": "MULTI_GGX",
+       "height": 100.0,
+       "label": "",
+       "name": "Principled BSDF",
+       "subsurface_method": "RANDOM_WALK_LEGACY",
+       "width": 240.0
+      }
+     },
+     {
+      "idname": "ShaderNodeTexNoise",
+      "in": {
+       "1": 0.0,
+       "2": 4.0,
+       "4": 1.0,
+       "5": 2.0,
+       "6": 0.0,
+       "7": 1.0,
+       "8": 0.0
+      },
+      "loc": [
+       30,
+       -30
+      ],
+      "name": "Noise Texture",
+      "parent": "Frame",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Noise Texture",
+       "noise_dimensions": "4D",
+       "noise_type": "FBM",
+       "normalize": false,
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeMapping",
+      "in": {
+       "1": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "2": [
+        0.0,
+        0.0,
+        0.0
+       ]
+      },
+      "loc": [
+       210,
+       -30
+      ],
+      "name": "Mapping",
+      "parent": "Frame.001",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Mapping",
+       "vector_type": "POINT",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeTexCoord",
+      "in": {},
+      "loc": [
+       30,
+       -30
+      ],
+      "name": "Texture Coordinate",
+      "parent": "Frame.001",
+      "props": {
+       "from_instancer": false,
+       "height": 100.0,
+       "label": "",
+       "name": "Texture Coordinate",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeMix",
+      "in": {
+       "1": [
+        0.5,
+        0.5,
+        0.5
+       ],
+       "2": 0.0,
+       "3": 0.0,
+       "4": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "5": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "8": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "9": [
+        0.0,
+        0.0,
+        0.0
+       ]
+      },
+      "loc": [
+       504,
+       -51
+      ],
+      "name": "Mix",
+      "parent": "Frame",
+      "props": {
+       "blend_type": "MIX",
+       "clamp_factor": true,
+       "clamp_result": false,
+       "data_type": "RGBA",
+       "factor_mode": "UNIFORM",
+       "height": 100.0,
+       "label": "",
+       "name": "Mix",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeValToRGB",
+      "in": {},
+      "loc": [
+       207,
+       -60
+      ],
+      "name": "Color Ramp",
+      "parent": "Frame",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Color Ramp",
+       "width": 240.0
+      },
+      "ramp": {
+       "els": [
+        [
+         0.0,
+         [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+         ]
+        ],
+        [
+         0.4580153524875641,
+         [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+         ]
+        ]
+       ],
+       "interp": "LINEAR",
+       "mode": "RGB"
+      }
+     },
+     {
+      "idname": "NodeFrame",
+      "in": {},
+      "loc": [
+       -677,
+       -380
+      ],
+      "name": "Frame",
+      "parent": null,
+      "props": {
+       "height": 361.6744384765625,
+       "label": "",
+       "label_size": 20,
+       "name": "Frame",
+       "shrink": true,
+       "width": 674.1395874023438
+      }
+     },
+     {
+      "idname": "NodeFrame",
+      "in": {},
+      "loc": [
+       -1196,
+       -188
+      ],
+      "name": "Frame.001",
+      "parent": null,
+      "props": {
+       "height": 349.9535217285156,
+       "label": "",
+       "label_size": 20,
+       "name": "Frame.001",
+       "shrink": true,
+       "width": 380.27911376953125
+      }
+     },
+     {
+      "idname": "ShaderNodeTexNoise",
+      "in": {
+       "1": 0.0,
+       "2": 6.0,
+       "4": 0.7300000190734863,
+       "5": 4.599999904632568,
+       "6": 0.0,
+       "7": 1.0,
+       "8": 0.0
+      },
+      "loc": [
+       30,
+       -30
+      ],
+      "name": "Noise Texture.001",
+      "parent": "Frame.002",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Noise Texture.001",
+       "noise_dimensions": "3D",
+       "noise_type": "FBM",
+       "normalize": true,
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeValToRGB",
+      "in": {},
+      "loc": [
+       202,
+       -51
+      ],
+      "name": "Color Ramp.001",
+      "parent": "Frame.002",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Color Ramp.001",
+       "width": 240.0
+      },
+      "ramp": {
+       "els": [
+        [
+         0.3358778655529022,
+         [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+         ]
+        ],
+        [
+         0.6755727529525757,
+         [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+         ]
+        ]
+       ],
+       "interp": "LINEAR",
+       "mode": "RGB"
+      }
+     },
+     {
+      "idname": "ShaderNodeMix",
+      "in": {
+       "1": [
+        0.5,
+        0.5,
+        0.5
+       ],
+       "2": 0.0,
+       "3": 0.0,
+       "4": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "5": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "8": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "9": [
+        0.0,
+        0.0,
+        0.0
+       ]
+      },
+      "loc": [
+       500,
+       -51
+      ],
+      "name": "Mix.001",
+      "parent": "Frame.002",
+      "props": {
+       "blend_type": "MIX",
+       "clamp_factor": true,
+       "clamp_result": false,
+       "data_type": "RGBA",
+       "factor_mode": "UNIFORM",
+       "height": 100.0,
+       "label": "",
+       "name": "Mix.001",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "NodeFrame",
+      "in": {},
+      "loc": [
+       -671,
+       53
+      ],
+      "name": "Frame.002",
+      "parent": null,
+      "props": {
+       "height": 339.906982421875,
+       "label": "",
+       "label_size": 20,
+       "name": "Frame.002",
+       "shrink": true,
+       "width": 670.7907104492188
+      }
+     },
+     {
+      "idname": "ShaderNodeTexVoronoi",
+      "in": {
+       "1": 0.0,
+       "2": 20.0,
+       "3": 6.699999809265137,
+       "4": 0.4699999988079071,
+       "5": 5.300000190734863,
+       "6": 1.0,
+       "7": 0.5,
+       "8": 1.0
+      },
+      "loc": [
+       209,
+       -44
+      ],
+      "name": "Voronoi Texture",
+      "parent": "Frame.003",
+      "props": {
+       "distance": "EUCLIDEAN",
+       "feature": "DISTANCE_TO_EDGE",
+       "height": 100.0,
+       "label": "",
+       "name": "Voronoi Texture",
+       "normalize": false,
+       "voronoi_dimensions": "3D",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeTexNoise",
+      "in": {
+       "1": 0.0,
+       "2": 2.0,
+       "4": 0.6800000071525574,
+       "5": 2.0,
+       "6": 0.0,
+       "7": 1.0,
+       "8": 0.0
+      },
+      "loc": [
+       30,
+       -30
+      ],
+      "name": "Noise Texture.002",
+      "parent": "Frame.003",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Noise Texture.002",
+       "noise_dimensions": "3D",
+       "noise_type": "FBM",
+       "normalize": true,
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeValToRGB",
+      "in": {},
+      "loc": [
+       369,
+       -50
+      ],
+      "name": "Color Ramp.002",
+      "parent": "Frame.003",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Color Ramp.002",
+       "width": 240.0
+      },
+      "ramp": {
+       "els": [
+        [
+         0.030534353107213974,
+         [
+          0.0,
+          0.0,
+          0.0,
+          1.0
+         ]
+        ],
+        [
+         0.27099260687828064,
+         [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+         ]
+        ]
+       ],
+       "interp": "LINEAR",
+       "mode": "RGB"
+      }
+     },
+     {
+      "idname": "NodeFrame",
+      "in": {},
+      "loc": [
+       -654,
+       440
+      ],
+      "name": "Frame.003",
+      "parent": null,
+      "props": {
+       "height": 344.93023681640625,
+       "label": "",
+       "label_size": 20,
+       "name": "Frame.003",
+       "shrink": true,
+       "width": 638.5115966796875
+      }
+     },
+     {
+      "idname": "ShaderNodeMix",
+      "in": {
+       "0": 1.0,
+       "1": [
+        0.5,
+        0.5,
+        0.5
+       ],
+       "2": 0.0,
+       "3": 0.0,
+       "4": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "5": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "8": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "9": [
+        0.0,
+        0.0,
+        0.0
+       ]
+      },
+      "loc": [
+       242,
+       -140
+      ],
+      "name": "Mix.002",
+      "parent": null,
+      "props": {
+       "blend_type": "DARKEN",
+       "clamp_factor": true,
+       "clamp_result": false,
+       "data_type": "RGBA",
+       "factor_mode": "UNIFORM",
+       "height": 100.0,
+       "label": "",
+       "name": "Mix.002",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeMix",
+      "in": {
+       "1": [
+        0.5,
+        0.5,
+        0.5
+       ],
+       "2": 0.0,
+       "3": 0.0,
+       "4": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "5": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "8": [
+        0.0,
+        0.0,
+        0.0
+       ],
+       "9": [
+        0.0,
+        0.0,
+        0.0
+       ]
+      },
+      "loc": [
+       425,
+       89
+      ],
+      "name": "Mix.003",
+      "parent": null,
+      "props": {
+       "blend_type": "MIX",
+       "clamp_factor": true,
+       "clamp_result": false,
+       "data_type": "RGBA",
+       "factor_mode": "UNIFORM",
+       "height": 100.0,
+       "label": "",
+       "name": "Mix.003",
+       "width": 140.0
+      }
+     },
+     {
+      "idname": "ShaderNodeValToRGB",
+      "in": {},
+      "loc": [
+       30,
+       -71
+      ],
+      "name": "Color Ramp.003",
+      "parent": "Frame.004",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Color Ramp.003",
+       "width": 240.0
+      },
+      "ramp": {
+       "els": [
+        [
+         0.0,
+         [
+          0.03820410370826721,
+          0.03820440545678139,
+          0.0382043831050396,
+          1.0
+         ]
+        ],
+        [
+         1.0,
+         [
+          1.0,
+          1.0,
+          1.0,
+          1.0
+         ]
+        ]
+       ],
+       "interp": "LINEAR",
+       "mode": "RGB"
+      }
+     },
+     {
+      "idname": "ShaderNodeHueSaturation",
+      "in": {
+       "0": 0.5,
+       "1": 1.0,
+       "3": 1.0
+      },
+      "loc": [
+       311,
+       -30
+      ],
+      "name": "Hue/Saturation/Value",
+      "parent": "Frame.004",
+      "props": {
+       "height": 100.0,
+       "label": "",
+       "name": "Hue/Saturation/Value",
+       "width": 150.0
+      }
+     },
+     {
+      "idname": "NodeFrame",
+      "in": {},
+      "loc": [
+       601,
+       -42
+      ],
+      "name": "Frame.004",
+      "parent": null,
+      "props": {
+       "height": 304.7441711425781,
+       "label": "",
+       "label_size": 20,
+       "name": "Frame.004",
+       "shrink": true,
+       "width": 490.74420166015625
+      }
+     }
+    ]
+   },
+   "idname": "ShaderNodeGroup",
+   "in": {
+    "0": 1.0,
+    "1": [
+     0.08074022829532623,
+     0.11972354352474213,
+     0.18556973338127136,
+     1.0
+    ],
+    "2": [
+     0.31398674845695496,
+     0.24228137731552124,
+     0.11953852325677872,
+     1.0
+    ],
+    "3": [
+     0.05612814798951149,
+     0.036889489740133286,
+     0.02315337210893631,
+     1.0
+    ],
+    "4": [
+     0.22557133436203003,
+     0.16208183765411377,
+     0.11446116119623184,
+     1.0
+    ],
+    "5": [
+     0.3443961441516876,
+     0.3106135427951813,
+     0.15228861570358276,
+     1.0
+    ],
+    "6": 15.0,
+    "7": 1.0
+   },
+   "loc": [
+    1395,
+    431
+   ],
+   "name": "Group",
+   "parent": null,
+   "props": {
+    "height": 100.0,
+    "label": "",
+    "name": "Group",
+    "width": 140.0
+   }
+  }
+ ]
+}

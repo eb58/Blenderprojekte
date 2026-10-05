@@ -4,6 +4,37 @@ import math
 from mathutils import Vector
 
 
+def enable_optix():
+    """OptiX aktivieren und ausschliesslich erkannte OptiX-GPUs verwenden."""
+    cycles_preferences = bpy.context.preferences.addons["cycles"].preferences
+
+    try:
+        cycles_preferences.compute_device_type = "OPTIX"
+    except TypeError as exc:
+        raise RuntimeError(
+            "OptiX ist in dieser Blender-Installation nicht verfuegbar. "
+            "Bitte NVIDIA-Treiber und Blender-Version pruefen."
+        ) from exc
+
+    cycles_preferences.get_devices()
+    optix_devices = [
+        device
+        for device in cycles_preferences.devices
+        if device.type == "OPTIX"
+    ]
+
+    if not optix_devices:
+        raise RuntimeError("Blender hat kein OptiX-faehiges Geraet gefunden.")
+
+    for device in cycles_preferences.devices:
+        device.use = device.type == "OPTIX"
+
+    print(
+        "OptiX aktiviert: "
+        + ", ".join(device.name for device in optix_devices)
+    )
+
+
 # ============================================================
 # EINSTELLUNGEN
 # ============================================================
@@ -28,12 +59,16 @@ VIDEO_OUTPUT = "//kusner_p7_granit_museum.mp4"
 # SZENE / RENDERER
 # ============================================================
 
-bpy.ops.object.select_all(action="SELECT")
-bpy.ops.object.delete(use_global=False)
+# Die Datei vollständig leeren, einschließlich ausgeblendeter oder nicht
+# auswählbarer Objekte aus anderen Collections. So bleiben insbesondere keine
+# zuvor importierten Personen in der neu aufgebauten Museumsszene zurück.
+for existing_object in list(bpy.data.objects):
+    bpy.data.objects.remove(existing_object, do_unlink=True)
 
 scene = bpy.context.scene
 scene.render.engine = "CYCLES"
-scene.cycles.device = "CPU"
+enable_optix()
+scene.cycles.device = "GPU"
 scene.cycles.use_denoising = True
 scene.cycles.max_bounces = 8
 scene.cycles.diffuse_bounces = 4
@@ -456,7 +491,22 @@ sun.rotation_euler = (math.radians(34), math.radians(-25), math.radians(-36))
 if scene.world is None:
     scene.world = bpy.data.worlds.new("World")
 scene.world.use_nodes = True
-background = scene.world.node_tree.nodes.get("Background")
+world_nodes = scene.world.node_tree.nodes
+world_links = scene.world.node_tree.links
+
+background = world_nodes.get("Background")
+if background is None:
+    background = world_nodes.new("ShaderNodeBackground")
+    background.name = "Background"
+
+world_output = world_nodes.get("World Output")
+if world_output is None:
+    world_output = world_nodes.new("ShaderNodeOutputWorld")
+    world_output.name = "World Output"
+
+if not background.outputs["Background"].is_linked:
+    world_links.new(background.outputs["Background"], world_output.inputs["Surface"])
+
 background.inputs["Color"].default_value = (0.055, 0.040, 0.029, 1)
 background.inputs["Strength"].default_value = 0.22
 

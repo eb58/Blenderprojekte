@@ -4,13 +4,27 @@ Aufruf aus dem Nichts:  blender -b --factory-startup --python museum_build.py --
 (führt museum_szene.py aus, falls noch keine Szene da ist). Alternativ auf das Backup anwenden statt auf eine schon umgebaute Datei.
 Ohne Ausgabepfad wird die geöffnete Datei überschrieben.
 """
-import bpy, math, sys, runpy, os
+import bpy, math, sys, runpy, os, json
 from mathutils import Vector, Matrix
 
 D, S, C = bpy.data, bpy.context.scene, bpy.context
 OUT = sys.argv[sys.argv.index("--") + 1] if "--" in sys.argv else None
 BODEN = "parkett"  # "parkett" oder "marmor" (Schachbrett)
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+# Interne Blender-Textbloecke haben einen virtuellen __file__-Pfad.
+# Fuer diese Ausfuehrung den tatsaechlichen Projektordner verwenden.
+PROJECT_DIR = r"C:\Users\erich\OneDrive\Blenderprojekte"
+script_path = globals().get("__file__", "")
+SCRIPT_DIR = (
+    os.path.dirname(os.path.abspath(script_path))
+    if script_path and os.path.isfile(script_path)
+    else PROJECT_DIR
+)
+granite_path = os.path.join(SCRIPT_DIR, "granit_material.json")
+if not os.path.isfile(granite_path):
+    raise FileNotFoundError(
+        f"Granitmaterial fehlt: {granite_path}. "
+        "PROJECT_DIR auf den Ordner mit museum_szene.py und granit_material.json setzen."
+    )
 
 
 def obj_by_name(name, *, required=True):
@@ -145,20 +159,26 @@ def load_nodes(nt, spec):
         if d["parent"]: ns[d["name"]].parent = ns[d["parent"]]
     for fn, fi, tn, ti in spec["links"]: nt.links.new(ns[fn].outputs[fi], ns[tn].inputs[ti])
 
-# --- Skulptur: spiegelndes Chrom ------------------------------------------------------------
-chrome = material_by_name("Spiegelndes Chrom")
-chrome.use_nodes = True
-nt = chrome.node_tree
-nt.nodes.clear()
-p = nt.nodes.new("ShaderNodeBsdfPrincipled")
-out = nt.nodes.new("ShaderNodeOutputMaterial")
-p.inputs["Base Color"].default_value = (0.8, 0.8, 0.8, 1.0)
-p.inputs["Metallic"].default_value = 1.0
-p.inputs["Roughness"].default_value = 0.02
-nt.links.new(p.outputs["BSDF"], out.inputs["Surface"])
+# --- Skulptur: prozeduraler Naturgranit -----------------------------------------------------
+granite = material_by_name("Polierter dunkler Naturgranit")
+granite.use_nodes = True
+with open(granite_path, encoding="utf-8") as material_file:
+    load_nodes(granite.node_tree, json.load(material_file))
+
+# Naturstein bleibt auch in verschachtelten Node-Gruppen nichtmetallisch.
+def make_nonmetallic(node_tree):
+    for node in node_tree.nodes:
+        if node.type == 'BSDF_PRINCIPLED':
+            node.inputs["Metallic"].default_value = 0.0
+            for incoming in list(node.inputs["Metallic"].links):
+                node_tree.links.remove(incoming)
+        elif node.type == 'GROUP' and node.node_tree is not None:
+            make_nonmetallic(node.node_tree)
+
+make_nonmetallic(granite.node_tree)
 sculpture = obj_by_name("Kusner p=7")
 sculpture.data.materials.clear()
-sculpture.data.materials.append(chrome)
+sculpture.data.materials.append(granite)
 
 # --- Weisser Marmor (Sockel der Skulptur, Statuen) ---------------------------------------------
 import bmesh
@@ -270,37 +290,8 @@ for n, (bx_, by_, rot) in enumerate(((9.5, -3.0, -90), (-9.5, 3.0, 90))):  # Rue
         o = D.objects.new(f"Wellenbank {n + 1} {nm}", me_); bcol.objects.link(o); o.location = (bx_, by_, 0); o.rotation_euler.z = math.radians(rot)
         for pl in o.data.polygons: pl.use_smooth = False
 
-# --- Besucher: stilisierte Figuren aus Grundformen (Beine, Rumpf, Arme, Kopf, Haare), einer sitzt auf der Bank ------
-vcol = D.collections.new("Besucher"); S.collection.children.link(vcol)
-def flat(name, c, rough=0.75):
-    m = D.materials.new(name); m.use_nodes = True; pb = m.node_tree.nodes["Principled BSDF"]; pb.inputs["Base Color"].default_value = (*c, 1); pb.inputs["Roughness"].default_value = rough; return m
-def limb(bm, p0, p1, r0, r1, sx=1.0, sy=1.0):  # Kegelstumpf von p0 nach p1
-    a, b = Vector(p0), Vector(p1); d = b - a; up = 'X' if abs(d.normalized().x) < 0.9 else 'Y'
-    bmesh.ops.create_cone(bm, cap_ends=True, segments=14, radius1=r0, radius2=r1, depth=d.length, matrix=Matrix.Translation((a + b) / 2) @ d.to_track_quat('Z', up).to_matrix().to_4x4() @ Matrix.Diagonal((sx, sy, 1, 1)))
-def ball(bm, c, r, sx=1, sy=1, sz=1): bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=r, matrix=Matrix.Translation(c) @ Matrix.Diagonal((sx, sy, sz, 1)))
-def person(name, pos, ziel, sitzend, oben, hose, haut, haar, scale=1.0, rot=None):
-    g = {k: bmesh.new() for k in ("oben", "hose", "haut", "haar", "schuh")}
-    for sx in (-1, 1):
-        if sitzend:
-            limb(g["hose"], (sx * .09, .05, .48), (sx * .10, -.42, .46), .085, .065); limb(g["hose"], (sx * .10, -.42, .46), (sx * .10, -.44, .08), .06, .05); limb(g["schuh"], (sx * .10, -.42, .05), (sx * .10, -.58, .05), .05, .045)
-            ball(g["oben"], (sx * .2, .08, 1.0), .06); limb(g["oben"], (sx * .2, .08, 1.0), (sx * .22, -.02, .75), .05, .042); limb(g["oben"], (sx * .22, -.02, .75), (sx * .14, -.28, .58), .042, .036); ball(g["haut"], (sx * .14, -.30, .57), .04)
-        else:
-            limb(g["hose"], (sx * .09, 0, .9), (sx * .09, 0, .08), .075, .055); limb(g["schuh"], (sx * .09, .02, .05), (sx * .09, -.13, .05), .05, .045)
-            ball(g["oben"], (sx * .2, 0, 1.42), .06); limb(g["oben"], (sx * .21, 0, 1.42), (sx * .24, -.05, .78), .05, .04); ball(g["haut"], (sx * .24, -.05, .74), .045)
-    if sitzend:
-        limb(g["hose"], (0, 0, .48), (0, 0.03, .55), .17, .16, 1, .72); limb(g["oben"], (0, .03, .5), (0, .08, 1.05), .17, .16, 1, .72); limb(g["haut"], (0, .08, 1.05), (0, .05, 1.14), .05, .045); ball(g["haut"], (0, .04, 1.25), .105, .9, 1, 1.1); ball(g["haar"], (0, .07, 1.29), .108, .92, 1, .9)
-    else:
-        limb(g["hose"], (0, 0, .85), (0, 0, .95), .17, .17, 1, .72); limb(g["oben"], (0, 0, .9), (0, 0, 1.45), .16, .17, 1, .72); limb(g["haut"], (0, 0, 1.45), (0, -.01, 1.56), .05, .045); ball(g["haut"], (0, -.01, 1.67), .105, .9, 1, 1.1); ball(g["haar"], (0, .02, 1.71), .108, .92, 1, .9)
-    z = math.atan2(ziel[0] - pos[0], -(ziel[1] - pos[1])) if rot is None else math.radians(rot)
-    for k, c in (("oben", oben), ("hose", hose), ("haut", haut), ("haar", haar), ("schuh", (0.03, 0.025, 0.02))):
-        bmesh.ops.recalc_face_normals(g[k], faces=g[k].faces); me_ = D.meshes.new(f"{name} {k}"); g[k].to_mesh(me_); g[k].free(); me_.materials.append(flat(f"{name} {k}", c))
-        o = D.objects.new(f"{name} {k}", me_); vcol.objects.link(o); o.location, o.rotation_euler.z, o.scale = (*pos, 0), z, (scale,) * 3
-        for pl in me_.polygons: pl.use_smooth = True
-SKIN, SKIN2 = (0.72, 0.52, 0.40), (0.55, 0.38, 0.28)
-person("Besucher Bank", (-9.44, 2.467), None, True, (0.12, 0.42, 0.45), (0.06, 0.06, 0.08), SKIN, (0.35, 0.22, 0.12), rot=90)  # sitzt im Wellental der linken Bank
-person("Besucher 1", (3.4, -3.6), (0, 0), False, (0.07, 0.10, 0.22), (0.45, 0.38, 0.28), SKIN, (0.10, 0.08, 0.07), 1.03)
-person("Besucher 2", (-3.6, -2.8), (0, 0), False, (0.55, 0.12, 0.10), (0.05, 0.05, 0.06), SKIN2, (0.05, 0.04, 0.03), 0.96)
-person("Besucher 3", (3.8, 3.2), (0, 0), False, (0.55, 0.55, 0.52), (0.12, 0.18, 0.32), SKIN, (0.55, 0.42, 0.22), 0.98)
+# Vorhandene Besucher entfernen; keine neuen Personen erzeugen.
+runpy.run_path(os.path.join(SCRIPT_DIR, "besucher_entfernen.py"))
 
 # --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
 vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
