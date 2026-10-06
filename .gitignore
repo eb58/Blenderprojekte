@@ -12,3 +12,4 @@ __pycache__/
 *.py[cod]
 assets/library/blendkit_bench/*.blend
 assets/library/**/textures/
+node_modules/

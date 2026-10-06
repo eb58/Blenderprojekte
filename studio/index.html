@@ -467,10 +467,10 @@
                     type="button">Mit Cycles rendern</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
                     alt="Gerendertes Museum" hidden>
             </div>
-            <div class="actions"><button class="primary job" onclick="start('still')">Testbild rendern</button><button
-                    class="job" onclick="start('animation')">Animation rendern</button><button class="job" id="mp4"
-                    onclick="start('video')">MP4 erstellen</button><button id="stop" onclick="stop()"
-                    disabled>Abbrechen</button><a class="download" id="videoLink" href="/video"
+            <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
+                    class="job" id="renderAnimation">Animation rendern</button><button class="job" id="mp4">MP4
+                    erstellen</button><button id="stop"
+                    disabled>Abbrechen</button><a class="download" id="videoLink" href="#"
                     download="museum.mp4">Video herunterladen</a></div>
             <div class="status"><span id="status">Bereit für dein erstes Testbild</span><span id="counter"></span></div>
             <progress id="progress" value="0" max="100"></progress>
@@ -525,37 +525,222 @@
         </aside>
     </main>
     <script>
-        const boot = __BOOT__, storageKey = 'museum-studio-settings-v1'; let stamp = null, polling = false;
-        let saved = {}; try { saved = JSON.parse(localStorage.getItem(storageKey) || '{}'); } catch (e) { }
-        for (const [key, value] of Object.entries(boot.defaults)) { const field = document.getElementById(key); field.value = Object.hasOwn(saved, key) ? saved[key] : value; field.addEventListener('input', saveSettings); field.addEventListener('change', saveSettings); }
+        const boot = {defaults: globalThis.museumStudio.defaults};
+        const storageKey = 'museum-studio-settings-v1';
         const resolutionPreset = document.getElementById('RESOLUTION_PRESET');
+        const angleInput = document.getElementById('START_ANGLE');
+        const orbitDial = document.getElementById('orbitDial');
+        const orbitPointer = document.getElementById('orbitPointer');
+        const orbitValue = document.getElementById('orbitValue');
+        const errorBox = document.getElementById('error');
+        let stamp = null;
+        let polling = false;
+        let previewTimer = null;
+        let previewGeneration = 0;
+        let turning = false;
+
+        const settings = () => Object.fromEntries(
+            Object.keys(boot.defaults).map(key => [key, document.getElementById(key).value])
+        );
+
+        const saveSettings = () => {
+            globalThis.localStorage.setItem(storageKey, JSON.stringify(settings()));
+        };
+
+        const applyResolution = () => {
+            const [width, height] = resolutionPreset.value.split('x');
+            document.getElementById('RESOLUTION_X').value = width;
+            document.getElementById('RESOLUTION_Y').value = height;
+            saveSettings();
+        };
+
+        const normalizedAngle = () => {
+            const value = Number(angleInput.value) || 0;
+            return ((value % 360) + 360) % 360;
+        };
+
+        const updateOrbitDial = () => {
+            const angle = normalizedAngle();
+            orbitPointer.style.transform = `rotate(${angle}deg)`;
+            orbitValue.textContent = `${Math.round(angle)}°`;
+            orbitDial.setAttribute('aria-valuenow', Math.round(angle));
+        };
+
+        const setOrbitFromPointer = event => {
+            const rect = orbitDial.getBoundingClientRect();
+            const x = event.clientX - (rect.left + rect.width / 2);
+            const y = event.clientY - (rect.top + rect.height / 2);
+            let angle = Math.atan2(x, -y) * 180 / Math.PI;
+            if (angle < 0) angle += 360;
+            angleInput.value = Math.round(angle / 5) * 5 % 360;
+            angleInput.dispatchEvent(new Event('input', {bubbles: true}));
+        };
+
+        const api = async (action, data) => {
+            if (action === 'start') return globalThis.museumStudio.start(data.kind, data.settings);
+            if (action === 'stop') return globalThis.museumStudio.stop();
+            if (action === 'model') return globalThis.museumStudio.prepareModel(data.settings);
+            throw Error('Unbekannte Aktion.');
+        };
+
+        const update = async () => {
+            if (polling) return;
+            polling = true;
+            try {
+                const state = await globalThis.museumStudio.status();
+                document.querySelectorAll('.job').forEach(button => button.disabled = state.running);
+                document.getElementById('stop').disabled = !state.running;
+                document.getElementById('mp4').title = state.ffmpeg
+                    ? 'Video aus PNG-Frames erstellen'
+                    : 'FFmpeg muss im PATH installiert sein';
+                document.getElementById('status').textContent = state.running
+                    ? state.kind === 'video' ? 'Video wird erstellt …'
+                        : state.kind === 'still' ? 'Testbild wird gerendert …'
+                            : 'Animation wird gerendert …'
+                    : state.kind
+                        ? state.code === 0 ? 'Auftrag abgeschlossen'
+                            : state.code !== null ? 'Auftrag abgebrochen oder fehlgeschlagen – siehe Meldungen'
+                                : 'Bereit'
+                        : 'Bereit für dein erstes Testbild';
+                document.getElementById('counter').textContent = state.kind === 'animation'
+                    ? `${state.frames} / ${state.total} Frames · ${state.elapsed}s`
+                    : state.running ? `${state.elapsed}s` : '';
+                const progress = document.getElementById('progress');
+                if (state.running && state.kind !== 'animation') progress.removeAttribute('value');
+                else progress.value = state.kind === 'animation'
+                    ? Math.min(100, state.frames / state.total * 100)
+                    : state.code === 0 && state.kind ? 100 : 0;
+                document.getElementById('log').textContent = state.log || 'Noch kein Auftrag gestartet.';
+                document.getElementById('videoLink').style.display = state.video ? 'inline-block' : 'none';
+                if (state.preview && state.preview !== stamp) {
+                    stamp = state.preview;
+                    const image = document.getElementById('preview');
+                    image.onload = () => {
+                        image.hidden = globalThis.museumViewMode === '3d';
+                        document.getElementById('empty').hidden = true;
+                    };
+                    image.src = `museum://studio/preview?t=${stamp}`;
+                }
+            } catch {
+                document.getElementById('status').textContent = 'Studio-Auftragsverwaltung nicht erreichbar';
+            } finally {
+                polling = false;
+            }
+        };
+
+        const start = async kind => {
+            errorBox.textContent = '';
+            try {
+                await api('start', {kind, settings: settings()});
+                await update();
+            } catch (error) {
+                errorBox.textContent = error.message;
+            }
+        };
+
+        const stop = async () => {
+            try {
+                await api('stop', {});
+                await update();
+            } catch (error) {
+                errorBox.textContent = error.message;
+            }
+        };
+
+        const renderAnglePreview = async generation => {
+            if (generation !== previewGeneration) return;
+            try {
+                const state = await globalThis.museumStudio.status();
+                if (state.running) {
+                    previewTimer = setTimeout(() => renderAnglePreview(generation), 750);
+                    return;
+                }
+                await start('still');
+            } catch (error) {
+                errorBox.textContent = error.message;
+            }
+        };
+
+        const scheduleAnglePreview = (delay = 700) => {
+            if (!angleInput.value.trim() || !angleInput.checkValidity()) return;
+            const generation = ++previewGeneration;
+            clearTimeout(previewTimer);
+            previewTimer = setTimeout(() => renderAnglePreview(generation), delay);
+        };
+
+        let saved = {};
+        try {
+            saved = JSON.parse(globalThis.localStorage.getItem(storageKey) || '{}');
+        } catch {
+            saved = {};
+        }
+        for (const [key, value] of Object.entries(boot.defaults)) {
+            const field = document.getElementById(key);
+            field.value = Object.hasOwn(saved, key) ? saved[key] : value;
+            field.addEventListener('input', saveSettings);
+            field.addEventListener('change', saveSettings);
+        }
+
         const currentResolution = `${document.getElementById('RESOLUTION_X').value}x${document.getElementById('RESOLUTION_Y').value}`;
-        resolutionPreset.value = [...resolutionPreset.options].some(option => option.value === currentResolution) ? currentResolution : '1280x800';
-        function applyResolution() { const [width, height] = resolutionPreset.value.split('x'); document.getElementById('RESOLUTION_X').value = width; document.getElementById('RESOLUTION_Y').value = height; saveSettings(); }
-        resolutionPreset.addEventListener('change', applyResolution); applyResolution();
-        const angleInput = document.getElementById('START_ANGLE'), orbitDial = document.getElementById('orbitDial'), orbitPointer = document.getElementById('orbitPointer'), orbitValue = document.getElementById('orbitValue');
-        function normalizedAngle() { const value = Number(angleInput.value) || 0; return ((value % 360) + 360) % 360; }
-        function updateOrbitDial() { const angle = normalizedAngle(); orbitPointer.style.transform = `rotate(${angle}deg)`; orbitValue.textContent = `${Math.round(angle)}°`; orbitDial.setAttribute('aria-valuenow', Math.round(angle)); }
-        function setOrbitFromPointer(event) { const rect = orbitDial.getBoundingClientRect(), x = event.clientX - (rect.left + rect.width / 2), y = event.clientY - (rect.top + rect.height / 2); let angle = Math.atan2(x, -y) * 180 / Math.PI; if (angle < 0) angle += 360; angleInput.value = Math.round(angle / 5) * 5 % 360; angleInput.dispatchEvent(new Event('input', { bubbles: true })); }
-        let previewTimer = null, previewGeneration = 0;
-        function scheduleAnglePreview(delay = 700) { if (!angleInput.value.trim() || !angleInput.checkValidity()) return; const generation = ++previewGeneration; clearTimeout(previewTimer); previewTimer = setTimeout(() => renderAnglePreview(generation), delay); }
-        async function renderAnglePreview(generation) { if (generation !== previewGeneration) return; try { const response = await fetch('/api/status'); const state = await response.json(); if (state.running) { previewTimer = setTimeout(() => renderAnglePreview(generation), 750); return; } await start('still'); } catch (error) { document.getElementById('error').textContent = error.message; } }
-        let turning = false; orbitDial.addEventListener('pointerdown', event => { turning = true; orbitDial.setPointerCapture(event.pointerId); setOrbitFromPointer(event); }); orbitDial.addEventListener('pointermove', event => { if (turning) setOrbitFromPointer(event); }); orbitDial.addEventListener('pointerup', () => { turning = false; scheduleAnglePreview(50); }); orbitDial.addEventListener('pointercancel', () => turning = false);
-        orbitDial.addEventListener('keydown', event => { if (!['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'Home'].includes(event.key)) return; event.preventDefault(); angleInput.value = event.key === 'Home' ? 0 : normalizedAngle() + (['ArrowLeft', 'ArrowDown'].includes(event.key) ? -5 : 5); angleInput.dispatchEvent(new Event('input', { bubbles: true })); });
-        angleInput.addEventListener('input', () => { updateOrbitDial(); scheduleAnglePreview(); }); updateOrbitDial();
-        function settings() { return Object.fromEntries(Object.keys(boot.defaults).map(key => [key, document.getElementById(key).value])); }
-        function saveSettings() { localStorage.setItem(storageKey, JSON.stringify(settings())); }
-        async function api(path, data) { const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Museum-Token': boot.token }, body: JSON.stringify(data) }); const result = await r.json(); if (!r.ok) throw Error(result.error || 'Anfrage fehlgeschlagen'); return result; }
-        async function start(kind) { document.getElementById('error').textContent = ''; try { await api('/api/start', { kind, settings: settings() }); await update(); } catch (e) { document.getElementById('error').textContent = e.message; } }
-        async function stop() { try { await api('/api/stop', {}); await update(); } catch (e) { document.getElementById('error').textContent = e.message; } }
-        window.prepareMuseumModel = () => api('/api/model', { settings: settings() });
-        window.applyViewerAngle = angle => { angleInput.value = Math.round(((angle % 360) + 360) % 360); updateOrbitDial(); saveSettings(); start('still'); };
-        async function update() { if (polling) return; polling = true; try { const r = await fetch('/api/status'); if (!r.ok) throw Error('Server nicht erreichbar'); const s = await r.json(); document.querySelectorAll('.job').forEach(b => b.disabled = s.running); document.getElementById('stop').disabled = !s.running; document.getElementById('mp4').title = s.ffmpeg ? 'Video aus PNG-Frames erstellen' : 'FFmpeg muss im PATH installiert sein'; document.getElementById('status').textContent = s.running ? (s.kind === 'video' ? 'Video wird erstellt …' : s.kind === 'still' ? 'Testbild wird gerendert …' : 'Animation wird gerendert …') : s.kind ? (s.code === 0 ? 'Auftrag abgeschlossen' : s.code !== null ? 'Auftrag abgebrochen oder fehlgeschlagen – siehe Meldungen' : 'Bereit') : 'Bereit für dein erstes Testbild'; document.getElementById('counter').textContent = s.kind === 'animation' ? `${s.frames} / ${s.total} Frames · ${s.elapsed}s` : s.running ? `${s.elapsed}s` : ''; const p = document.getElementById('progress'); if (s.running && s.kind !== 'animation') p.removeAttribute('value'); else p.value = s.kind === 'animation' ? Math.min(100, s.frames / s.total * 100) : s.code === 0 && s.kind ? 100 : 0; document.getElementById('log').textContent = s.log || 'Noch kein Auftrag gestartet.'; document.getElementById('videoLink').style.display = s.video ? 'inline-block' : 'none'; if (s.preview && s.preview !== stamp) { stamp = s.preview; const img = document.getElementById('preview'); img.onload = () => { img.hidden = window.museumViewMode === '3d'; document.getElementById('empty').hidden = true; }; img.src = '/preview?t=' + stamp; } } catch (e) { document.getElementById('status').textContent = 'Verbindung zum lokalen Studio unterbrochen'; } finally { polling = false; } }
-        update(); setInterval(update, 1500);
+        resolutionPreset.value = [...resolutionPreset.options].some(option => option.value === currentResolution)
+            ? currentResolution
+            : '1280x800';
+        resolutionPreset.addEventListener('change', applyResolution);
+        applyResolution();
+
+        orbitDial.addEventListener('pointerdown', event => {
+            turning = true;
+            orbitDial.setPointerCapture(event.pointerId);
+            setOrbitFromPointer(event);
+        });
+        orbitDial.addEventListener('pointermove', event => {
+            if (turning) setOrbitFromPointer(event);
+        });
+        orbitDial.addEventListener('pointerup', () => {
+            turning = false;
+            scheduleAnglePreview(50);
+        });
+        orbitDial.addEventListener('pointercancel', () => turning = false);
+        orbitDial.addEventListener('keydown', event => {
+            if (!['ArrowLeft', 'ArrowDown', 'ArrowRight', 'ArrowUp', 'Home'].includes(event.key)) return;
+            event.preventDefault();
+            angleInput.value = event.key === 'Home'
+                ? 0
+                : normalizedAngle() + (['ArrowLeft', 'ArrowDown'].includes(event.key) ? -5 : 5);
+            angleInput.dispatchEvent(new Event('input', {bubbles: true}));
+        });
+        angleInput.addEventListener('input', () => {
+            updateOrbitDial();
+            scheduleAnglePreview();
+        });
+        document.getElementById('renderStill').addEventListener('click', () => start('still'));
+        document.getElementById('renderAnimation').addEventListener('click', () => start('animation'));
+        document.getElementById('mp4').addEventListener('click', () => start('video'));
+        document.getElementById('stop').addEventListener('click', stop);
+        document.getElementById('videoLink').addEventListener('click', async event => {
+            event.preventDefault();
+            try {
+                await globalThis.museumStudio.saveVideo();
+            } catch (error) {
+                errorBox.textContent = error.message;
+            }
+        });
+
+        globalThis.prepareMuseumModel = () => api('model', {settings: settings()});
+        globalThis.applyViewerAngle = angle => {
+            angleInput.value = Math.round(((angle % 360) + 360) % 360);
+            updateOrbitDial();
+            saveSettings();
+            start('still');
+        };
+
+        updateOrbitDial();
+        update();
+        setInterval(update, 1500);
     </script>
     <script
         type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
-    <script type="module" src="/museum_viewer.js"></script>
+    <script type="module" src="museum://studio/viewer.js"></script>
 </body>
 
 </html>

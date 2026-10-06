@@ -10,7 +10,7 @@ import traceback
 import bpy
 
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 WORK_DIR = Path(os.environ["MUSEUM_WORKER_DIR"])
 COMMAND = WORK_DIR / "command.json"
 READY = WORK_DIR / "ready.json"
@@ -42,36 +42,7 @@ def export_preview():
     # Bei --factory-startup ist selbst das mit Blender ausgelieferte Kern-Add-on
     # zunächst deaktiviert und der Export-Operator noch nicht registriert.
     bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
-    # Temporär reduzierte Wald-Meshes; Originaldaten für Cycles nie verändern.
-    forest_originals = []
-    forest_meshes = {}
-    try:
-        for obj in list(bpy.context.scene.objects):
-            if obj.type != 'MESH' or not obj.name.startswith('Aussenwelt Pine Ridge'):
-                continue
-            original = obj.data
-            key = original.as_pointer()
-            if key not in forest_meshes:
-                helper = bpy.data.objects.new('Preview forest simplification', original)
-                bpy.context.scene.collection.objects.link(helper)
-                modifier = helper.modifiers.new('Preview LOD', 'DECIMATE')
-                modifier.ratio = 0.08
-                bpy.context.view_layer.update()
-                reduced = bpy.data.meshes.new_from_object(
-                    helper.evaluated_get(bpy.context.evaluated_depsgraph_get()),
-                    preserve_all_data_layers=True,
-                    depsgraph=bpy.context.evaluated_depsgraph_get())
-                forest_meshes[key] = reduced
-                bpy.data.objects.remove(helper, do_unlink=True)
-                print(f'Wald-Vorschau: {len(original.polygons)} -> {len(reduced.polygons)} Flächen', flush=True)
-            forest_originals.append((obj, original))
-            obj.data = forest_meshes[key]
-        _export_preview_model()
-    finally:
-        for obj, original in forest_originals:
-            obj.data = original
-        for mesh in forest_meshes.values():
-            bpy.data.meshes.remove(mesh)
+    _export_preview_model()
 
 
 def _export_preview_model():
@@ -98,7 +69,7 @@ def _export_preview_model():
 
 
 WORK_DIR.mkdir(parents=True, exist_ok=True)
-namespace = runpy.run_path(str(ROOT / "museum_komplett.py"))
+namespace = runpy.run_path(str(ROOT / "museum" / "scene.py"))
 presets = {
     "test": namespace["preset_test"],
     "final_fast": namespace["preset_final_fast"],
@@ -114,9 +85,7 @@ try:
 except TypeError:
     pass
 
-export_preview()
-write_json(READY, {"pid": os.getpid(), "ready": True,
-                   "model_mtime": MODEL.stat().st_mtime_ns})
+write_json(READY, {"pid": os.getpid(), "ready": True})
 print("Museum-Worker bereit.", flush=True)
 last_id = None
 
@@ -129,10 +98,16 @@ while True:
                 last_id = job_id
                 result_path = WORK_DIR / f"result_{job_id}.json"
                 try:
-                    print(f"Testbild {job_id} wird gerendert.", flush=True)
-                    render(command)
-                    write_json(result_path, {"ok": True, "output": command["output"]})
-                    print(f"Testbild {job_id} fertig.", flush=True)
+                    if command.get("type") == "model":
+                        print("3D-Vorschaumodell wird vorbereitet.", flush=True)
+                        export_preview()
+                        write_json(result_path, {"ok": True, "output": str(MODEL)})
+                        print("3D-Vorschaumodell fertig.", flush=True)
+                    else:
+                        print(f"Testbild {job_id} wird gerendert.", flush=True)
+                        render(command)
+                        write_json(result_path, {"ok": True, "output": command["output"]})
+                        print(f"Testbild {job_id} fertig.", flush=True)
                 except Exception as error:
                     traceback.print_exc()
                     write_json(result_path, {"ok": False, "error": str(error)})

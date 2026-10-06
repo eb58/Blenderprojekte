@@ -26,13 +26,13 @@ let loading = false;
 let currentAngle = 0;
 let loadedSettings = '';
 
-function sceneSettingsKey() {
+const sceneSettingsKey = () => {
     return ['BODEN', 'SCULPTURE_SCALE', 'THICKNESS']
         .map(id => document.getElementById(id).value).join('|');
-}
+};
 
-function setActiveMode(is3d) {
-    window.museumViewMode = is3d ? '3d' : 'render';
+const setActiveMode = is3d => {
+    globalThis.museumViewMode = is3d ? '3d' : 'render';
     mode3d.classList.toggle('active', is3d);
     modeRender.classList.toggle('active', !is3d);
     canvas.hidden = !is3d;
@@ -41,12 +41,12 @@ function setActiveMode(is3d) {
     const hasRender = image.hasAttribute('src');
     image.hidden = is3d || !hasRender;
     empty.hidden = is3d || hasRender;
-}
+};
 
-function initialize() {
+const initialize = () => {
     if (renderer) return;
     renderer = new THREE.WebGLRenderer({canvas, antialias: true, preserveDrawingBuffer: true});
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio, 2));
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 0.72;
@@ -85,47 +85,47 @@ function initialize() {
         controls.update();
         renderer.render(scene, camera);
     });
-}
+};
 
-function resize() {
+const resize = () => {
     if (!renderer) return;
     const width = stage.clientWidth;
     const height = stage.clientHeight;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
-}
+};
 
-function setCameraFromDial() {
+const setCameraFromDial = () => {
     const angle = Number(document.getElementById('START_ANGLE').value) || 0;
     const radians = THREE.MathUtils.degToRad(angle);
     camera.position.set(12 * Math.sin(radians), 3.13, 12 * Math.cos(radians));
     controls.target.set(0, 2.88, 0);
     controls.update();
     updateAngle();
-}
+};
 
-function updateAngle() {
+const updateAngle = () => {
     currentAngle = (THREE.MathUtils.radToDeg(Math.atan2(camera.position.x, camera.position.z)) + 360) % 360;
     angleLabel.textContent = `${Math.round(currentAngle)}°`;
-}
+};
 
-function placeCamera(angle) {
+const placeCamera = angle => {
     const radians = THREE.MathUtils.degToRad(angle);
     camera.position.set(12 * Math.sin(radians), 3.13, 12 * Math.cos(radians));
     camera.lookAt(controls.target);
     updateAngle();
-}
+};
 
-function download(blob, filename) {
+const download = (blob, filename) => {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = filename;
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 1000);
-}
+};
 
-function stoneTexture(base, variance, darkSpeckles = false) {
+const stoneTexture = (base, variance, darkSpeckles = false) => {
     const size = 256;
     const textureCanvas = document.createElement('canvas');
     textureCanvas.width = textureCanvas.height = size;
@@ -152,9 +152,9 @@ function stoneTexture(base, variance, darkSpeckles = false) {
     texture.repeat.set(3, 3);
     texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
     return texture;
-}
+};
 
-function improveMaterials(root) {
+const improveMaterials = root => {
     const granite = new THREE.MeshStandardMaterial({
         color: 0xffffff, side: THREE.DoubleSide,
         roughness: 0.42, metalness: 0, envMapIntensity: 0.7
@@ -304,9 +304,9 @@ function improveMaterials(root) {
             object.receiveShadow = /boden|wand|arkade|decke|garten|pine ridge/.test(identity);
         }
     });
-}
+};
 
-async function savePng() {
+const savePng = async () => {
     await show3d();
     if (!loaded) return;
     const width = Number(document.getElementById('RESOLUTION_X').value) || 1280;
@@ -319,17 +319,17 @@ async function savePng() {
     camera.updateProjectionMatrix();
     renderer.render(scene, camera);
     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(Math.min(globalThis.devicePixelRatio, 2));
     renderer.setSize(oldWidth, oldHeight, false);
     camera.aspect = oldWidth / oldHeight;
     camera.updateProjectionMatrix();
     if (blob) download(blob, `museum_three_${Math.round(currentAngle)}grad.png`);
-}
+};
 
-async function recordVideo() {
+const recordVideo = async () => {
     await show3d();
     if (!loaded) return;
-    if (!canvas.captureStream || !window.MediaRecorder) {
+    if (!canvas.captureStream || !globalThis.MediaRecorder) {
         throw new Error('Dieser Browser unterstützt keine Canvas-Videoaufnahme.');
     }
     const fps = Number(document.getElementById('FPS').value) || 24;
@@ -338,10 +338,12 @@ async function recordVideo() {
     const startAngle = currentAngle;
     const stream = canvas.captureStream(fps);
     const preferred = 'video/webm;codecs=vp9';
-    const options = MediaRecorder.isTypeSupported(preferred) ? {mimeType: preferred} : {};
-    const recorder = new MediaRecorder(stream, options);
+    const options = globalThis.MediaRecorder.isTypeSupported(preferred) ? {mimeType: preferred} : {};
+    const recorder = new globalThis.MediaRecorder(stream, options);
     const chunks = [];
-    recorder.addEventListener('dataavailable', event => { if (event.data.size) chunks.push(event.data); });
+    recorder.addEventListener('dataavailable', event => {
+        if (event.data.size) chunks.push(event.data);
+    });
     const finished = new Promise(resolve => recorder.addEventListener('stop', resolve, {once: true}));
     controls.enabled = false;
     videoButton.disabled = true;
@@ -349,11 +351,12 @@ async function recordVideo() {
     recorder.start(250);
     const started = performance.now();
     await new Promise(resolve => {
-        function frame(now) {
+        const frame = now => {
             const progress = Math.min(1, (now - started) / (duration * 1000));
             placeCamera(startAngle + orbit * progress);
-            if (progress < 1) requestAnimationFrame(frame); else resolve();
-        }
+            if (progress < 1) requestAnimationFrame(frame);
+            else resolve();
+        };
         requestAnimationFrame(frame);
     });
     recorder.stop();
@@ -363,9 +366,9 @@ async function recordVideo() {
     videoButton.disabled = false;
     videoButton.textContent = 'WebM aufnehmen';
     download(new Blob(chunks, {type: recorder.mimeType || 'video/webm'}), 'museum_three.webm');
-}
+};
 
-async function show3d() {
+const show3d = async () => {
     setActiveMode(true);
     initialize();
     setCameraFromDial();
@@ -378,7 +381,7 @@ async function show3d() {
     empty.querySelector('strong').textContent = '3D-Modell wird vorbereitet …';
     empty.querySelector('small').textContent = 'Beim ersten Mal baut Blender die Szene auf.';
     try {
-        await window.prepareMuseumModel();
+        await globalThis.prepareMuseumModel();
         if (model) {
             scene.remove(model);
             model.traverse(object => {
@@ -387,7 +390,7 @@ async function show3d() {
                 for (const material of materials) if (material) material.dispose();
             });
         }
-        const gltf = await new GLTFLoader().loadAsync(`/model.glb?t=${Date.now()}`);
+        const gltf = await new GLTFLoader().loadAsync(`museum://studio/model.glb?t=${Date.now()}`);
         model = gltf.scene;
         improveMaterials(model);
         scene.add(model);
@@ -400,19 +403,21 @@ async function show3d() {
     } finally {
         loading = false;
     }
-}
+};
 
-function showRender() {
+const showRender = () => {
     setActiveMode(false);
-}
+};
 
 mode3d.addEventListener('click', show3d);
 modeRender.addEventListener('click', showRender);
 applyButton.addEventListener('click', () => {
-    window.applyViewerAngle(currentAngle);
+    globalThis.applyViewerAngle(currentAngle);
     showRender();
 });
-pngButton.addEventListener('click', () => savePng().catch(error => { errorBox.textContent = error.message; }));
+pngButton.addEventListener('click', () => savePng().catch(error => {
+    errorBox.textContent = error.message;
+}));
 videoButton.addEventListener('click', () => recordVideo().catch(error => {
     controls.enabled = true;
     videoButton.disabled = false;
@@ -420,4 +425,4 @@ videoButton.addEventListener('click', () => recordVideo().catch(error => {
     errorBox.textContent = error.message;
 }));
 
-if (new URLSearchParams(location.search).get('view') === '3d') show3d();
+if (new URLSearchParams(globalThis.location.search).get('view') === '3d') show3d();

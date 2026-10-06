@@ -6,7 +6,7 @@ import os
 import json
 
 # Einstellungen fuer den gesamten Aufbau
-PROJECT_DIR = r"C:\Users\erich\OneDrive\Blenderprojekte"
+PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BODEN = "marmor"  # "parkett" oder "marmor"
 WANDGESTALTUNG = "wandteppich"
 RENDER_PRESET = "test"  # "test", "final_fast", "animation", "quality"
@@ -1368,7 +1368,12 @@ bpy.context.view_layer.update()
 # --- Außenwelt: Pine Ridge, ohne fremde Kamera oder Beleuchtung ---------------------------
 garden_col = D.collections.new("Aussengarten")
 S.collection.children.link(garden_col)
-ridge_library = os.path.join(PROJECT_DIR, 'assets', 'library', 'pine_ridge', 'pine_ridge_asset.blend')
+ridge_library = os.path.join(PROJECT_DIR, 'assets', 'library', 'pine_ridge', 'pine_ridge_runtime.blend')
+if not os.path.exists(ridge_library):
+    raise RuntimeError(
+        'Reduzierte Pine-Ridge-Bibliothek fehlt. Bitte zuerst '
+        'tools/assets/prepare_pine_ridge_runtime.py mit Blender ausführen.'
+    )
 with D.libraries.load(ridge_library, link=False) as (source, ridge):
     ridge.collections = ['Pine Ridge Museum Exterior']
 ridge_template = ridge.collections[0]

@@ -1,0 +1,16 @@
+{
+  "name": "museum-studio",
+  "version": "1.0.0",
+  "private": true,
+  "main": "studio/electron.cjs",
+  "scripts": {
+    "start": "node studio/launch.cjs",
+    "test": "node --test studio/jobs.test.cjs"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "electron": "44.5.1"
+  }
+}

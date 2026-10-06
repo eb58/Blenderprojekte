@@ -5,6 +5,7 @@ Museum Studio erzeugt mit Blender eine virtuelle Museumsszene mit zwei mathemati
 ## Voraussetzungen
 
 - Windows
+- Node.js ab Version 22 und npm; Electron wird mit `npm install` lokal installiert
 - Blender 5.2 unter `C:\Program Files\Blender Foundation\Blender 5.2`
 - NVIDIA-Grafikkarte mit OptiX-Unterstützung für die vorgesehenen GPU-Einstellungen
 - FFmpeg für die MP4-Erstellung
@@ -28,46 +29,37 @@ Museum Studio sucht FFmpeg sowohl im `PATH` als auch in der üblichen WinGet-Ins
 Im Projektordner:
 
 ```powershell
-.\museum_studio.ps1
+npm install
+npm start
 ```
 
-Falls PowerShell die Skriptausführung blockiert, kann das Skript einmalig ohne Änderung der systemweiten Richtlinie gestartet werden:
+Falls PowerShell das Laden von `npm.ps1` blockiert, kann direkt die Windows-Befehlsdatei verwendet werden:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\museum_studio.ps1
+npm.cmd start
 ```
 
-Das Skript startet den lokalen Dienst im Hintergrund und öffnet anschließend:
+Der Startbefehl öffnet Museum Studio als Electron-Desktop-App. Es gibt keinen HTTP-Server, keinen Port und keinen separaten Browser-Modus. Die Oberfläche kommuniziert über eine schmale IPC-Schnittstelle mit der Node.js-Auftragsverwaltung; Modelle und Bilder werden über das lokale Electron-Protokoll geladen. Beim Schließen werden die zugehörigen Blender-Prozesse beendet.
 
-```text
-http://127.0.0.1:8765
+## Tests
+
+`npm test` prüft Validierung und die serverlose Auftragsverwaltung. Für den vollständigen Test mit Blender und FFmpeg in PowerShell:
+
+```powershell
+$env:MUSEUM_INTEGRATION = '1'
+npm test
+Remove-Item Env:MUSEUM_INTEGRATION
 ```
 
-Der Server ist ausschließlich vom eigenen Rechner erreichbar.
+Die Integrationstests verwenden eigene temporäre Ordner und lassen vorhandene Renderausgaben unangetastet. Electron verwendet ein isoliertes Fenster ohne Node.js-Zugriff der Oberfläche. Ein Installer beziehungsweise eine verteilbare EXE ist noch nicht Bestandteil des Projekts.
 
 ## Kommandozeilenaufrufe
 
 ### Museum Studio starten
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\museum_studio.ps1
+npm start
 ```
-
-### Webserver direkt starten
-
-Mit dem in Blender 5.2 enthaltenen Python:
-
-```powershell
-& "C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe" -B .\museum_studio.py
-```
-
-Optional kann ein anderer Port gewählt werden:
-
-```powershell
-& "C:\Program Files\Blender Foundation\Blender 5.2\5.2\python\bin\python.exe" -B .\museum_studio.py --port 9000
-```
-
-Die Oberfläche ist dann unter `http://127.0.0.1:9000` erreichbar.
 
 ### Blender direkt über die Kommandozeile rendern
 
@@ -79,7 +71,7 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Render\kusner_p7_granit_museum\test-settin
     --background `
     --factory-startup `
     --python-exit-code 1 `
-    --python .\museum_komplett.py `
+    --python .\museum\scene.py `
     --render-frame 1
 ```
 
@@ -91,7 +83,7 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Render\kusner_p7_granit_museum\settings.js
     --background `
     --factory-startup `
     --python-exit-code 1 `
-    --python .\museum_komplett.py `
+    --python .\museum\scene.py `
     --render-anim
 ```
 
@@ -119,9 +111,9 @@ Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen.
 
 Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nächsten Öffnen wiederhergestellt.
 
-Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
+Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Das GLB-Modell wird unabhängig davon erst beim Öffnen der 3D-Vorschau exportiert. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
 
-Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Blender exportiert dafür beim Aufbau des Workers ein lokales GLB-Modell. **Mit Cycles rendern** überträgt den horizontalen Blickwinkel an das Kamerarad und startet ein hochwertiges Cycles-Testbild. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
+Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. **Mit Cycles rendern** überträgt den horizontalen Blickwinkel an das Kamerarad und startet ein hochwertiges Cycles-Testbild. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
 
 Im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. **Mit Cycles rendern** bleibt als Qualitätsvergleich verfügbar. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
@@ -179,22 +171,25 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und die Wald
 
 ## Projektdateien
 
-- `museum_studio.ps1` startet den lokalen Dienst und öffnet die Weboberfläche.
-- `museum_studio.py` validiert Einstellungen, startet Blender beziehungsweise FFmpeg und stellt die lokale API bereit.
-- `museum_worker.py` hält die aufgebaute Szene für aufeinanderfolgende Testbilder in Blender bereit.
-- `museum_viewer.js` zeigt das von Blender exportierte GLB-Modell interaktiv mit Three.js an.
+- `package.json` enthält den Startbefehl für die Electron-App und den Testbefehl.
+- `studio/launch.cjs` startet Electron mit einer bereinigten Umgebung.
+- `studio/jobs.cjs` validiert Einstellungen und verwaltet Blender-/FFmpeg-Aufträge direkt im Hauptprozess, ohne Netzwerkdienst.
+- `studio/preload.cjs` stellt ausschließlich freigegebene IPC-Funktionen für die Oberfläche bereit.
+- `studio/electron.cjs` öffnet das isolierte Desktopfenster und beendet die zugehörigen Prozesse beim Schließen.
+- `studio/blender_worker.py` hält die aufgebaute Szene für aufeinanderfolgende Testbilder in Blender bereit.
+- `studio/viewer.js` zeigt das von Blender exportierte GLB-Modell interaktiv mit Three.js an.
 - Three.js, OrbitControls und GLTFLoader werden in der festgelegten Version `0.186.1` über jsDelivr geladen. Für die 3D-Vorschau ist deshalb eine Internetverbindung erforderlich.
-- `museum_studio.html` enthält Benutzeroberfläche und Statusanzeige.
-- `museum_komplett.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
+- `studio/index.html` enthält Benutzeroberfläche und Statusanzeige.
+- `museum/scene.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
 - `tools/assets/` enthält aktuelle Werkzeuge zur Modellvorbereitung.
 - `tools/archive/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte; sie werden vom Studio nicht verwendet.
 
 ## Fehlerbehebung
 
-### PowerShell meldet, dass Skripts deaktiviert sind
+### PowerShell blockiert `npm.ps1`
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\museum_studio.ps1
+npm.cmd start
 ```
 
 ### FFmpeg wird im Terminal nicht gefunden
@@ -215,12 +210,6 @@ Die Anwendung kann eine WinGet-Installation auch dann direkt erkennen, wenn das 
 - Für eine geänderte Animation einen neuen Ausgabeordner verwenden.
 - Unter **Render-Meldungen** das aktuelle Blender-Log ansehen.
 
-### Ein vorhandener Hintergrunddienst soll beendet werden
+### Studio beenden
 
-```powershell
-Get-CimInstance Win32_Process |
-    Where-Object { $_.CommandLine -like "*museum_studio.py*" } |
-    ForEach-Object { Stop-Process -Id $_.ProcessId }
-```
-
-Danach kann Museum Studio normal neu gestartet werden.
+Das Electron-Fenster schließen. Seine Blender-Prozesse werden dabei beendet. Ein laufender Renderauftrag kann vorher über **Abbrechen** gestoppt werden.
