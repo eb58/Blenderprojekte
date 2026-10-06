@@ -542,7 +542,8 @@ arcade_stone = simple_material("Arkaden Kalkstein", (0.38, 0.32, 0.24, 1), 0.68)
 niche_material = simple_material("Tiefe Arkadennischen", (0.095, 0.115, 0.105, 1), 0.88)
 
 # Rückwand, oberes Wandband und breite gemeinsame Pfeiler bilden eine ruhige Einheit.
-add_box("Arkadengalerie Rueckwand", (0, arcade_front_y + arcade_depth + 0.16, hall_height / 2),
+# 2 cm Abstand zur Rückfläche der Nischen: Sonst liegen beide in einer Ebene und flimmern (Z-Fighting) in Echtzeitansichten.
+add_box("Arkadengalerie Rueckwand", (0, arcade_front_y + arcade_depth + 0.18, hall_height / 2),
         (34, 0.32, hall_height), arcade_stone)
 add_box("Arkadengalerie Wandband", (0, arcade_front_y + arcade_depth / 2, 10.75),
         (34, arcade_depth, 4.9), arcade_stone, 0.025)
