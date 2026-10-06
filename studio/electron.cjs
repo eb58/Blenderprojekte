@@ -145,7 +145,12 @@ const start = async () => {
         '!document.getElementById(\'viewerApply\') && !document.getElementById(\'mp4\') && ' +
         'document.getElementById(\'viewerActions\').hidden && ' +
         'document.getElementById(\'START_ANGLE\').value === \'125\' && ' +
-        'document.getElementById(\'renderAnimation\').textContent.trim() === \'Animation erstellen\');' +
+        'document.getElementById(\'renderAnimation\').textContent.trim() === \'Animation erstellen\' && ' +
+        'getComputedStyle(document.body).overflow === \'hidden\' && ' +
+        'getComputedStyle(document.querySelector(\'main\')).maxWidth === \'none\' && ' +
+        'getComputedStyle(document.getElementById(\'previewStage\')).flexGrow === \'1\' && ' +
+        'document.getElementById(\'previewStage\').getBoundingClientRect().width > innerWidth * 0.65 && ' +
+        'document.getElementById(\'previewStage\').getBoundingClientRect().height > innerHeight * 0.65);' +
         '})()'
     );
     if (!ready) throw Error('IPC/Oberfläche wurde nicht geladen.');

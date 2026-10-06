@@ -239,15 +239,6 @@ def add_arch_recess(name, x, y_front, base_z, radius, spring_height, depth,
     bpy.context.collection.objects.link(obj)
     obj.data.materials.append(recess_material)
 
-    # Massive Pfeiler und oberes Mauerwerk bilden die reale Öffnung.
-    pier_width = 0.62
-    add_box(name + "_Pfeiler_L", (x - radius - pier_width / 2, y_front + depth / 2,
-                                  base_z + (spring_height + radius) / 2),
-            (pier_width, depth, spring_height + radius), wall_material, 0.025)
-    add_box(name + "_Pfeiler_R", (x + radius + pier_width / 2, y_front + depth / 2,
-                                  base_z + (spring_height + radius) / 2),
-            (pier_width, depth, spring_height + radius), wall_material, 0.025)
-
     # Sichtbarer steinerner Archivoltenring an der Front.
     outer = radius + 0.28
     curve = bpy.data.curves.new(name + "_Archivolte", "CURVE")
@@ -569,18 +560,37 @@ sculpture_center_z = max(
 
 add_box("Museumsboden", (0, 0, -0.13), (36, 38, 0.26), floor_material, 0.015)
 
-# Der Hintergrund liegt weiter entfernt als zuvor.
+# Geschlossene Galeriewand mit vier tiefen Rundbogennischen.
 arcade_front_y = 17.0
 arcade_depth = 2.8
 hall_height = 13.2
-add_box("Rueckwand oben", (0, arcade_front_y + arcade_depth / 2, 11.55),
-        (34, arcade_depth, 3.3), wall_material)
+arcade_stone = simple_material("Arkaden Kalkstein", (0.38, 0.32, 0.24, 1), 0.68)
+niche_material = simple_material("Tiefe Arkadennischen", (0.095, 0.115, 0.105, 1), 0.88)
 
-for index, x in enumerate((-9.0, -3.0, 3.0, 9.0), 1):
+# Rückwand, oberes Wandband und breite gemeinsame Pfeiler bilden eine ruhige Einheit.
+add_box("Arkadengalerie Rueckwand", (0, arcade_front_y + arcade_depth + 0.16, hall_height / 2),
+        (34, 0.32, hall_height), arcade_stone)
+add_box("Arkadengalerie Wandband", (0, arcade_front_y + arcade_depth / 2, 10.75),
+        (34, arcade_depth, 4.9), arcade_stone, 0.025)
+NICHE_XS = (-11.0, -5.5, 0.0, 5.5, 11.0)
+for index, x in enumerate((-13.75, -8.25, -2.75, 2.75, 8.25, 13.75), 1):
+    add_box(f"Arkadengalerie Pfeiler {index}", (x, arcade_front_y + arcade_depth / 2, 4.15),
+            (1.05, arcade_depth, 8.3), arcade_stone, 0.035)
+    add_box(f"Arkadengalerie Pfeilerbasis {index}", (x, arcade_front_y - 0.04, 0.24),
+            (1.32, 0.42, 0.48), trim_material, 0.025)
+for index, x in enumerate((-15.75, 15.75), 1):
+    add_box(f"Arkadengalerie Randfeld {index}", (x, arcade_front_y + arcade_depth / 2, 4.15),
+            (2.5, arcade_depth, 8.3), arcade_stone, 0.025)
+add_box("Arkadengalerie Sockelband", (0, arcade_front_y - 0.06, 0.32),
+        (34, 0.38, 0.64), trim_material, 0.025)
+add_box("Arkadengalerie Abschlussgesims", (0, arcade_front_y - 0.08, 12.55),
+        (34, 0.42, 0.34), trim_material, 0.035)
+
+for index, x in enumerate(NICHE_XS, 1):
     add_arch_recess(
         f"Tiefe Arkade {index}", x, arcade_front_y, 0.0,
-        radius=2.15, spring_height=6.2, depth=arcade_depth,
-        wall_material=trim_material, recess_material=recess_material
+        radius=1.85, spring_height=6.0, depth=arcade_depth,
+        wall_material=trim_material, recess_material=niche_material
     )
 
 # Ruhige Seitenwände mit tiefen Fensternischen statt freistehender Kolonnaden.
@@ -1005,42 +1015,59 @@ for source, target in (
 for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
     D.objects[n].material_slots[0].material = plinth_stone
 
-# --- Statuen in den Arkadennischen: Drehprofil (Gewand, Rumpf, Kopf) + Arme, auf Marmorsockel ---
-scol = D.collections.new("Statuen"); S.collection.children.link(scol)
-PROFIL = [(0, 0), (.34, 0), (.36, .05), (.31, .5), (.27, .9), (.21, 1.15), (.24, 1.3), (.26, 1.42), (.27, 1.5), (.13, 1.58), (.075, 1.62), (.085, 1.67), (.11, 1.75), (.09, 1.84), (0, 1.87)]
-def statue(i, x, y, h, arm_up):
-    bm = bmesh.new(); vs = [bm.verts.new((r, 0, z)) for r, z in PROFIL]; es = [bm.edges.new((vs[j], vs[j + 1])) for j in range(len(vs) - 1)]
-    bmesh.ops.spin(bm, geom=vs + es, cent=(0, 0, 0), axis=(0, 0, 1), angle=2 * math.pi, steps=32, use_merge=True)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    for j, (sx, up) in enumerate(((-1, False), (1, arm_up))):  # Arme als schlanke Kegel, einer erhoben
-        a = bmesh.ops.create_cone(bm, cap_ends=True, segments=12, radius1=0.06, radius2=0.04, depth=0.75, matrix=Matrix.Translation((0, 0, -0.375)))
-        rot = Matrix.Rotation(math.radians(sx * (150 if up else 18)), 4, 'Y')
-        bmesh.ops.transform(bm, verts=a["verts"], matrix=Matrix.Translation((sx * 0.29, 0, 1.47)) @ rot)
-    me = D.meshes.new(f"Statue {i}"); bm.to_mesh(me); bm.free()
-    o = D.objects.new(f"Statue {i}", me); scol.objects.link(o); o.location = (x, y, h); o.scale = (1.5, 1.5, 1.5); o.rotation_euler.z = math.radians((-1) ** i * 12)
-    for pl in me.polygons: pl.use_smooth = True
-    sm = o.modifiers.new("Glatt", "SUBSURF"); sm.levels = sm.render_levels = 1; me.materials.append(mm)
-    sk = box(f"Statuensockel {i}", (x, y, h / 2), (1.5, 1.5, h), scol); sk.data.materials.append(mm)
-    sp = D.lights.new(f"Statuenlicht {i}", "SPOT"); sp.energy, sp.spot_size, sp.spot_blend, sp.color, sp.shadow_soft_size = 900, math.radians(38), 0.6, (1.0, 0.86, 0.68), 0.3
-    so = D.objects.new(f"Statuenlicht {i}", sp); scol.objects.link(so); so.location = (x, y - 4.5, 8.5); so.rotation_euler = (Vector((0, 4.5, -8.5 + h + 1.4)).to_track_quat('-Z', 'Y')).to_euler()
-    kp = box(f"Statuensockel Deckplatte {i}", (x, y, h + 0.06), (1.7, 1.7, 0.12), scol); kp.data.materials.append(mm)
-for i, x in enumerate((-9, -3, 3, 9)):
-    statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
-    al = D.lights.new(f"Nischenlicht {i}", "AREA"); al.energy, al.size, al.color = 350, 2.5, (1.0, 0.85, 0.66)
-    ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
-mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.16, 0.23, 0.22, 1)
+# --- Die fünf Platonischen Körper als mathematische Exponate -------------------------------
+scol = D.collections.new("Platonische Koerper"); S.collection.children.link(scol)
+platonic_bronze = simple_material("Platonische Koerper Bronze", (.24, .075, .022, 1), .34, .68)
+golden = (1 + math.sqrt(5)) / 2
+inverse_golden = 1 / golden
+platonic_vertices = (
+    ("Tetraeder", ((1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1))),
+    ("Wuerfel", tuple((x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))),
+    ("Oktaeder", ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))),
+    ("Dodekaeder", tuple(
+        [(x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)] +
+        [(0, y * inverse_golden, z * golden) for y in (-1, 1) for z in (-1, 1)] +
+        [(x * inverse_golden, y * golden, 0) for x in (-1, 1) for y in (-1, 1)] +
+        [(x * golden, 0, z * inverse_golden) for x in (-1, 1) for z in (-1, 1)])),
+    ("Ikosaeder", tuple(
+        [(0, y, z * golden) for y in (-1, 1) for z in (-1, 1)] +
+        [(x, y * golden, 0) for x in (-1, 1) for y in (-1, 1)] +
+        [(x * golden, 0, z) for x in (-1, 1) for z in (-1, 1)])),
+)
 
-# --- Echte Marmorbueste (Poly Haven "Marble Bust 01", CC0) statt der Platzhalter-Figuren -------------
-BUSTE = os.path.join(PROJECT_DIR, "assets", "models", "marble_bust_01")
-if os.path.exists(os.path.join(BUSTE, "marble_bust_01.blend")):
-    with D.libraries.load(os.path.join(BUSTE, "marble_bust_01.blend"), link=False) as (src, dst): dst.objects = list(src.objects)
-    for im in D.images:
-        if "marble_bust_01" in im.name: im.filepath = os.path.join(BUSTE, "textures", os.path.basename(im.filepath)); im.reload()
-    base = dst.objects[0]; BS = 3.4; zmin = min(v[2] for v in base.bound_box) * BS
-    for i, x in enumerate((-9, -3, 3, 9)):
-        D.objects.remove(D.objects[f"Statue {i}"])
-        o = base if i == 0 else base.copy(); scol.objects.link(o)
-        o.scale = (BS,) * 3; o.location = (x, 18.2, 1.1 + 0.12 - zmin); o.rotation_euler = (0, 0, math.radians((-1) ** i * 9))
+
+def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
+    mesh = D.meshes.new(name + " Mesh")
+    bm = bmesh.new()
+    solid_vertices = [bm.verts.new(vertex) for vertex in vertices]
+    bmesh.ops.convex_hull(bm, input=solid_vertices, use_existing_faces=False)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh); bm.free()
+    solid = D.objects.new(name, mesh); scol.objects.link(solid)
+    solid.dimensions = (1.75, 1.75, 1.75)
+    solid.location = (x, y, pedestal_height + .26 + .76)
+    solid.rotation_euler = (math.radians(12 + index * 4), math.radians(18), math.radians(index * 17 - 28))
+    mesh.materials.append(platonic_bronze)
+
+    pedestal_base = box(f"Koerpersockel Basis {index}", (x, y, .12), (1.62, 1.48, .24), scol)
+    pedestal_base.data.materials.append(plinth_stone)
+    pedestal = box(f"Koerpersockel {index}", (x, y, pedestal_height / 2 + .12),
+                   (1.28, 1.18, pedestal_height), scol)
+    pedestal.data.materials.append(plinth_stone)
+    cap = box(f"Koerpersockel Deckplatte {index}", (x, y, pedestal_height + .18),
+              (1.58, 1.42, .16), scol)
+    cap.data.materials.append(plinth_stone)
+
+    light_data = D.lights.new(f"Koerperlicht {index}", "SPOT")
+    light_data.energy, light_data.spot_size = 780, math.radians(34)
+    light_data.spot_blend, light_data.color, light_data.shadow_soft_size = .65, (1.0, .78, .52), .35
+    light = D.objects.new(f"Koerperlicht {index}", light_data); scol.objects.link(light)
+    light.location = (x, y - 3.8, 7.8)
+    light.rotation_euler = (Vector((x, y, 2.2)) - light.location).to_track_quat('-Z', 'Y').to_euler()
+
+
+for index, ((name, vertices), x) in enumerate(zip(platonic_vertices, NICHE_XS), 1):
+    platonic_solid(index, name, vertices, x)
 
 # --- Gestaltbare, geschlossene Museumswand gegenüber den Arkaden ----------------------------
 gcol = D.collections.new("Wandgestaltung"); S.collection.children.link(gcol)

@@ -68,6 +68,7 @@ const initialize = () => {
     controls.target.set(0, 2.88, 0);
     controls.enablePan = false;
     controls.enableDamping = true;
+    controls.dampingFactor = 0.18;
     controls.minDistance = 8;
     controls.maxDistance = 16;
     controls.minPolarAngle = THREE.MathUtils.degToRad(72);
