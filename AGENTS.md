@@ -48,6 +48,7 @@ Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in
 - MP4-Auflösungen müssen gerade Werte haben. Framezahl, FPS und Dauer müssen zwischen Node.js, Blender und FFmpeg konsistent bleiben.
 - Lang laufende Blender-/FFmpeg-Prozesse müssen abbrechbar sein und beim Schließen der Anwendung zuverlässig beendet werden. Fehler sollen in Status/Log sichtbar werden und dürfen nicht still verschwinden.
 - Halte die Oberfläche auch während rechenintensiver Arbeit bedienbar. Blockiere den Electron-Hauptprozess nicht mit synchroner Langzeitarbeit.
+- TDD wenn möglich
 
 ## Arbeitsablauf und Prüfung
 
