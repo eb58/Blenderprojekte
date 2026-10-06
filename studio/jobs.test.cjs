@@ -41,7 +41,13 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
     const jobs = createStudio({workDir: path.join(folder, 'worker')});
     const output = path.join(folder, 'output');
     try {
-        const settings = {...DEFAULTS, RESOLUTION_X: 64, RESOLUTION_Y: 64, OUTPUT_DIR: output};
+        const settings = {
+            ...DEFAULTS,
+            BODEN: 'parkett',
+            RESOLUTION_X: 64,
+            RESOLUTION_Y: 64,
+            OUTPUT_DIR: output
+        };
         await jobs.start('still', settings);
         let status;
         const deadline = Date.now() + 60000;
@@ -64,6 +70,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.ok(tapestry?.pbrMetallicRoughness?.baseColorTexture);
         assert.ok(gltf.images.some(image => image.name === 'museum_park_panorama'));
         assert.ok(gltf.images.some(image => image.name === 'mandelbrot_tapestry'));
+        const floor = gltf.materials.find(material => material.name === 'Polierter Museumsboden');
+        assert.equal(floor?.pbrMetallicRoughness?.baseColorTexture?.texCoord, 1);
 
         const frames = path.join(output, 'frames');
         fs.mkdirSync(frames);

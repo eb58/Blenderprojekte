@@ -148,6 +148,47 @@ const stoneTexture = (base, variance, darkSpeckles = false) => {
     return texture;
 };
 
+const parquetTexture = () => {
+    const size = 256;
+    const plankUnits = 5;
+    const period = 2 * plankUnits;
+    const textureCanvas = document.createElement('canvas');
+    textureCanvas.width = textureCanvas.height = size;
+    const context = textureCanvas.getContext('2d');
+    const imageData = context.createImageData(size, size);
+    const clampByte = value => Math.round(Math.max(0, Math.min(1, value)) * 255);
+    for (let yy = 0; yy < size; yy++) {
+        for (let xx = 0; xx < size; xx++) {
+            const u = xx / size * period;
+            const v = yy / size * period;
+            const ix = Math.floor(u);
+            const iy = Math.floor(v);
+            const difference = ((ix - iy) % period + period) % period;
+            const horizontal = difference < plankUnits;
+            const along = horizontal ? difference + u % 1 : period - 1 - difference + v % 1;
+            const across = horizontal ? v % 1 : u % 1;
+            const anchorX = horizontal ? ix - difference : ix;
+            const anchorY = horizontal ? iy : iy - (period - 1 - difference);
+            const tone = Math.sin(anchorX * 127.1 + anchorY * 311.7) * 0.022;
+            const grain = 0.010 * Math.sin(across * 110 + Math.sin(along * 2.8) * 3);
+            const edge = Math.min(across, 1 - across, along, plankUnits - along);
+            const shade = edge < 0.022 ? 0.76 : 1;
+            const offset = (yy * size + xx) * 4;
+            imageData.data[offset] = clampByte((0.36 + tone + grain) * shade);
+            imageData.data[offset + 1] = clampByte((0.27 + tone * 0.65 + grain) * shade);
+            imageData.data[offset + 2] = clampByte((0.18 + tone * 0.35 + grain * 0.5) * shade);
+            imageData.data[offset + 3] = 255;
+        }
+    }
+    context.putImageData(imageData, 0, 0);
+    const texture = new THREE.CanvasTexture(textureCanvas);
+    texture.colorSpace = THREE.SRGBColorSpace;
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.flipY = false;
+    texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+    return texture;
+};
+
 const improveMaterials = (root, imageTextures) => {
     const granite = new THREE.MeshStandardMaterial({
         color: 0xffffff, side: THREE.DoubleSide,
@@ -214,6 +255,7 @@ const improveMaterials = (root, imageTextures) => {
         roughness: 0.36, metalness: 0, envMapIntensity: 0.5
     });
     floor.name = 'Three.js Museumsboden';
+    const parquet = parquetTexture();
     const ceilingWood = new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 0.48, metalness: 0, envMapIntensity: 0.3,
         side: THREE.DoubleSide
@@ -262,9 +304,9 @@ const improveMaterials = (root, imageTextures) => {
         } else if (/kusner|s41_7_5|brown granite/.test(identity) && !/sockel/.test(identity)) {
             object.material = granite;
             object.castShadow = true;
-        } else if (/cognac leder/.test(identity)) {
+        } else if (/bordeaux leder|cognac leder/.test(identity)) {
             const material = original;
-            material.color.setRGB(0.28, 0.095, 0.028);
+            material.color.setRGB(0.10, 0.006, 0.017);
             material.roughness = 0.48;
             material.metalness = 0;
             material.envMapIntensity = 0.35;
@@ -290,13 +332,15 @@ const improveMaterials = (root, imageTextures) => {
             object.castShadow = true;
             object.receiveShadow = true;
         } else if (/museumsboden|polierter museumsboden/.test(identity)) {
-            // Fischgrät wird samt UVs und Textur aus Blender exportiert.
-            if (document.getElementById('BODEN').value === 'parkett' && original?.map) {
+            // Die Boden-UVs kommen aus Blender; die Textur wird im Viewer zuverlässig erzeugt.
+            if (document.getElementById('BODEN').value === 'parkett') {
+                parquet.channel = original?.map?.channel ?? 1;
+                original.map = parquet;
                 original.color.set(0xffffff);
-                original.roughness = 0.30;
+                original.roughness = 0.46;
                 original.metalness = 0;
-                original.envMapIntensity = 0.5;
-                original.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+                original.envMapIntensity = 0.32;
+                original.needsUpdate = true;
             } else {
                 object.material = floor;
             }

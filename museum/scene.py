@@ -875,13 +875,13 @@ if BODEN == "parkett":
             else:
                 along, across = period - 1 - difference + v % 1, u % 1
                 anchor_x, anchor_y = ix, iy - (period - 1 - difference)
-            tone = math.sin(anchor_x * 127.1 + anchor_y * 311.7) * 0.09
-            grain = 0.028 * math.sin(across * 110 + math.sin(along * 2.8) * 3)
+            tone = math.sin(anchor_x * 127.1 + anchor_y * 311.7) * 0.022
+            grain = 0.010 * math.sin(across * 110 + math.sin(along * 2.8) * 3)
             edge = min(across, 1 - across, along, plank_units - along)
-            shade = 0.42 if edge < 0.022 else 1.0
-            pixels.extend(((0.48 + tone + grain) * shade,
-                           (0.29 + tone * 0.65 + grain) * shade,
-                           (0.13 + tone * 0.35 + grain * 0.5) * shade, 1.0))
+            shade = 0.76 if edge < 0.022 else 1.0
+            pixels.extend(((0.36 + tone + grain) * shade,
+                           (0.27 + tone * 0.65 + grain) * shade,
+                           (0.18 + tone * 0.35 + grain * 0.5) * shade, 1.0))
     parquet_image.pixels.foreach_set(pixels)
     parquet_image.pack()
     texture = N.new("ShaderNodeTexImage"); texture.image = parquet_image
@@ -889,8 +889,8 @@ if BODEN == "parkett":
     L.new(texture.outputs["Color"], p.inputs["Base Color"])
     for socket in (p.inputs["Roughness"],):
         for connection in list(socket.links): L.remove(connection)
-    p.inputs["Roughness"].default_value = 0.30
-    p.inputs["Coat Weight"].default_value = 0.25
+    p.inputs["Roughness"].default_value = 0.46
+    p.inputs["Coat Weight"].default_value = 0.10
     # 18 cm breite, 90 cm lange Stäbe, diagonal zur Raumachse verlegt.
     floor_obj = obj_by_name("Museumsboden")
     uv_layer = floor_obj.data.uv_layers.new(name="Fischgraet UV")
@@ -1251,9 +1251,9 @@ bpy.ops.mesh.primitive_plane_add(size=1, location=(X0 + 5 * DX, Y0 + 5 * DY, ZD 
 om = D.materials.new("Oberlicht"); om.use_nodes = True; onm = om.node_tree; onm.nodes.clear(); em, oo = onm.nodes.new("ShaderNodeEmission"), onm.nodes.new("ShaderNodeOutputMaterial")
 em.inputs["Color"].default_value, em.inputs["Strength"].default_value = (1.0, 0.94, 0.82, 1), 7.0; onm.links.new(em.outputs[0], oo.inputs[0]); sk.data.materials.append(om)
 
-# --- Eigener Entwurf: cognacfarbene Lederpolster auf dunklen Stahlkufen --------------------
+# --- Eigener Entwurf: bordeauxrote Lederpolster auf dunklen Stahlkufen ---------------------
 bcol = D.collections.new("Bank"); S.collection.children.link(bcol)
-leather = simple_material("Museumsbank Cognac Leder", (0.28, 0.095, 0.028, 1), 0.48)
+leather = simple_material("Museumsbank Bordeaux Leder", (0.10, 0.006, 0.017, 1), 0.48)
 nodes, links = leather.node_tree.nodes, leather.node_tree.links
 grain = nodes.new('ShaderNodeTexNoise')
 grain.inputs['Scale'].default_value = 230
@@ -1267,10 +1267,11 @@ links.new(grain.outputs['Fac'], bump.inputs['Height'])
 links.new(bump.outputs['Normal'], nodes['Principled BSDF'].inputs['Normal'])
 steel = simple_material("Museumsbank Stahl Anthrazit", (.022, .025, .028, 1), .38)
 steel.node_tree.nodes['Principled BSDF'].inputs['Metallic'].default_value = .7
-seam = simple_material("Museumsbank Leder Naht", (.15, .047, .012, 1), .65)
+seam = simple_material("Museumsbank Leder Naht", (.035, .002, .005, 1), .65)
 for index, (bench_x, bench_y, rotation) in enumerate(((-4.5, -7.0, 180), (4.5, -7.0, 180)), 1):
     bench = D.objects.new(f"Museumsbank {index}", None); bcol.objects.link(bench)
     bench.location = (bench_x, bench_y, 0); bench.rotation_euler.z = math.radians(rotation)
+    bench.scale = (1.05,) * 3
     def bench_piece(label, position, dimensions, material, bevel):
         part = add_box(f"Museumsbank {index} {label}", position, dimensions, material, bevel)
         link(part, bcol)
