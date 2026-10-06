@@ -167,7 +167,7 @@ Standardmäßig werden die Ergebnisse hier abgelegt:
 
 ```text
 Render\kusner_p7_granit_museum\
-├── frames\              PNG-Einzelbilder der Animation
+├── frames\              Testbilder und PNG-Einzelbilder der Animation
 ├── logs\                Blender- und FFmpeg-Ausgaben
 ├── settings.json        Einstellungen der Animation
 ├── test-settings.json   Einstellungen des Testbilds

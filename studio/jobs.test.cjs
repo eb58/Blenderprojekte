@@ -59,6 +59,7 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.running, false);
         assert.equal(status.code, 0, status.log);
         assert.ok(fs.existsSync(jobs.mediaPath('preview')));
+        assert.equal(path.dirname(jobs.mediaPath('preview')), path.join(output, 'frames'));
         await jobs.prepareModel(settings);
         assert.ok(fs.existsSync(jobs.mediaPath('model')));
         const model = fs.readFileSync(jobs.mediaPath('model'));
@@ -74,7 +75,6 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(floor?.pbrMetallicRoughness?.baseColorTexture?.texCoord, 1);
 
         const frames = path.join(output, 'frames');
-        fs.mkdirSync(frames);
         for (let frame = 1; frame <= 2; frame++) {
             fs.copyFileSync(
                 jobs.mediaPath('preview'),

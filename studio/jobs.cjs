@@ -265,7 +265,9 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             writeJSON(path.join(folder, 'test-settings.json'), s);
             await ensureWorker(s);
             const id = crypto.randomUUID().replaceAll('-', '');
-            const output = path.join(folder, `kusner_p7_museum_test_${id}.png`);
+            const framesFolder = path.join(folder, 'frames');
+            fs.mkdirSync(framesFolder, {recursive: true});
+            const output = path.join(framesFolder, `kusner_p7_museum_test_${id}.png`);
             const command = {id, type: 'render', output};
             for (const key of ['START_ANGLE', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET']) {
                 command[key] = s[key];
@@ -370,13 +372,14 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             }
         }
         const folder = state.settings.OUTPUT_DIR;
-        const frames = files(path.join(folder, 'frames')).filter(name => /^frame_.*\.png$/.test(name)).sort();
-        const stills = files(folder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
-            .map(name => path.join(folder, name))
+        const framesFolder = path.join(folder, 'frames');
+        const frames = files(framesFolder).filter(name => /^frame_.*\.png$/.test(name)).sort();
+        const stills = files(framesFolder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
+            .map(name => path.join(framesFolder, name))
             .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
         state.preview = !['animation', 'animation_video'].includes(state.kind) && stills.length
             ? stills[0]
-            : frames.length ? path.join(folder, 'frames', frames.at(-1)) : null;
+            : frames.length ? path.join(framesFolder, frames.at(-1)) : null;
         if (state.process && state.process.exitCode !== null) state.code = state.process.exitCode;
         const running = Boolean(alive(state.process) || state.job || state.preparing);
         let log = '';
