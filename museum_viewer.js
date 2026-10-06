@@ -72,7 +72,7 @@ function initialize() {
     scene.add(key);
     camera = new THREE.PerspectiveCamera(42, 1, 0.05, 100);
     controls = new OrbitControls(camera, canvas);
-    controls.target.set(0, 3.2, 0);
+    controls.target.set(0, 2.88, 0);
     controls.enablePan = false;
     controls.enableDamping = true;
     controls.minDistance = 8;
@@ -99,8 +99,8 @@ function resize() {
 function setCameraFromDial() {
     const angle = Number(document.getElementById('START_ANGLE').value) || 0;
     const radians = THREE.MathUtils.degToRad(angle);
-    camera.position.set(12 * Math.sin(radians), 3.45, 12 * Math.cos(radians));
-    controls.target.set(0, 3.2, 0);
+    camera.position.set(12 * Math.sin(radians), 3.13, 12 * Math.cos(radians));
+    controls.target.set(0, 2.88, 0);
     controls.update();
     updateAngle();
 }
@@ -112,7 +112,7 @@ function updateAngle() {
 
 function placeCamera(angle) {
     const radians = THREE.MathUtils.degToRad(angle);
-    camera.position.set(12 * Math.sin(radians), 3.45, 12 * Math.cos(radians));
+    camera.position.set(12 * Math.sin(radians), 3.13, 12 * Math.cos(radians));
     camera.lookAt(controls.target);
     updateAngle();
 }
@@ -220,6 +220,27 @@ function improveMaterials(root) {
         roughness: 0.36, metalness: 0, envMapIntensity: 0.5
     });
     floor.name = 'Three.js Museumsboden';
+    const ceilingWood = new THREE.MeshStandardMaterial({
+        color: 0xffffff, roughness: 0.48, metalness: 0, envMapIntensity: 0.3,
+        side: THREE.DoubleSide
+    });
+    ceilingWood.onBeforeCompile = shader => {
+        shader.vertexShader = shader.vertexShader.replace('#include <common>',
+            '#include <common>\nvarying vec3 woodPosition;');
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>',
+            '#include <begin_vertex>\nwoodPosition = position;');
+        shader.fragmentShader = shader.fragmentShader.replace('#include <common>',
+            '#include <common>\nvarying vec3 woodPosition;');
+        shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', `
+            #include <map_fragment>
+            float grain = sin(woodPosition.y * 180.0 +
+                sin(woodPosition.x * 1.8) * 4.0 + woodPosition.z * 90.0);
+            float broad = sin(woodPosition.y * 19.0 + sin(woodPosition.x * 0.7) * 2.0);
+            diffuseColor.rgb *= mix(vec3(0.075, 0.026, 0.009),
+                vec3(0.32, 0.17, 0.067), clamp(0.5 + grain * 0.15 + broad * 0.25, 0.0, 1.0));
+        `);
+    };
+    ceilingWood.customProgramCacheKey = () => 'museum-ceiling-oak-v1';
 
     root.traverse(object => {
         if (!object.isMesh) return;
@@ -228,12 +249,44 @@ function improveMaterials(root) {
         if (/kusner|s41_7_5|brown granite/.test(identity) && !/sockel/.test(identity)) {
             object.material = granite;
             object.castShadow = true;
+        } else if (/cognac leder/.test(identity)) {
+            const material = original;
+            material.color.setRGB(0.28, 0.095, 0.028);
+            material.roughness = 0.48;
+            material.metalness = 0;
+            material.envMapIntensity = 0.35;
+            material.bumpMap = stoneTexture([128, 128, 128], 28);
+            material.bumpScale = 0.0015;
+            object.castShadow = true;
+            object.receiveShadow = true;
+        } else if (/bar_chair_round_01/.test(identity)) {
+            // Originale UV-/PBR-Texturen der Bibliotheksbank erhalten.
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            for (const material of materials) {
+                if (material.map) material.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+                material.envMapIntensity = 0.45;
+            }
+            object.castShadow = true;
+            object.receiveShadow = true;
+        } else if (/kassettendecke|fensterbank eichenholz/.test(identity)) {
+            object.material = ceilingWood;
+            object.castShadow = /fensterbank/.test(identity);
+            object.receiveShadow = true;
         } else if (/sockel/.test(identity) && !/statue|büste|buste/.test(identity)) {
             object.material = limestone;
             object.castShadow = true;
             object.receiveShadow = true;
         } else if (/museumsboden|polierter museumsboden/.test(identity)) {
-            object.material = floor;
+            // Fischgrät wird samt UVs und Textur aus Blender exportiert.
+            if (document.getElementById('BODEN').value === 'parkett' && original?.map) {
+                original.color.set(0xffffff);
+                original.roughness = 0.30;
+                original.metalness = 0;
+                original.envMapIntensity = 0.5;
+                original.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+            } else {
+                object.material = floor;
+            }
             object.receiveShadow = true;
         } else {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
@@ -247,7 +300,8 @@ function improveMaterials(root) {
                 }
                 if ('roughness' in material) material.roughness = Math.max(material.roughness, 0.42);
             }
-            object.receiveShadow = /boden|wand|arkade|decke/.test(identity);
+            object.castShadow = /garten baum|pine ridge/.test(identity);
+            object.receiveShadow = /boden|wand|arkade|decke|garten|pine ridge/.test(identity);
         }
     });
 }

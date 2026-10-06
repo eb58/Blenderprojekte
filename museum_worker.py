@@ -42,6 +42,39 @@ def export_preview():
     # Bei --factory-startup ist selbst das mit Blender ausgelieferte Kern-Add-on
     # zunächst deaktiviert und der Export-Operator noch nicht registriert.
     bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
+    # Temporär reduzierte Wald-Meshes; Originaldaten für Cycles nie verändern.
+    forest_originals = []
+    forest_meshes = {}
+    try:
+        for obj in list(bpy.context.scene.objects):
+            if obj.type != 'MESH' or not obj.name.startswith('Aussenwelt Pine Ridge'):
+                continue
+            original = obj.data
+            key = original.as_pointer()
+            if key not in forest_meshes:
+                helper = bpy.data.objects.new('Preview forest simplification', original)
+                bpy.context.scene.collection.objects.link(helper)
+                modifier = helper.modifiers.new('Preview LOD', 'DECIMATE')
+                modifier.ratio = 0.08
+                bpy.context.view_layer.update()
+                reduced = bpy.data.meshes.new_from_object(
+                    helper.evaluated_get(bpy.context.evaluated_depsgraph_get()),
+                    preserve_all_data_layers=True,
+                    depsgraph=bpy.context.evaluated_depsgraph_get())
+                forest_meshes[key] = reduced
+                bpy.data.objects.remove(helper, do_unlink=True)
+                print(f'Wald-Vorschau: {len(original.polygons)} -> {len(reduced.polygons)} Flächen', flush=True)
+            forest_originals.append((obj, original))
+            obj.data = forest_meshes[key]
+        _export_preview_model()
+    finally:
+        for obj, original in forest_originals:
+            obj.data = original
+        for mesh in forest_meshes.values():
+            bpy.data.meshes.remove(mesh)
+
+
+def _export_preview_model():
     bpy.ops.object.select_all(action="DESELECT")
     selected = []
     for obj in bpy.context.scene.objects:

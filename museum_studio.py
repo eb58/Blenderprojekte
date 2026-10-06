@@ -84,8 +84,9 @@ def blender_path():
 def worker_signature(settings):
     """Nur Änderungen am Szenenaufbau erfordern einen neuen Worker."""
     scene_version = (ROOT / "museum_komplett.py").stat().st_mtime_ns
+    worker_version = (ROOT / "museum_worker.py").stat().st_mtime_ns
     return (settings["BODEN"], settings["SCULPTURE_SCALE"], settings["THICKNESS"],
-            scene_version)
+            scene_version, worker_version)
 
 
 def stop_worker():

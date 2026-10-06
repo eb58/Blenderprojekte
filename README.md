@@ -171,6 +171,10 @@ Render\kusner_p7_granit_museum\
 
 PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen.
 
+## Lokale Möbelbibliothek
+
+Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und die Waldlandschaft Pine Ridge. Modelle und Alternativen liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
+
 ## Projektdateien
 
 - `museum_studio.ps1` startet den lokalen Dienst und öffnet die Weboberfläche.

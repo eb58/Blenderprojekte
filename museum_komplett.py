@@ -355,7 +355,9 @@ links.new(bsdf.outputs["BSDF"], output.inputs["Surface"])
 # MATERIALIEN DES MUSEUMS
 # ============================================================
 
-wall_material = simple_material("Warmer Kalkstein", (0.54, 0.43, 0.31, 1), 0.52)
+# Historischer Materialname bleibt für die späteren Materialzugriffe erhalten.
+# Kühler, matter Salbei-/Schieferputz kontrastiert mit den warmen Steinrahmen.
+wall_material = simple_material("Warmer Kalkstein", (0.23, 0.32, 0.31, 1), 0.78)
 trim_material = simple_material("Heller Naturstein", (0.68, 0.59, 0.47, 1), 0.44)
 floor_material = simple_material("Polierter Museumsboden", (0.10, 0.072, 0.048, 1), 0.24)
 recess_material = simple_material("Tiefe Arkadennischen", (0.018, 0.013, 0.010, 1), 0.82)
@@ -581,18 +583,11 @@ for index, x in enumerate((-9.0, -3.0, 3.0, 9.0), 1):
         wall_material=trim_material, recess_material=recess_material
     )
 
-# Seitliche Kolonnaden betonen die größere Raumhöhe.
-for x in (-13.6, 13.6):
-    for y in (-10, -4, 2, 8, 14):
-        add_cylinder("Saeulenbasis", (x, y, 0.28), 0.72, 0.56, trim_material)
-        add_cylinder("Saeule", (x, y, 4.55), 0.45, 8.1, trim_material)
-        add_cylinder("Kapitell", (x, y, 8.78), 0.70, 0.38, trim_material)
-        add_box("Abakus", (x, y, 9.04), (1.2, 1.2, 0.20), trim_material, 0.025)
-
-add_box("Gesims links", (-13.6, 2, 9.48), (1.35, 35, 0.68), trim_material, 0.04)
-add_box("Gesims rechts", (13.6, 2, 9.48), (1.35, 35, 0.68), trim_material, 0.04)
-add_box("Seitenwand links", (-16.2, 2, hall_height / 2), (0.50, 38, hall_height), wall_material)
-add_box("Seitenwand rechts", (16.2, 2, hall_height / 2), (0.50, 38, hall_height), wall_material)
+# Ruhige Seitenwände mit tiefen Fensternischen statt freistehender Kolonnaden.
+add_box("Gesims links", (-15.67, 2, 11.15), (0.30, 35, 0.30), trim_material, 0.035)
+add_box("Gesims rechts", (15.67, 2, 11.15), (0.30, 35, 0.30), trim_material, 0.035)
+add_box("Seitenwand links", (-16.2, 2, hall_height / 2), (0.90, 38, hall_height), wall_material)
+add_box("Seitenwand rechts", (16.2, 2, hall_height / 2), (0.90, 38, hall_height), wall_material)
 
 
 # ============================================================
@@ -745,6 +740,47 @@ b.inputs["Base Color"].default_value = (0.06, 0.045, 0.035, 1); b.inputs["Metall
 
 YS, W, Z0, ZA = [-7, -1, 5, 11], 3.2, 2.2, 8.4  # Fenstermitten (zwischen den Saeulen), Breite, Sohle, Bogenansatz
 R = W / 2
+
+
+def window_niche(side, x, y, index):
+    """Massive Laibung mit echtem halbkreisförmigem Steinbogen."""
+    inward = 1 if side == "L" else -1
+    front_x = x + inward * 0.50
+    back_x = x - inward * 0.10
+    center_x = (front_x + back_x) / 2
+    depth = abs(front_x - back_x)
+    border = 0.24
+    prefix = f"Fensternische {side}{index}"
+    for sign in (-1, 1):
+        obj = add_box(prefix + f" Laibung {sign}",
+                      (center_x, y + sign * (R + border / 2), (Z0 + ZA) / 2),
+                      (depth, border, ZA - Z0), trim_material, 0.025)
+        link(obj, fcol)
+    sill = add_box(prefix + " Fensterbank", (front_x - inward * 0.16, y, Z0 - 0.10),
+                   (0.95, W + 2 * border + 0.16, 0.20), trim_material, 0.035)
+    link(sill, fcol)
+    vertices, faces = [], []
+    segments = 48
+    for xx in (front_x, back_x):
+        for radius in (R, R + border):
+            for step in range(segments + 1):
+                angle = math.pi * step / segments
+                vertices.append((xx, y + radius * math.cos(angle), ZA + radius * math.sin(angle)))
+    stride = segments + 1
+    for step in range(segments):
+        for a, b_ in ((0, stride), (2 * stride, 3 * stride),
+                      (0, 2 * stride), (stride, 3 * stride)):
+            faces.append((a + step, a + step + 1, b_ + step + 1, b_ + step))
+    faces.extend(((0, stride, 3 * stride, 2 * stride),
+                  (segments, 2 * stride - 1, 4 * stride - 1, 3 * stride - 1)))
+    mesh = D.meshes.new(prefix + " Bogen Mesh")
+    mesh.from_pydata(vertices, [], faces); mesh.update()
+    obj = D.objects.new(prefix + " Steinbogen", mesh); fcol.objects.link(obj)
+    obj.data.materials.append(trim_material)
+    bevel = obj.modifiers.new("Weiche Steinkanten", "BEVEL")
+    bevel.width = 0.02; bevel.segments = 3
+
+
 for side, x in (("L", -16.2), ("R", 16.2)):
     cut = []
     for i, y in enumerate(YS):
@@ -756,6 +792,10 @@ for side, x in (("L", -16.2), ("R", 16.2)):
         f.name = f"Fensterrahmen {side}{i + 1}"; f.data.materials.append(frame)
         bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.05, minor_radius=0.07, major_segments=48, minor_segments=8, location=(x, y, ZA), rotation=(0, math.pi / 2, 0))
         t = C.active_object; t.name = f"Fensterbogen {side}{i + 1}"; t.data.materials.append(frame); link(t, fcol)
+        # Rahmen weiter außen, Laibungen öffnen sich zum Innenraum.
+        f.location.x -= (1 if side == "L" else -1) * 0.10
+        t.location.x -= (1 if side == "L" else -1) * 0.10
+        window_niche(side, x, y, i + 1)
     c = join(cut); c.name = f"Fensterschnitt {side}"; c.display_type = 'WIRE'; c.hide_render = True
     wall = obj_by_name("Seitenwand links" if side == "L" else "Seitenwand rechts")
     bm = wall.modifiers.new("Fenster", "BOOLEAN")
@@ -765,6 +805,19 @@ for side, x in (("L", -16.2), ("R", 16.2)):
 kalk = mat("Warmer Kalkstein")
 for n, loc, dim in (("Decke", (0, 2, 13.45), (32.9, 38, 0.5)), ("Rueckwand hinten", (0, 20.75, 6.6), (32.9, 0.5, 13.2)), ("Vorderwand", (0, -17.25, 6.6), (32.9, 0.5, 13.2))):
     bpy.ops.mesh.primitive_cube_add(location=loc); o = C.active_object; o.name = n; o.dimensions = dim; o.data.materials.append(kalk)
+
+# --- Umlaufende Naturstein-Fußleisten ------------------------------------------------------
+# 18 cm hoch, 6 cm vor der Wand; abgerundete Kanten als ruhiger Bodenabschluss.
+skirting_material = simple_material("Fussleisten Naturstein", (0.48, 0.43, 0.35, 1), 0.62)
+skirting_collection = D.collections.new("Fussleisten")
+S.collection.children.link(skirting_collection)
+for name, location, dimensions in (
+        ("Fussleiste links", (-15.72, 1.75, 0.09), (0.06, 37.5, 0.18)),
+        ("Fussleiste rechts", (15.72, 1.75, 0.09), (0.06, 37.5, 0.18)),
+        ("Fussleiste Vorderwand", (0, -16.97, 0.09), (31.38, 0.06, 0.18)),
+        ("Fussleiste Rueckwand", (0, 20.47, 0.09), (31.38, 0.06, 0.18))):
+    skirting = add_box(name, location, dimensions, skirting_material, 0.008)
+    link(skirting, skirting_collection)
 
 # --- Himmel: fuer die Kamera hell (Strength 1.9), als Beleuchtung gedaempft (0.7) ---------------
 ensure_world()
@@ -777,7 +830,10 @@ for a, b_ in ((lp.outputs["Is Camera Ray"], mul.inputs[0]), (sky.outputs[0], bg.
 
 # --- Sonne flach durch die +X-Fenster, alte Flaechenlichter dimmen ---------------------------
 sun = obj_by_name("Sonne")
-sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z', 'Y').to_euler(); sun.data.energy = 22; sun.data.angle = math.radians(0.6)
+sun.rotation_euler = Vector((-0.8, 0.22, -0.56)).normalized().to_track_quat('-Z', 'Y').to_euler()
+# Zurückhaltendes Tageslicht: weniger direkte Energie, weichere Schatten.
+sun.data.energy = 5.5
+sun.data.angle = math.radians(3.0)
 for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
 
@@ -800,6 +856,52 @@ if BODEN == "parkett":  # Dielen im Halbverband: Brick-Textur, pro Diele leicht 
     gm2.data_type, gm2.blend_type = 'RGBA', 'MULTIPLY'; gm2.inputs["Factor"].default_value = 0.45
     mix.inputs["Factor"].default_value = 0.25; rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.2, 0.32; p.inputs["Coat Weight"].default_value = 0.3
     for a, b_ in ((tc.outputs["Generated"], bk.inputs["Vector"]), (tc.outputs["Generated"], wv2.inputs["Vector"]), (bk.outputs["Color"], gm2.inputs["A"]), (wv2.outputs["Color"], gm2.inputs["B"]), (gm2.outputs["Result"], mix.inputs["A"])): L.new(a, b_)
+
+# Fischgrät als gemeinsame Bildtextur für Cycles und glTF/Three.js.
+if BODEN == "parkett":
+    size, plank_units = 512, 5
+    period = 2 * plank_units
+    parquet_image = D.images.new("Fischgraet Eiche", width=size, height=size)
+    pixels = []
+    for yy in range(size):
+        for xx in range(size):
+            u, v = xx / size * period, yy / size * period
+            ix, iy = math.floor(u), math.floor(v)
+            difference = (ix - iy) % period
+            horizontal = difference < plank_units
+            if horizontal:
+                along, across = difference + u % 1, v % 1
+                anchor_x, anchor_y = ix - difference, iy
+            else:
+                along, across = period - 1 - difference + v % 1, u % 1
+                anchor_x, anchor_y = ix, iy - (period - 1 - difference)
+            tone = math.sin(anchor_x * 127.1 + anchor_y * 311.7) * 0.09
+            grain = 0.028 * math.sin(across * 110 + math.sin(along * 2.8) * 3)
+            edge = min(across, 1 - across, along, plank_units - along)
+            shade = 0.42 if edge < 0.022 else 1.0
+            pixels.extend(((0.48 + tone + grain) * shade,
+                           (0.29 + tone * 0.65 + grain) * shade,
+                           (0.13 + tone * 0.35 + grain * 0.5) * shade, 1.0))
+    parquet_image.pixels.foreach_set(pixels)
+    parquet_image.pack()
+    texture = N.new("ShaderNodeTexImage"); texture.image = parquet_image
+    texture.extension = 'REPEAT'
+    L.new(texture.outputs["Color"], p.inputs["Base Color"])
+    for socket in (p.inputs["Roughness"],):
+        for connection in list(socket.links): L.remove(connection)
+    p.inputs["Roughness"].default_value = 0.30
+    p.inputs["Coat Weight"].default_value = 0.25
+    # 18 cm breite, 90 cm lange Stäbe, diagonal zur Raumachse verlegt.
+    floor_obj = obj_by_name("Museumsboden")
+    uv_layer = floor_obj.data.uv_layers.new(name="Fischgraet UV")
+    uv_layer.active_render = True
+    uv_node = N.new("ShaderNodeUVMap"); uv_node.uv_map = uv_layer.name
+    L.new(uv_node.outputs["UV"], texture.inputs["Vector"])
+    for polygon in floor_obj.data.polygons:
+        for loop_index in polygon.loop_indices:
+            vertex = floor_obj.matrix_world @ floor_obj.data.vertices[floor_obj.data.loops[loop_index].vertex_index].co
+            uv_layer.data[loop_index].uv = ((vertex.x + vertex.y) / (math.sqrt(2) * 1.8),
+                                            (vertex.y - vertex.x) / (math.sqrt(2) * 1.8))
 
 # --- Material-Import fuer prozedurale Materialien (z. B. granit_material.json) ----------------
 def load_nodes(nt, spec):
@@ -926,7 +1028,7 @@ for i, x in enumerate((-9, -3, 3, 9)):
     statue(i, x, 18.2, 1.1, arm_up=i % 2 == 0)
     al = D.lights.new(f"Nischenlicht {i}", "AREA"); al.energy, al.size, al.color = 350, 2.5, (1.0, 0.85, 0.66)
     ao = D.objects.new(f"Nischenlicht {i}", al); scol.objects.link(ao); ao.location = (x, 18.0, 9.5)  # zeigt nach unten (Standard)
-mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
+mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.16, 0.23, 0.22, 1)
 
 # --- Echte Marmorbueste (Poly Haven "Marble Bust 01", CC0) statt der Platzhalter-Figuren -------------
 BUSTE = os.path.join(PROJECT_DIR, "Modelle", "marble_bust_01")
@@ -1110,51 +1212,102 @@ for i in range(NX):
         cx, cy = X0 + (i + .5) * DX, Y0 + (j + .5) * DY; fx, fy = DX - 1.1, DY - 1.1
         for dx, dy, sx, sy in ((0, fy / 2, fx, .12), (0, -fy / 2, fx, .12), (fx / 2, 0, .12, fy), (-fx / 2, 0, .12, fy)): bx((cx + dx, cy + dy, ZD - 0.075), (sx, sy, 0.15))
         bx((cx, cy, ZD - 0.05), (0.5, 0.5, 0.1))
-me = D.meshes.new("Kassettendecke"); bm.to_mesh(me); bm.free(); ko = D.objects.new("Kassettendecke", me); ccol.objects.link(ko); me.materials.append(mat("Heller Naturstein"))
+ceiling_wood = simple_material("Kassettendecke Eichenholz", (0.23, 0.105, 0.038, 1), 0.48)
+wood_nodes = ceiling_wood.node_tree.nodes; wood_links = ceiling_wood.node_tree.links
+wood_coords = wood_nodes.new("ShaderNodeTexCoord")
+wood_mapping = wood_nodes.new("ShaderNodeMapping")
+wood_mapping.inputs["Scale"].default_value = (0.8, 24, 24)
+wood_noise = wood_nodes.new("ShaderNodeTexNoise")
+wood_noise.inputs["Scale"].default_value = 3.0
+wood_noise.inputs["Detail"].default_value = 3.0
+wood_ramp = wood_nodes.new("ShaderNodeValToRGB")
+wood_ramp.color_ramp.elements[0].color = (0.075, 0.026, 0.009, 1)
+wood_ramp.color_ramp.elements[1].color = (0.32, 0.17, 0.067, 1)
+wood_shader = wood_nodes["Principled BSDF"]
+wood_links.new(wood_coords.outputs["Object"], wood_mapping.inputs["Vector"])
+wood_links.new(wood_mapping.outputs["Vector"], wood_noise.inputs["Vector"])
+wood_links.new(wood_noise.outputs["Fac"], wood_ramp.inputs["Fac"])
+wood_links.new(wood_ramp.outputs["Color"], wood_shader.inputs["Base Color"])
+wood_bump = wood_nodes.new("ShaderNodeBump")
+wood_bump.inputs["Strength"].default_value = 0.12
+wood_bump.inputs["Distance"].default_value = 0.008
+wood_links.new(wood_noise.outputs["Fac"], wood_bump.inputs["Height"])
+wood_links.new(wood_bump.outputs["Normal"], wood_shader.inputs["Normal"])
+me = D.meshes.new("Kassettendecke"); bm.to_mesh(me); bm.free(); ko = D.objects.new("Kassettendecke", me); ccol.objects.link(ko); me.materials.append(ceiling_wood)
+# Auch der Hintergrund der Kassetten erhält dieselbe Holzoberfläche.
+obj_by_name("Decke").data.materials.clear()
+obj_by_name("Decke").data.materials.append(ceiling_wood)
+
+# Fensterbänke aus Eiche statt Stein; Maserung längs der Fensterbreite (Y).
+sill_wood = ceiling_wood.copy()
+sill_wood.name = "Fensterbank Eichenholz"
+sill_wood.node_tree.nodes.get(wood_mapping.name).inputs["Scale"].default_value = (24, 0.8, 24)
+for obj in fcol.objects:
+    if obj.type == 'MESH' and "Fensterbank" in obj.name:
+        obj.data.materials.clear()
+        obj.data.materials.append(sill_wood)
 sw, sh = 2 * DX - 0.32, 2 * DY - 0.32
 bpy.ops.mesh.primitive_plane_add(size=1, location=(X0 + 5 * DX, Y0 + 5 * DY, ZD - 0.02), rotation=(math.pi, 0, 0)); sk = C.active_object; sk.name = "Oberlicht"; sk.scale = (sw, sh, 1); link(sk, ccol)
 om = D.materials.new("Oberlicht"); om.use_nodes = True; onm = om.node_tree; onm.nodes.clear(); em, oo = onm.nodes.new("ShaderNodeEmission"), onm.nodes.new("ShaderNodeOutputMaterial")
 em.inputs["Color"].default_value, em.inputs["Strength"].default_value = (1.0, 0.94, 0.82, 1), 7.0; onm.links.new(em.outputs[0], oo.inputs[0]); sk.data.materials.append(om)
 
-# --- Wellenbank: ~70 Nussholz-Lamellen, Sitz und Lehne schwingen als Welle; Messing-Klingenbeine -----------
+# --- Eigener Entwurf: cognacfarbene Lederpolster auf dunklen Stahlkufen --------------------
 bcol = D.collections.new("Bank"); S.collection.children.link(bcol)
-def profil(hoehe):  # Querschnitt (y, z): flacher Sitz, sanft in die Lehne aufgebogen; hoehe skaliert die Lehne
-    pts = [(-0.28 + 0.4 * u / 6, 0.0) for u in range(7)]
-    for k in range(1, 10): t = k / 9; pts.append(((1 - t) ** 2 * 0.12 + 2 * t * (1 - t) * 0.33 + t * t * 0.36, (t * t * 0.52) * hoehe))
-    return pts
-def streifen(bm, pts, x0, x1, z0, d=0.02):
-    ring = []
-    for k, (y, z) in enumerate(pts):  # Normale des Querschnitts -> oben/unten Kante
-        a, b = pts[max(k - 1, 0)], pts[min(k + 1, len(pts) - 1)]; ty, tz = b[0] - a[0], b[1] - a[1]; n = math.hypot(ty, tz) or 1; ny, nz = -tz / n, ty / n
-        ring.append(((y + ny * d, z0 + z + nz * d), (y - ny * d, z0 + z - nz * d)))
-    for x in (x0, x1): pass
-    o = [[bm.verts.new((x, *r[0])) for r in ring] for x in (x0, x1)]; u = [[bm.verts.new((x, *r[1])) for r in ring] for x in (x0, x1)]
-    for k in range(len(pts) - 1):
-        bm.faces.new((o[0][k], o[0][k + 1], o[1][k + 1], o[1][k])); bm.faces.new((u[0][k], u[1][k], u[1][k + 1], u[0][k + 1]))
-    for i in (0, 1): bm.faces.new(o[i] + u[i][::-1])
-    bm.faces.new((o[0][0], o[1][0], u[1][0], u[0][0])); bm.faces.new((o[0][-1], u[0][-1], u[1][-1], o[1][-1]))
-BL, NS = 3.2, 72; bm = bmesh.new()
-for i in range(NS):
-    x = -BL / 2 + (i + .5) * BL / NS; w = math.sin(2 * math.pi * 1.5 * x / BL)
-    streifen(bm, profil(1.0 + 0.4 * w), x - 0.018, x + 0.018, 0.44 + 0.06 * w)
-bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-wme = D.meshes.new("Bank Holz"); bm.to_mesh(wme); bm.free()
-bm = bmesh.new()
-for x in (-1.1, 1.1): bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation((x, -0.05, 0.19)) @ Matrix.Diagonal((0.035, 0.42, 0.38, 1)))
-bme = D.meshes.new("Bank Messing"); bm.to_mesh(bme); bm.free()
-wood = D.materials.new("Nussholz"); wood.use_nodes = True; wn = wood.node_tree; wp = wn.nodes["Principled BSDF"]
-wt, wm, ww, wr = wn.nodes.new("ShaderNodeTexCoord"), wn.nodes.new("ShaderNodeMapping"), wn.nodes.new("ShaderNodeTexWave"), wn.nodes.new("ShaderNodeValToRGB")
-wm.inputs["Scale"].default_value = (1, 40, 40); ww.wave_type, ww.bands_direction = 'BANDS', 'Y'; ww.inputs["Scale"].default_value = 3; ww.inputs["Distortion"].default_value = 5; ww.inputs["Detail"].default_value = 4
-wr.color_ramp.elements[0].color, wr.color_ramp.elements[1].color = (0.11, 0.055, 0.025, 1), (0.30, 0.16, 0.07, 1)
-for a, b_ in ((wt.outputs["Object"], wm.inputs["Vector"]), (wm.outputs["Vector"], ww.inputs["Vector"]), (ww.outputs["Color"], wr.inputs["Fac"]), (wr.outputs["Color"], wp.inputs["Base Color"])): wn.links.new(a, b_)
-wp.inputs["Roughness"].default_value = 0.32; wp.inputs["Coat Weight"].default_value = 0.4
-brass = D.materials.new("Messing"); brass.use_nodes = True; bp = brass.node_tree.nodes["Principled BSDF"]
-bp.inputs["Base Color"].default_value = (0.85, 0.62, 0.25, 1); bp.inputs["Metallic"].default_value = 1.0; bp.inputs["Roughness"].default_value = 0.18
-wme.materials.append(wood); bme.materials.append(brass)
-for n, (bx_, by_, rot) in enumerate(((9.5, -3.0, -90), (-9.5, 3.0, 90))):  # Ruecken zur Wand, Blick zur Skulptur
-    for me_, nm in ((wme, "Holz"), (bme, "Messing")):
-        o = D.objects.new(f"Wellenbank {n + 1} {nm}", me_); bcol.objects.link(o); o.location = (bx_, by_, 0); o.rotation_euler.z = math.radians(rot)
-        for pl in o.data.polygons: pl.use_smooth = False
+leather = simple_material("Museumsbank Cognac Leder", (0.28, 0.095, 0.028, 1), 0.48)
+nodes, links = leather.node_tree.nodes, leather.node_tree.links
+grain = nodes.new('ShaderNodeTexNoise')
+grain.inputs['Scale'].default_value = 230
+grain.inputs['Detail'].default_value = 2
+coords = nodes.new('ShaderNodeTexCoord')
+links.new(coords.outputs['Object'], grain.inputs['Vector'])
+bump = nodes.new('ShaderNodeBump')
+bump.inputs['Strength'].default_value = .18
+bump.inputs['Distance'].default_value = .0015
+links.new(grain.outputs['Fac'], bump.inputs['Height'])
+links.new(bump.outputs['Normal'], nodes['Principled BSDF'].inputs['Normal'])
+steel = simple_material("Museumsbank Stahl Anthrazit", (.022, .025, .028, 1), .38)
+steel.node_tree.nodes['Principled BSDF'].inputs['Metallic'].default_value = .7
+seam = simple_material("Museumsbank Leder Naht", (.15, .047, .012, 1), .65)
+for index, (bench_x, bench_y, rotation) in enumerate(((-4.5, -7.0, 180), (4.5, -7.0, 180)), 1):
+    bench = D.objects.new(f"Museumsbank {index}", None); bcol.objects.link(bench)
+    bench.location = (bench_x, bench_y, 0); bench.rotation_euler.z = math.radians(rotation)
+    def bench_piece(label, position, dimensions, material, bevel):
+        part = add_box(f"Museumsbank {index} {label}", position, dimensions, material, bevel)
+        link(part, bcol)
+        part.parent = bench
+        return part
+    bench_piece('Unterrahmen', (0, 0, .335), (2.30, .56, .05), steel, .012)
+    for cushion in range(3):
+        cx = (cushion - 1) * .8
+        bench_piece('Lederpolster', (cx, 0, .40), (.79, .65, .12), leather, .042)
+        for y in (-.31, .31):
+            bench_piece('Polsternaht', (cx, y, .407), (.72, .003, .003), seam, .001)
+    for x in (-.87, .87):
+        for y in (-.255, .255):
+            bench_piece('Stahlbein', (x, y, .17), (.045, .045, .30), steel, .006)
+        bench_piece('Stahlkufe', (x, 0, .02), (.045, .555, .04), steel, .006)
+
+# Je ein historischer Holzhocker in den vier Ecken mit Wandabstand.
+stool_library = os.path.join(PROJECT_DIR, "assets", "library", "bar_chair_round_01_asset.blend")
+with D.libraries.load(stool_library, link=False) as (source, imported_stools):
+    imported_stools.objects = ["bar_chair_round_01"]
+stool_template = imported_stools.objects[0]
+if stool_template is None:
+    raise RuntimeError("Hocker fehlt in der Möbelbibliothek: " + stool_library)
+stool_transform = stool_template.matrix_basis.copy()
+points = [stool_transform @ Vector(corner) for corner in stool_template.bound_box]
+stool_center = Vector(((min(p.x for p in points) + max(p.x for p in points)) / 2,
+                       (min(p.y for p in points) + max(p.y for p in points)) / 2,
+                       min(p.z for p in points)))
+stool_transform.translation -= stool_center
+for index, (x, y) in enumerate(((-14.7, -15.8), (14.7, -15.8),
+                                (-14.7, 19.1), (14.7, 19.1)), 1):
+    stool = stool_template.copy()
+    stool.name = f"Eckhocker {index} bar_chair_round_01"
+    bcol.objects.link(stool)
+    stool.matrix_basis = stool_transform.copy()
+    stool.location += Vector((x, y, 0))
+D.objects.remove(stool_template, do_unlink=True)
 
 # Vorhandene Besucher entfernen; keine neuen Personen erzeugen.
 for visitor in list(D.objects):
@@ -1164,7 +1317,7 @@ for visitor in list(D.objects):
 # --- Sonnenstrahlen: pro Fenster der Sonnenseite ein Lichtschacht (Volumen-Quader entlang der Sonnenrichtung) -------
 vm = D.materials.new("Dunst"); vm.use_nodes = True; nt_ = vm.node_tree; nt_.nodes.clear()
 pv, vo = nt_.nodes.new("ShaderNodeVolumePrincipled"), nt_.nodes.new("ShaderNodeOutputMaterial")
-pv.inputs["Density"].default_value, pv.inputs["Anisotropy"].default_value = 0.12, 0.6
+pv.inputs["Density"].default_value, pv.inputs["Anisotropy"].default_value = 0.025, 0.35
 nt_.links.new(pv.outputs["Volume"], vo.inputs["Volume"])
 SUNDIR = Vector((-0.8, 0.22, -0.56)).normalized(); LEN = 10.0
 for i, y in enumerate(YS):
@@ -1197,6 +1350,65 @@ cam = obj_by_name("Museumskamera")
 # Die kürzere Brennweite erhält dabei ungefähr denselben Bildausschnitt.
 cam.location = (0, -12.0, ZC + 0.25)
 cam.data.lens = 29
+
+# Raum und Kunstwerke um 10 Prozent verkleinern; Möbel bleiben im Originalmaß.
+# Nur Wurzelobjekte verändern, damit Kinder nicht doppelt skaliert werden.
+MUSEUM_SIZE_FACTOR = 0.90
+for obj in S.objects:
+    if obj.parent is not None or obj.type == 'CAMERA' or obj.name == 'Kamera Orbit':
+        continue
+    obj.location *= MUSEUM_SIZE_FACTOR
+    if bcol not in obj.users_collection:
+        obj.scale *= MUSEUM_SIZE_FACTOR
+    else:
+        # Möbel einschließlich der Bank-Kindobjekte einmalig um 10 % vergrößern.
+        obj.scale *= 1.10
+bpy.context.view_layer.update()
+
+# --- Außenwelt: Pine Ridge, ohne fremde Kamera oder Beleuchtung ---------------------------
+garden_col = D.collections.new("Aussengarten")
+S.collection.children.link(garden_col)
+ridge_library = os.path.join(PROJECT_DIR, 'assets', 'library', 'pine_ridge', 'pine_ridge_asset.blend')
+with D.libraries.load(ridge_library, link=False) as (source, ridge):
+    ridge.collections = ['Pine Ridge Museum Exterior']
+ridge_template = ridge.collections[0]
+from mathutils.bvhtree import BVHTree
+ridge_terrain = next(obj for obj in ridge_template.objects if obj.name == 'Pine Ridge Plane')
+root_points = {}
+ground_material = simple_material('Aussenwelt Waldboden', (.12, .18, .055, 1), .95)
+for side in (-1, 1):
+    transform = Matrix.Translation((side * 47, 0, -2.7))
+    if side < 0:
+        transform @= Matrix.Rotation(math.pi, 4, 'Z')
+    terrain_matrix = transform @ ridge_terrain.matrix_basis
+    terrain_bvh = BVHTree.FromPolygons(
+        [terrain_matrix @ v.co for v in ridge_terrain.data.vertices],
+        [tuple(p.vertices) for p in ridge_terrain.data.polygons])
+    ground = add_box(f'Aussenwelt Waldboden {side}', (side * 95, 0, -2.85),
+                     (160, 240, .30), ground_material, 0)
+    link(ground, garden_col)
+    for template in ridge_template.objects:
+        obj = template.copy()
+        obj.name = f"Aussenwelt Pine Ridge {side} {template.name}"
+        garden_col.objects.link(obj)
+        obj.matrix_basis = transform @ template.matrix_basis
+        # Die zusätzlichen Randbäume der Quellszene stehen teils außerhalb des Hangs.
+        # Baumwurzel aus den tiefsten Meshpunkten bestimmen und aufs Gelände setzen.
+        if 'TREE' in template.name:
+            key = template.data.as_pointer()
+            if key not in root_points:
+                low = min(v.co.z for v in template.data.vertices)
+                roots = [v.co for v in template.data.vertices if v.co.z < low + .025]
+                root_points[key] = sum(roots, Vector()) / len(roots)
+            root = obj.matrix_basis @ root_points[key]
+            hit, _, _, _ = terrain_bvh.ray_cast(Vector((root.x, root.y, 100)), Vector((0, 0, -1)), 200)
+            ground_z = hit.z if hit is not None else -2.7
+            obj.location.z += ground_z - root.z - .04
+        obj.hide_render = False
+        obj.hide_viewport = False
+for template in list(ridge_template.objects):
+    D.objects.remove(template, do_unlink=True)
+D.collections.remove(ridge_template)
 
 
 

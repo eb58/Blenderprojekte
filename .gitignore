@@ -10,3 +10,5 @@ Modelle/
 blenderkit_data/
 __pycache__/
 *.py[cod]
+assets/library/blendkit_bench/*.blend
+assets/library/**/textures/
