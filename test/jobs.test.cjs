@@ -240,3 +240,40 @@ test('Die Arkaden haben gestufte Steinbögen mit Schlussstein statt runder Röhr
         assert.ok(scene.includes(part), part);
     }
 });
+
+test('Fensterrahmen sind aus hellem, nicht metallischem Holz', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const match = /b\.inputs\["Base Color"\]\.default_value = \(([\d.]+), ([\d.]+), ([\d.]+), 1\); b\.inputs\["Metallic"\]\.default_value = ([\d.]+)/.exec(scene);
+    assert.ok(match, 'Fensterrahmen-Material nicht gefunden');
+    const [red, green, blue, metallic] = match.slice(1).map(Number);
+    assert.ok(Math.max(red, green, blue) >= 0.5, 'Holz soll hell sein');
+    assert.equal(metallic, 0);
+});
+
+test('Die Seitenwände haben ein profiliertes Kranzgesims statt eines Kantholzes', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(!/add_box\("Gesims (links|rechts)"/.test(scene), 'Gesims darf kein einfacher Quader sein');
+    assert.match(scene, /add_cornice\("Gesims links"/);
+    assert.match(scene, /add_cornice\("Gesims rechts"/);
+});
+
+test('Das Abschlussgesims der Arkadenwand ist ein Kranzgesims', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(!scene.includes('add_box("Arkadengalerie Abschlussgesims"'));
+    assert.match(scene, /add_cornice\("Arkadengalerie Abschlussgesims"/);
+});
+
+test('Die Arkadenwand hat Quadermauerwerk, kannelierte Pilaster und ein Gurtgesims', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    for (const part of ['ashlar_material(', 'ShaderNodeTexBrick', 'add_pilaster(f"Pilaster {index}"', 'Arkadengalerie Gurtgesims']) {
+        assert.ok(scene.includes(part), part);
+    }
+    // Der Rückfall der Grundfarbe sorgt dafür, dass die 3D-Vorschau die Wand nicht weiß zeigt.
+    assert.match(scene, /bsdf\.inputs\["Base Color"\]\.default_value = light/);
+});
+
+test('Der Viewer ersetzt das Material der Arkadenwand durch einen eigenen Stein', () => {
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    assert.ok(viewer.includes('arkaden kalkstein'));
+    assert.ok(viewer.includes('Three.js Arkadenstein'));
+});

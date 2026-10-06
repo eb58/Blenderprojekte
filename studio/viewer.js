@@ -255,6 +255,12 @@ const improveMaterials = (root, imageTextures) => {
         roughness: 0.72, metalness: 0, envMapIntensity: 0.28
     });
     limestone.name = 'Three.js Kalkstein';
+    // Arkadenwand: Blender zeigt sie als Quadermauerwerk, der glTF-Export kennt das Fugenmuster nicht.
+    const arcadeStone = new THREE.MeshStandardMaterial({
+        map: stoneTexture([172, 160, 138], 12), color: 0xffffff,
+        roughness: 0.8, metalness: 0, envMapIntensity: 0.25
+    });
+    arcadeStone.name = 'Three.js Arkadenstein';
     const floor = new THREE.MeshStandardMaterial({
         map: stoneTexture([82, 64, 48], 22), color: 0x806b55,
         roughness: 0.36, metalness: 0, envMapIntensity: 0.5
@@ -339,6 +345,9 @@ const improveMaterials = (root, imageTextures) => {
         } else if (/kassettendecke|fensterbank eichenholz/.test(identity)) {
             object.material = ceilingWood;
             object.castShadow = /fensterbank/.test(identity);
+            object.receiveShadow = true;
+        } else if (/arkaden kalkstein/.test(identity)) {
+            object.material = arcadeStone;
             object.receiveShadow = true;
         } else if (/sockelschild/.test(identity)) {
             // Tafeln und Messingschrift behalten ihre Blender-Materialien.
