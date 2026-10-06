@@ -1018,12 +1018,13 @@ for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
 # --- Die fünf Platonischen Körper als mathematische Exponate -------------------------------
 scol = D.collections.new("Platonische Koerper"); S.collection.children.link(scol)
 platonic_bronze = simple_material("Platonische Koerper Bronze", (.24, .075, .022, 1), .34, .68)
+sierpinski_bronze = simple_material("Sierpinski Bronze", (.40, .085, .018, 1), .26, .78)
 golden = (1 + math.sqrt(5)) / 2
 inverse_golden = 1 / golden
 platonic_vertices = (
     ("Tetraeder", ((1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1))),
     ("Wuerfel", tuple((x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))),
-    ("Oktaeder", ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1))),
+    ("Sierpinski-Pyramide", None),
     ("Dodekaeder", tuple(
         [(x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)] +
         [(0, y * inverse_golden, z * golden) for y in (-1, 1) for z in (-1, 1)] +
@@ -1039,15 +1040,55 @@ platonic_vertices = (
 def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
     mesh = D.meshes.new(name + " Mesh")
     bm = bmesh.new()
-    solid_vertices = [bm.verts.new(vertex) for vertex in vertices]
-    bmesh.ops.convex_hull(bm, input=solid_vertices, use_existing_faces=False)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    if name == "Sierpinski-Pyramide":
+        # Aufrechte reguläre Pyramide: eine Spitze oben, drei Ecken in einer
+        # waagerechten Grundebene. Frontal entsteht die klare Dreiecksform.
+        corners = tuple(Vector(vertex) for vertex in (
+            (0, 0, 1),
+            (0, -math.sqrt(8 / 9), -1 / 3),
+            (-math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3),
+            (math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3)))
+        edges = set()
+
+        def collect_edges(center, scale, level):
+            if level:
+                for corner in corners:
+                    collect_edges(center + corner * scale / 2, scale / 2, level - 1)
+                return
+            points = [center + corner * scale for corner in corners]
+            for first in range(4):
+                for second in range(first + 1, 4):
+                    a = tuple(round(value, 6) for value in points[first])
+                    b = tuple(round(value, 6) for value in points[second])
+                    edges.add(tuple(sorted((a, b))))
+
+        collect_edges(Vector(), 1.0, 4)
+        for start_values, end_values in edges:
+            start, end = Vector(start_values), Vector(end_values)
+            direction = end - start
+            transform = direction.to_track_quat('Z', 'Y').to_matrix().to_4x4()
+            transform.translation = (start + end) / 2
+            bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=8,
+                                  radius1=.018, radius2=.018, depth=direction.length,
+                                  matrix=transform)
+    else:
+        solid_vertices = [bm.verts.new(vertex) for vertex in vertices]
+        bmesh.ops.convex_hull(bm, input=solid_vertices, use_existing_faces=False)
+        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(mesh); bm.free()
     solid = D.objects.new(name, mesh); scol.objects.link(solid)
-    solid.dimensions = (1.75, 1.75, 1.75)
-    solid.location = (x, y, pedestal_height + .26 + .76)
-    solid.rotation_euler = (math.radians(12 + index * 4), math.radians(18), math.radians(index * 17 - 28))
-    mesh.materials.append(platonic_bronze)
+    if name == "Sierpinski-Pyramide":
+        C.view_layer.update()
+        uniform_scale = 3.25 / max(solid.dimensions)
+        solid.scale = (uniform_scale,) * 3
+        C.view_layer.update()
+        solid.location = (x, y, pedestal_height + .26 + solid.dimensions.z / 2 - .01)
+        solid.rotation_euler = (0, 0, 0)
+    else:
+        solid.dimensions = (1.75, 1.75, 1.75)
+        solid.location = (x, y, pedestal_height + 1.02)
+        solid.rotation_euler = (math.radians(12 + index * 4), math.radians(18), math.radians(index * 17 - 28))
+    mesh.materials.append(sierpinski_bronze if name == "Sierpinski-Pyramide" else platonic_bronze)
 
     pedestal_base = box(f"Koerpersockel Basis {index}", (x, y, .12), (1.62, 1.48, .24), scol)
     pedestal_base.data.materials.append(plinth_stone)
@@ -1059,11 +1100,26 @@ def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
     cap.data.materials.append(plinth_stone)
 
     light_data = D.lights.new(f"Koerperlicht {index}", "SPOT")
-    light_data.energy, light_data.spot_size = 780, math.radians(34)
+    light_data.energy = 1100 if name == "Sierpinski-Pyramide" else 780
+    light_data.spot_size = math.radians(28 if name == "Sierpinski-Pyramide" else 34)
     light_data.spot_blend, light_data.color, light_data.shadow_soft_size = .65, (1.0, .78, .52), .35
     light = D.objects.new(f"Koerperlicht {index}", light_data); scol.objects.link(light)
     light.location = (x, y - 3.8, 7.8)
     light.rotation_euler = (Vector((x, y, 2.2)) - light.location).to_track_quat('-Z', 'Y').to_euler()
+
+    if name == "Sierpinski-Pyramide":
+        target = Vector((x, y, solid.location.z + .25))
+        for suffix, location, energy, color, angle in (
+                ("Front", (x - 1.45, y - 2.45, 3.75), 440, (1.0, .70, .42), 25),
+                ("Kante", (x + 1.25, y + .75, 4.35), 560, (.58, .72, 1.0), 22)):
+            fill_data = D.lights.new(f"Sierpinski {suffix}", "SPOT")
+            fill_data.energy, fill_data.color = energy, color
+            fill_data.spot_size, fill_data.spot_blend = math.radians(angle), .62
+            fill_data.shadow_soft_size = .18
+            fill = D.objects.new(f"Sierpinski {suffix}", fill_data)
+            scol.objects.link(fill)
+            fill.location = location
+            fill.rotation_euler = (target - fill.location).to_track_quat('-Z', 'Y').to_euler()
 
 
 for index, ((name, vertices), x) in enumerate(zip(platonic_vertices, NICHE_XS), 1):
