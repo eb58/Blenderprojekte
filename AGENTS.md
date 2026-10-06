@@ -15,6 +15,7 @@ Museum Studio ist eine lokale Windows-Desktop-Anwendung. Electron steuert Blende
 - `studio/preload.cjs`: schmale, ausdrücklich freigegebene IPC-Schnittstelle.
 - `studio/jobs.cjs`: Validierung sowie Lebenszyklus der Blender- und FFmpeg-Aufträge.
 - `studio/index.html` und `studio/viewer.js`: Oberfläche und Three.js-Vorschau.
+- `test/`: Tests (`*.test.cjs`, `node --test`); neue Tests gehören dorthin, nicht nach `studio/`.
 - `studio/blender_worker.py`: langlebiger Blender-Worker für schnelle Vorschaubilder.
 - `museum/scene.py`: Aufbau und Rendering der Blender-Szene.
 - `tools/assets/`: aktive Werkzeuge zur Asset-Aufbereitung; `tools/archive/` ist nur Archiv.

@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {createStudio, validate, frameCount, DEFAULTS} = require('./jobs.cjs');
+const {createStudio, validate, frameCount, DEFAULTS} = require('../studio/jobs.cjs');
 
 test('validation and Python-compatible frame counts', () => {
     assert.equal(validate({...DEFAULTS, DURATION: '5,1'}).DURATION, 5.1);

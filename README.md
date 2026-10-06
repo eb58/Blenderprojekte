@@ -185,6 +185,7 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine lei
 ## Projektdateien
 
 - `package.json` enthält den Startbefehl für die Electron-App und den Testbefehl.
+- `test/` enthält die Tests (`*.test.cjs`); `npm test` führt alle Dateien dort aus.
 - `studio/launch.cjs` startet Electron mit einer bereinigten Umgebung.
 - `studio/jobs.cjs` validiert Einstellungen und verwaltet Blender-/FFmpeg-Aufträge direkt im Hauptprozess, ohne Netzwerkdienst.
 - `studio/preload.cjs` stellt ausschließlich freigegebene IPC-Funktionen für die Oberfläche bereit.
