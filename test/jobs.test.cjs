@@ -208,3 +208,12 @@ test('Viewer bietet Tastatursteuerung, Rundgang und Drehen der Bildfolge', () =>
     assert.match(viewer, /if \(!walk\.active\) controls\.update\(\)/);
     assert.ok(page.includes('id="viewerWalk"'));
 });
+
+test('Content-Security-Policy erlaubt blob: für eingebettete GLB-Texturen', () => {
+    // Der GLTF-Lader holt eingebettete Texturen per fetch auf blob:-Adressen; ohne blob: in connect-src bleiben sie weiß.
+    const main = fs.readFileSync(path.join(__dirname, '..', 'studio', 'electron.cjs'), 'utf8');
+    const connect = /connect-src ([^;]*);/.exec(main);
+    assert.ok(connect, 'connect-src fehlt');
+    assert.match(connect[1], /\bblob:/);
+    assert.ok(!/\*/.test(connect[1]), 'connect-src darf nicht offen sein');
+});

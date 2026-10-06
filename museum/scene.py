@@ -1000,6 +1000,8 @@ exponate = ("Costa", "Henneberg", "Sierpinski-Pyramide", "Cobra", "Double Trefoi
 # Granitflächen aus dem Hauptaufbau ziehen in ihre Nische um.
 granit_exponate = {"Costa": costa_skulptur, "Henneberg": henneberg, "Cobra": cobra,
                    "Double Trefoil": double_trefoil}
+# Costa-Fläche aufgerichtet: Man blickt frontal in die Öffnung des oberen Endes und durch den Tunnel.
+NISCHENDREHUNG = {"Costa": (math.radians(82), 0, math.radians(-12))}
 
 
 # --- Beschriftungen: kleine Kupferplaketten mit dunkler Schrift, wie im Museum ---------------
@@ -1064,8 +1066,11 @@ def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
         uniform_scale = 3.0 / max(solid.dimensions)
         solid.scale = (uniform_scale,) * 3
         C.view_layer.update()
-        solid.location = (x, y, pedestal_height + .26 - min(v[2] for v in solid.bound_box) * uniform_scale + .02)
-        solid.rotation_euler = (0, 0, 0)
+        solid.rotation_euler = NISCHENDREHUNG.get(name, (0, 0, 0))
+        solid.location = (x, y, 0)
+        C.view_layer.update()
+        lowest = min((solid.matrix_world @ Vector(corner)).z for corner in solid.bound_box)
+        solid.location.z = pedestal_height + .26 + .02 - lowest
     else:
         C.view_layer.update()
         uniform_scale = 3.25 / max(solid.dimensions)

@@ -327,7 +327,9 @@ const improveMaterials = (root, imageTextures) => {
                 // Holz soll nicht wie Metall die helle Umgebung spiegeln und weiß wirken.
                 material.metalness = Math.min(material.metalness ?? 0, 0.1);
                 material.roughness = Math.max(material.roughness ?? 1, 0.55);
-                material.envMapIntensity = 0.45;
+                // Das dunkle Mahagoni der Textur wirkt in den schwach beleuchteten Ecken fast schwarz: aufhellen.
+                material.color.setScalar(2.4);
+                material.envMapIntensity = 1.1;
             }
             object.castShadow = true;
             object.receiveShadow = true;
@@ -381,6 +383,7 @@ const walk = {active: false, yaw: 0, pitch: 0};
 const walkButton = document.getElementById('viewerWalk');
 // Begehbarer Bereich der Halle; die Sockel von Kusner und S41 sind als Rechtecke (x0, x1, z0, z1) gesperrt.
 const WALK_LIMIT = {x: 13.6, z: 14.0};
+const WALK_PITCH = 0.8; // höchstens etwa 46° nach oben oder unten; steiler wirken Decke und Boden stark verzerrt
 const WALK_BLOCKS = [[-6.3, -1.6, -1.7, 1.7], [1.6, 6.3, -1.7, 1.7]];
 const MOVE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
 const blocked = (x, z) => WALK_BLOCKS.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
@@ -422,7 +425,8 @@ const tick = delta => {
         camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
         return;
     }
-    const turn = down('ArrowRight') - down('ArrowLeft');
+    // → wirkt wie Ziehen mit der Maus nach rechts: Das Museum dreht sich nach rechts, die Kamera wandert nach links.
+    const turn = down('ArrowLeft') - down('ArrowRight');
     const zoom = down('ArrowDown') - down('ArrowUp');
     if (!turn && !zoom) return;
     const offset = camera.position.clone().sub(controls.target);
@@ -478,7 +482,7 @@ globalThis.addEventListener('keydown', event => {
     if (globalThis.museumViewMode === 'render') {
         const info = scrubInfo();
         if (!info || !['ArrowLeft', 'ArrowRight'].includes(event.code)) return;
-        scrub.offset += (event.code === 'ArrowRight' ? 1 : -1) * info.degrees / (info.total - 1);
+        scrub.offset += (event.code === 'ArrowRight' ? -1 : 1) * info.degrees / (info.total - 1);
         showScrubFrame();
         event.preventDefault();
         return;
@@ -529,7 +533,7 @@ canvas.addEventListener('pointerdown', event => {
 canvas.addEventListener('pointermove', event => {
     if (!lookDrag) return;
     walk.yaw -= (event.clientX - lookDrag.x) * 0.004;
-    walk.pitch = THREE.MathUtils.clamp(walk.pitch - (event.clientY - lookDrag.y) * 0.004, -1.2, 1.2);
+    walk.pitch = THREE.MathUtils.clamp(walk.pitch - (event.clientY - lookDrag.y) * 0.004, -WALK_PITCH, WALK_PITCH);
     lookDrag = {x: event.clientX, y: event.clientY};
 });
 canvas.addEventListener('pointerup', event => {

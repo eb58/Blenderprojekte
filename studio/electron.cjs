@@ -65,7 +65,7 @@ const serveMuseumFile = async request => {
         'Content-Security-Policy',
         `default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; ` +
         `style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; ` +
-        `connect-src 'self' https://cdn.jsdelivr.net; media-src 'self' blob:; ` +
+        `connect-src 'self' blob: https://cdn.jsdelivr.net; media-src 'self' blob:; ` +
         `object-src 'none'; base-uri 'none'; frame-ancestors 'none'`
     );
     if (url.pathname === '/viewer.js') headers.set('Content-Type', 'text/javascript');
