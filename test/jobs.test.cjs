@@ -225,3 +225,18 @@ test('Der Rundgang ist der Standard, die Übersicht wird per Knopf gewählt', ()
     assert.match(viewer, /on \? 'Übersicht' : 'Rundgang'/);
     assert.ok(!viewer.includes('zoom * 0.8 * delta'), 'Pfeiltasten dürfen die Übersicht nicht mehr drehen');
 });
+
+test('Die Arkadenwand hat kein durchgehendes Sockelband mehr', () => {
+    // Es überlappte die Pfeilerbasen in derselben Ebene und flimmerte in Echtzeitansichten.
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(!scene.includes('Arkadengalerie Sockelband'));
+    assert.ok(scene.includes('Arkadengalerie Pfeilerbasis'));
+});
+
+test('Die Arkaden haben gestufte Steinbögen mit Schlussstein statt runder Röhren', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(!scene.includes('_Archivolte", "CURVE"'), 'Archivolte darf keine runde Kurve (Röhre) mehr sein');
+    for (const part of ['_Archivolte_Innen', '_Archivolte_Aussen', '_Schlussstein', '_Kaempfer_']) {
+        assert.ok(scene.includes(part), part);
+    }
+});

@@ -220,8 +220,58 @@ def arch_profile(radius, spring_z, steps=32):
     return left + arc + [(radius, 0.0)]
 
 
+def arch_band(name, x, y_front, z_spring, r_in, r_out, protrusion, material, steps=48):
+    """Halbkreisförmiges Steinband (Bogenstufe), das um `protrusion` aus der Wand vor y_front ragt."""
+    import bmesh
+    y_a, y_b = y_front - protrusion, y_front + 0.02
+    vertices = []
+    for i in range(steps + 1):
+        angle = math.pi * i / steps
+        cos, sin = math.cos(angle), math.sin(angle)
+        for y in (y_a, y_b):
+            vertices.append((x + r_in * cos, y, z_spring + r_in * sin))
+            vertices.append((x + r_out * cos, y, z_spring + r_out * sin))
+    faces = []
+    for i in range(steps):
+        p, q = 4 * i, 4 * (i + 1)  # je Winkel: innen-vorn, außen-vorn, innen-hinten, außen-hinten
+        faces += [(p, p + 1, q + 1, q), (p + 2, q + 2, q + 3, p + 3),
+                  (p, q, q + 2, p + 2), (p + 1, p + 3, q + 3, q + 1)]
+    faces += [(0, 2, 3, 1), (4 * steps, 4 * steps + 1, 4 * steps + 3, 4 * steps + 2)]
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    for polygon in mesh.polygons:
+        polygon.use_smooth = False
+    bevel = obj.modifiers.new("Weiche Steinkanten", "BEVEL")
+    bevel.width, bevel.segments = 0.012, 2
+    return obj
+
+
+def add_spandrel(name, x, y_front, z_spring, radius, z_top, half_width, material, steps=48):
+    """Füllt die Zwickel über dem Bogen: Mauerfläche bündig zur Pfeilerfront, vom Bogen bis zum Wandband."""
+    points = [(half_width, z_spring), (half_width, z_top), (-half_width, z_top), (-half_width, z_spring),
+              (-radius, z_spring)]
+    points += [(radius * math.cos(math.pi - math.pi * i / steps), z_spring + radius * math.sin(math.pi - math.pi * i / steps))
+               for i in range(1, steps + 1)]
+    mesh = bpy.data.meshes.new(name + "_Mesh")
+    mesh.from_pydata([(x + px, y_front, pz) for px, pz in points], [], [tuple(range(len(points)))])
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(obj)
+    obj.data.materials.append(material)
+    return obj
+
+
 def add_arch_recess(name, x, y_front, base_z, radius, spring_height, depth,
-                    wall_material, recess_material):
+                    wall_material, recess_material, reveal_material, spandrel_top, spandrel_half_width):
     """Tiefe, wirklich räumliche Arkade: Rückfläche plus Laibung bis zur Front."""
     profile = arch_profile(radius, spring_height)
     y_back = y_front + depth
@@ -242,26 +292,30 @@ def add_arch_recess(name, x, y_front, base_z, radius, spring_height, depth,
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
+    # Rückwand dunkel (Material 0), seitliche Laibung und Bogenleibung aus Stein (Material 1).
     obj.data.materials.append(recess_material)
+    obj.data.materials.append(reveal_material)
+    for polygon in mesh.polygons[1:]:
+        polygon.material_index = 1
+    # Zwischen Laibung und Pfeiler bleibt sonst ein Spalt: mit Mauerwerk füllen, damit die Laibung nicht frei steht.
+    for side, sign in (("L", -1), ("R", 1)):
+        add_box(f"{name}_Laibungsfuellung_{side}", (x + sign * (radius + 0.205), y_front + depth / 2,
+                                                    base_z + spring_height / 2),
+                (0.39, depth, spring_height), reveal_material)
 
-    # Sichtbarer steinerner Archivoltenring an der Front.
-    outer = radius + 0.28
-    curve = bpy.data.curves.new(name + "_Archivolte", "CURVE")
-    curve.dimensions = "3D"
-    curve.bevel_depth = 0.14
-    curve.bevel_resolution = 4
-    spline = curve.splines.new("POLY")
-    points = 48
-    spline.points.add(points)
-    for i in range(points + 1):
-        angle = math.pi - math.pi * i / points
-        spline.points[i].co = (
-            x + outer * math.cos(angle), y_front - 0.01,
-            base_z + spring_height + outer * math.sin(angle), 1.0
-        )
-    ring = bpy.data.objects.new(name + "_Archivolte", curve)
-    bpy.context.collection.objects.link(ring)
-    ring.data.materials.append(wall_material)
+    # Zwickel: Die Füllung liegt hinter der gestuften Archivolte (Radius mittig im äußeren Band).
+    add_spandrel(name + "_Zwickel", x, y_front, base_z + spring_height, radius + 0.30, spandrel_top,
+                 spandrel_half_width, reveal_material)
+
+    # Gestufte steinerne Archivolte, Schlussstein und Kämpferblöcke an der Front.
+    z_spring = base_z + spring_height
+    arch_band(name + "_Archivolte_Innen", x, y_front, z_spring, radius, radius + 0.16, 0.07, wall_material)
+    arch_band(name + "_Archivolte_Aussen", x, y_front, z_spring, radius + 0.16, radius + 0.40, 0.14, wall_material)
+    add_box(name + "_Schlussstein", (x, y_front - 0.10, z_spring + radius + 0.21), (0.36, 0.24, 0.46),
+            wall_material, 0.02)
+    for side, sign in (("L", -1), ("R", 1)):
+        add_box(f"{name}_Kaempfer_{side}", (x + sign * (radius + 0.20), y_front - 0.09, z_spring - 0.02),
+                (0.52, 0.22, 0.20), wall_material, 0.02)
     return obj
 
 
@@ -532,14 +586,15 @@ sculpture_center_z = max(
 # HÖHERE MUSEUMSHALLE UND TIEFE ARKADEN
 # ============================================================
 
-add_box("Museumsboden", (0, 0, -0.13), (36, 38, 0.26), floor_material, 0.015)
+# Der Boden reicht bis in die Nischen hinein (bis zur Rückwand der Arkaden), sonst schimmert dort der Hintergrund durch.
+add_box("Museumsboden", (0, 0.55, -0.13), (36, 39.1, 0.26), floor_material, 0.015)
 
 # Geschlossene Galeriewand mit vier tiefen Rundbogennischen.
 arcade_front_y = 17.0
 arcade_depth = 2.8
 hall_height = 13.2
 arcade_stone = simple_material("Arkaden Kalkstein", (0.38, 0.32, 0.24, 1), 0.68)
-niche_material = simple_material("Tiefe Arkadennischen", (0.095, 0.115, 0.105, 1), 0.88)
+niche_material = simple_material("Tiefe Arkadennischen", (0.17, 0.205, 0.185, 1), 0.86)
 
 # Rückwand, oberes Wandband und breite gemeinsame Pfeiler bilden eine ruhige Einheit.
 # 2 cm Abstand zur Rückfläche der Nischen: Sonst liegen beide in einer Ebene und flimmern (Z-Fighting) in Echtzeitansichten.
@@ -548,16 +603,15 @@ add_box("Arkadengalerie Rueckwand", (0, arcade_front_y + arcade_depth + 0.18, ha
 add_box("Arkadengalerie Wandband", (0, arcade_front_y + arcade_depth / 2, 10.75),
         (34, arcade_depth, 4.9), arcade_stone, 0.025)
 NICHE_XS = (-11.0, -5.5, 0.0, 5.5, 11.0)
+PIER_WIDTH, PIER_HEIGHT = 1.05, 8.3  # Pfeiler zwischen den Nischen; darüber beginnt das Wandband
 for index, x in enumerate((-13.75, -8.25, -2.75, 2.75, 8.25, 13.75), 1):
-    add_box(f"Arkadengalerie Pfeiler {index}", (x, arcade_front_y + arcade_depth / 2, 4.15),
-            (1.05, arcade_depth, 8.3), arcade_stone, 0.035)
-    add_box(f"Arkadengalerie Pfeilerbasis {index}", (x, arcade_front_y - 0.04, 0.24),
-            (1.32, 0.42, 0.48), trim_material, 0.025)
+    add_box(f"Arkadengalerie Pfeiler {index}", (x, arcade_front_y + arcade_depth / 2, PIER_HEIGHT / 2),
+            (PIER_WIDTH, arcade_depth, PIER_HEIGHT), arcade_stone, 0.035)
+    add_box(f"Arkadengalerie Pfeilerbasis {index}", (x, arcade_front_y - 0.01, 0.20),
+            (1.90, 0.22, 0.40), trim_material, 0.02)
 for index, x in enumerate((-15.75, 15.75), 1):
-    add_box(f"Arkadengalerie Randfeld {index}", (x, arcade_front_y + arcade_depth / 2, 4.15),
-            (2.5, arcade_depth, 8.3), arcade_stone, 0.025)
-add_box("Arkadengalerie Sockelband", (0, arcade_front_y - 0.06, 0.32),
-        (34, 0.38, 0.64), trim_material, 0.025)
+    add_box(f"Arkadengalerie Randfeld {index}", (x, arcade_front_y + arcade_depth / 2, PIER_HEIGHT / 2),
+            (2.5, arcade_depth, PIER_HEIGHT), arcade_stone, 0.025)
 add_box("Arkadengalerie Abschlussgesims", (0, arcade_front_y - 0.08, 12.55),
         (34, 0.42, 0.34), trim_material, 0.035)
 
@@ -565,8 +619,13 @@ for index, x in enumerate(NICHE_XS, 1):
     add_arch_recess(
         f"Tiefe Arkade {index}", x, arcade_front_y, 0.0,
         radius=1.85, spring_height=6.0, depth=arcade_depth,
-        wall_material=trim_material, recess_material=niche_material
+        wall_material=trim_material, recess_material=niche_material, reveal_material=arcade_stone,
+        spandrel_top=PIER_HEIGHT, spandrel_half_width=5.5 / 2 - PIER_WIDTH / 2
     )
+    # Weiches Licht oben in der Nische, das die Rückwand und die Laibung aufhellt; selbst unsichtbar für die Kamera.
+    wall_wash = add_area_light(f"Nischenlicht {index}", (x, arcade_front_y + 0.6, 7.2), 260, 1.8,
+                               (1.0, 0.85, 0.68), (x, arcade_front_y + arcade_depth - 0.2, 3.0))
+    wall_wash.visible_camera = False
 
 # Ruhige Seitenwände mit tiefen Fensternischen statt freistehender Kolonnaden.
 add_box("Gesims links", (-15.67, 2, 11.15), (0.30, 35, 0.30), trim_material, 0.035)
