@@ -120,7 +120,8 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         settings.SCULPTURE_SCALE,
         settings.THICKNESS,
         fs.statSync(path.join(ROOT, 'museum', 'scene.py')).mtimeMs,
-        fs.statSync(path.join(__dirname, 'blender_worker.py')).mtimeMs
+        fs.statSync(path.join(__dirname, 'blender_worker.py')).mtimeMs,
+        fs.statSync(path.join(ROOT, 'assets', 'museum_park_panorama.png')).mtimeMs
     ]);
     const launch = (command, args, logFile, env, cwd) => {
         const fd = fs.openSync(logFile, 'w');
@@ -162,7 +163,8 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         if (closed) throw Error('Studio wurde beendet.');
         fs.mkdirSync(workDir, {recursive: true});
         for (const name of files(workDir)) {
-            if (/^result_.*\.json$/.test(name) || ['command.json', 'ready.json', 'museum_preview.glb'].includes(name)) {
+            if (/^result_.*\.json$/.test(name) || /^command_.*\.tmp$/.test(name) ||
+                ['command.json', 'ready.json', 'museum_preview.glb'].includes(name)) {
                 fs.unlinkSync(path.join(workDir, name));
             }
         }
@@ -193,12 +195,26 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             state.preparing = false;
         }
     };
+    const writeWorkerCommand = async command => {
+        const target = path.join(workDir, 'command.json');
+        const temporary = path.join(workDir, `command_${command.id}.tmp`);
+        writeJSON(temporary, command);
+        for (let attempt = 0; attempt < 40; attempt++) {
+            try {
+                if (exists(target)) fs.unlinkSync(target);
+                fs.renameSync(temporary, target);
+                return;
+            } catch (error) {
+                if (!['EACCES', 'EBUSY', 'EPERM'].includes(error.code) || attempt === 39) throw error;
+                await new Promise(resolve => setTimeout(resolve, 25));
+            }
+        }
+    };
     const prepareWorkerModel = async () => {
         if (exists(model)) return;
         const id = crypto.randomUUID().replaceAll('-', '');
         const resultFile = path.join(workDir, `result_${id}.json`);
-        writeJSON(path.join(workDir, 'command.json.tmp'), {id, type: 'model'});
-        fs.renameSync(path.join(workDir, 'command.json.tmp'), path.join(workDir, 'command.json'));
+        await writeWorkerCommand({id, type: 'model'});
         const deadline = Date.now() + 180000;
         while (Date.now() < deadline && !closed) {
             if (exists(resultFile)) {
@@ -230,8 +246,7 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             for (const key of ['START_ANGLE', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET']) {
                 command[key] = s[key];
             }
-            writeJSON(path.join(workDir, 'command.json.tmp'), command);
-            fs.renameSync(path.join(workDir, 'command.json.tmp'), path.join(workDir, 'command.json'));
+            await writeWorkerCommand(command);
             Object.assign(state, {
                 process: null,
                 job: {result: path.join(workDir, `result_${id}.json`), output},

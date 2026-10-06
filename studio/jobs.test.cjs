@@ -55,6 +55,9 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.ok(fs.existsSync(jobs.mediaPath('preview')));
         await jobs.prepareModel(settings);
         assert.ok(fs.existsSync(jobs.mediaPath('model')));
+        const model = fs.readFileSync(jobs.mediaPath('model'));
+        assert.ok(model.includes(Buffer.from('Aussenwelt Parkpanorama')));
+        assert.ok(model.includes(Buffer.from('Mandelbrot Wandteppich')));
 
         const frames = path.join(output, 'frames');
         fs.mkdirSync(frames);

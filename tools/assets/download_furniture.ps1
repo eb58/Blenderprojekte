@@ -1,6 +1,6 @@
 $projectRoot = Split-Path (Split-Path $PSScriptRoot)
 $libraryRoot = Join-Path $projectRoot 'assets\library'
-foreach ($assetId in @('painted_wooden_bench', 'modular_street_seating', 'bar_chair_round_01', 'tree_small_02')) {
+foreach ($assetId in @('painted_wooden_bench', 'modular_street_seating', 'bar_chair_round_01')) {
     $assetFolder = Join-Path $libraryRoot $assetId
     New-Item -ItemType Directory -Force -Path $assetFolder | Out-Null
     $files = Invoke-RestMethod "https://api.polyhaven.com/files/$assetId"

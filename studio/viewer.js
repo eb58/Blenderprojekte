@@ -24,12 +24,6 @@ let model;
 let loaded = false;
 let loading = false;
 let currentAngle = 0;
-let loadedSettings = '';
-
-const sceneSettingsKey = () => {
-    return ['BODEN', 'SCULPTURE_SCALE', 'THICKNESS']
-        .map(id => document.getElementById(id).value).join('|');
-};
 
 const setActiveMode = is3d => {
     globalThis.museumViewMode = is3d ? '3d' : 'render';
@@ -300,8 +294,7 @@ const improveMaterials = root => {
                 }
                 if ('roughness' in material) material.roughness = Math.max(material.roughness, 0.42);
             }
-            object.castShadow = /garten baum|pine ridge/.test(identity);
-            object.receiveShadow = /boden|wand|arkade|decke|garten|pine ridge/.test(identity);
+            object.receiveShadow = /boden|wand|arkade|decke|garten/.test(identity);
         }
     });
 };
@@ -372,8 +365,6 @@ const show3d = async () => {
     setActiveMode(true);
     initialize();
     setCameraFromDial();
-    const settingsKey = sceneSettingsKey();
-    if (loaded && settingsKey === loadedSettings) return;
     if (loading) return;
     loading = true;
     errorBox.textContent = '';
@@ -395,7 +386,6 @@ const show3d = async () => {
         improveMaterials(model);
         scene.add(model);
         loaded = true;
-        loadedSettings = settingsKey;
         empty.hidden = true;
     } catch (error) {
         errorBox.textContent = `3D-Vorschau: ${error.message}`;

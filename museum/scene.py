@@ -819,13 +819,13 @@ for name, location, dimensions in (
     skirting = add_box(name, location, dimensions, skirting_material, 0.008)
     link(skirting, skirting_collection)
 
-# --- Himmel: fuer die Kamera hell (Strength 1.9), als Beleuchtung gedaempft (0.7) ---------------
+# --- Himmel: für die Kamera sichtbar, als Beleuchtung zurückhaltend --------------------------
 ensure_world()
 nt = S.world.node_tree; nt.nodes.clear()
 out, bg, sky, lp, mul = (nt.nodes.new(t) for t in ("ShaderNodeOutputWorld", "ShaderNodeBackground", "ShaderNodeTexSky", "ShaderNodeLightPath", "ShaderNodeMath"))
 sky.sky_type = 'MULTIPLE_SCATTERING' if 'MULTIPLE_SCATTERING' in sky.bl_rna.properties['sky_type'].enum_items else 'NISHITA'
 sky.sun_disc, sky.sun_elevation, sky.sun_rotation = False, math.radians(38), math.radians(90)
-mul.operation = 'MULTIPLY_ADD'; mul.inputs[1].default_value = 1.6; mul.inputs[2].default_value = 0.4
+mul.operation = 'MULTIPLY_ADD'; mul.inputs[1].default_value = 0.25; mul.inputs[2].default_value = 0.4
 for a, b_ in ((lp.outputs["Is Camera Ray"], mul.inputs[0]), (sky.outputs[0], bg.inputs["Color"]), (mul.outputs[0], bg.inputs["Strength"]), (bg.outputs[0], out.inputs[0])): nt.links.new(a, b_)
 
 # --- Sonne flach durch die +X-Fenster, alte Flaechenlichter dimmen ---------------------------
@@ -1365,55 +1365,44 @@ for obj in S.objects:
         obj.scale *= 1.10
 bpy.context.view_layer.update()
 
-# --- Außenwelt: Pine Ridge, ohne fremde Kamera oder Beleuchtung ---------------------------
+# --- Außenwelt: ruhiger Museumspark als leichte Panoramakulisse --------------------------
 garden_col = D.collections.new("Aussengarten")
 S.collection.children.link(garden_col)
-ridge_library = os.path.join(PROJECT_DIR, 'assets', 'library', 'pine_ridge', 'pine_ridge_runtime.blend')
-if not os.path.exists(ridge_library):
-    raise RuntimeError(
-        'Reduzierte Pine-Ridge-Bibliothek fehlt. Bitte zuerst '
-        'tools/assets/prepare_pine_ridge_runtime.py mit Blender ausführen.'
-    )
-with D.libraries.load(ridge_library, link=False) as (source, ridge):
-    ridge.collections = ['Pine Ridge Museum Exterior']
-ridge_template = ridge.collections[0]
-from mathutils.bvhtree import BVHTree
-ridge_terrain = next(obj for obj in ridge_template.objects if obj.name == 'Pine Ridge Plane')
-root_points = {}
-ground_material = simple_material('Aussenwelt Waldboden', (.12, .18, .055, 1), .95)
+ground_material = simple_material('Aussenwelt Parkboden', (.16, .25, .065, 1), .92)
 for side in (-1, 1):
-    transform = Matrix.Translation((side * 47, 0, -2.7))
-    if side < 0:
-        transform @= Matrix.Rotation(math.pi, 4, 'Z')
-    terrain_matrix = transform @ ridge_terrain.matrix_basis
-    terrain_bvh = BVHTree.FromPolygons(
-        [terrain_matrix @ v.co for v in ridge_terrain.data.vertices],
-        [tuple(p.vertices) for p in ridge_terrain.data.polygons])
-    ground = add_box(f'Aussenwelt Waldboden {side}', (side * 95, 0, -2.85),
-                     (160, 240, .30), ground_material, 0)
+    ground = add_box(f'Aussenwelt Parkboden {side}', (side * 58, 2, -2.85),
+                     (84, 100, .30), ground_material, 0)
     link(ground, garden_col)
-    for template in ridge_template.objects:
-        obj = template.copy()
-        obj.name = f"Aussenwelt Pine Ridge {side} {template.name}"
-        garden_col.objects.link(obj)
-        obj.matrix_basis = transform @ template.matrix_basis
-        # Die zusätzlichen Randbäume der Quellszene stehen teils außerhalb des Hangs.
-        # Baumwurzel aus den tiefsten Meshpunkten bestimmen und aufs Gelände setzen.
-        if 'TREE' in template.name:
-            key = template.data.as_pointer()
-            if key not in root_points:
-                low = min(v.co.z for v in template.data.vertices)
-                roots = [v.co for v in template.data.vertices if v.co.z < low + .025]
-                root_points[key] = sum(roots, Vector()) / len(roots)
-            root = obj.matrix_basis @ root_points[key]
-            hit, _, _, _ = terrain_bvh.ray_cast(Vector((root.x, root.y, 100)), Vector((0, 0, -1)), 200)
-            ground_z = hit.z if hit is not None else -2.7
-            obj.location.z += ground_z - root.z - .04
-        obj.hide_render = False
-        obj.hide_viewport = False
-for template in list(ridge_template.objects):
-    D.objects.remove(template, do_unlink=True)
-D.collections.remove(ridge_template)
+panorama_path = os.path.join(PROJECT_DIR, 'assets', 'museum_park_panorama.png')
+if not os.path.exists(panorama_path):
+    raise RuntimeError(f'Parkpanorama fehlt: {panorama_path}')
+
+panorama_image = D.images.load(panorama_path, check_existing=True)
+panorama_material = D.materials.new('Aussenwelt Parkpanorama')
+panorama_material.use_nodes = True
+panorama_nodes = panorama_material.node_tree.nodes
+panorama_nodes.clear()
+panorama_output = panorama_nodes.new('ShaderNodeOutputMaterial')
+panorama_emission = panorama_nodes.new('ShaderNodeEmission')
+panorama_texture = panorama_nodes.new('ShaderNodeTexImage')
+panorama_texture.image = panorama_image
+panorama_texture.interpolation = 'Linear'
+panorama_texture.extension = 'EXTEND'
+panorama_emission.inputs['Strength'].default_value = 0.8
+panorama_material.node_tree.links.new(panorama_texture.outputs['Color'], panorama_emission.inputs['Color'])
+panorama_material.node_tree.links.new(panorama_emission.outputs['Emission'], panorama_output.inputs['Surface'])
+
+for side in (-1, 1):
+    bpy.ops.mesh.primitive_plane_add(
+        size=2,
+        location=(side * 32, 2, 6.5),
+        rotation=(math.pi / 2, 0, math.pi / 2),
+    )
+    panorama = bpy.context.object
+    panorama.name = f'Aussenwelt Parkpanorama {side}'
+    panorama.scale = (35, 11.67, 1)
+    panorama.data.materials.append(panorama_material)
+    link(panorama, garden_col)
 
 
 

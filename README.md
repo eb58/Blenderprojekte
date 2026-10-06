@@ -165,9 +165,9 @@ PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation ka
 
 ## Lokale Möbelbibliothek
 
-`assets/models/` enthält zusätzliche Modelle wie die Marmorbüsten. `assets/library/` enthält die Möbel- und Landschaftsbibliotheken. `blenderkit_data/` ist ausschließlich der vom Add-on verwaltete Cache und bleibt getrennt sowie von Git ausgeschlossen.
+`assets/models/` enthält zusätzliche Modelle wie die Marmorbüsten. `assets/library/` enthält die Möbelbibliotheken. `blenderkit_data/` ist ausschließlich der vom Add-on verwaltete Cache und bleibt getrennt sowie von Git ausgeschlossen.
 
-Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und die Waldlandschaft Pine Ridge. Modelle und Alternativen liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
+Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine leichte Panorama-Parkkulisse. Weitere Möbelmodelle liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
 
 ## Projektdateien
 

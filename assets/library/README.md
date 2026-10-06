@@ -1,8 +1,8 @@
 # Möbelbibliothek
 
-## Gartenbäume
+## Gartenkulisse
 
-Aktuell verwendet der Garten [Pine Ridge](pine_ridge/README.md). [Tree Small 02](https://polyhaven.com/a/tree_small_02) von Rico Cilliers (CC0) bleibt als ungenutzte Alternative erhalten. Die Vorbereitungsskripte liegen unter `tools/assets/`; `prepare_tree.py` ist nur für diese Alternative erforderlich.
+Der Garten verwendet `assets/museum_park_panorama.png` als leichte, zusammenhängende Parkkulisse. Dadurch entstehen hinter den Fenstern keine erkennbar wiederholten Einzelbäume.
 
 Diese Sammlung enthält drei CC0-Modelle von Poly Haven mit 1K-Texturen:
 
@@ -25,7 +25,6 @@ Im Projektordner:
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\assets\download_furniture.ps1
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python-exit-code 1 --python .\tools\assets\prepare_furniture_library.py
-& "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" --background --factory-startup --python-exit-code 1 --python .\tools\assets\prepare_pine_ridge.py
 ```
 
 Der Download prüft die von Poly Haven gelieferten MD5-Prüfsummen. Für Three.js müssen ausgewählte Modelle anschließend mit der Museumsszene nach glTF exportiert werden; deren Texturen und UVs sind dafür bereits vorhanden.
