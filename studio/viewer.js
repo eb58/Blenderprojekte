@@ -148,7 +148,7 @@ const stoneTexture = (base, variance, darkSpeckles = false) => {
     return texture;
 };
 
-const improveMaterials = root => {
+const improveMaterials = (root, imageTextures) => {
     const granite = new THREE.MeshStandardMaterial({
         color: 0xffffff, side: THREE.DoubleSide,
         roughness: 0.42, metalness: 0, envMapIntensity: 0.7
@@ -240,7 +240,26 @@ const improveMaterials = root => {
         if (!object.isMesh) return;
         const original = Array.isArray(object.material) ? object.material[0] : object.material;
         const identity = `${object.name} ${original?.name || ''}`.toLowerCase();
-        if (/kusner|s41_7_5|brown granite/.test(identity) && !/sockel/.test(identity)) {
+        if (/aussenwelt parkpanorama/.test(identity)) {
+            const texture = imageTextures.park;
+            object.material = new THREE.MeshBasicMaterial({
+                map: texture,
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+                toneMapped: true
+            });
+            if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        } else if (/mandelbrot wandteppich/.test(identity)) {
+            const texture = imageTextures.mandelbrot;
+            object.material = new THREE.MeshStandardMaterial({
+                map: texture,
+                color: 0xffffff,
+                roughness: 0.68,
+                metalness: 0,
+                side: THREE.DoubleSide
+            });
+            if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        } else if (/kusner|s41_7_5|brown granite/.test(identity) && !/sockel/.test(identity)) {
             object.material = granite;
             object.castShadow = true;
         } else if (/cognac leder/.test(identity)) {
@@ -381,9 +400,18 @@ const show3d = async () => {
                 for (const material of materials) if (material) material.dispose();
             });
         }
-        const gltf = await new GLTFLoader().loadAsync(`museum://studio/model.glb?t=${Date.now()}`);
+        const textureLoader = new THREE.TextureLoader();
+        const [gltf, parkTexture, mandelbrotTexture] = await Promise.all([
+            new GLTFLoader().loadAsync(`museum://studio/model.glb?t=${Date.now()}`),
+            textureLoader.loadAsync(`museum://studio/park.png?t=${Date.now()}`),
+            textureLoader.loadAsync(`museum://studio/mandelbrot.png?t=${Date.now()}`)
+        ]);
+        for (const texture of [parkTexture, mandelbrotTexture]) {
+            texture.colorSpace = THREE.SRGBColorSpace;
+            texture.flipY = false;
+        }
         model = gltf.scene;
-        improveMaterials(model);
+        improveMaterials(model, {park: parkTexture, mandelbrot: mandelbrotTexture});
         scene.add(model);
         loaded = true;
         empty.hidden = true;

@@ -56,8 +56,14 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         await jobs.prepareModel(settings);
         assert.ok(fs.existsSync(jobs.mediaPath('model')));
         const model = fs.readFileSync(jobs.mediaPath('model'));
-        assert.ok(model.includes(Buffer.from('Aussenwelt Parkpanorama')));
-        assert.ok(model.includes(Buffer.from('Mandelbrot Wandteppich')));
+        const jsonLength = model.readUInt32LE(12);
+        const gltf = JSON.parse(model.subarray(20, 20 + jsonLength).toString());
+        const park = gltf.materials.find(material => material.name === 'Aussenwelt Parkpanorama');
+        const tapestry = gltf.materials.find(material => material.name === 'Mandelbrot Wandteppich');
+        assert.ok(park?.emissiveTexture);
+        assert.ok(tapestry?.pbrMetallicRoughness?.baseColorTexture);
+        assert.ok(gltf.images.some(image => image.name === 'museum_park_panorama'));
+        assert.ok(gltf.images.some(image => image.name === 'mandelbrot_tapestry'));
 
         const frames = path.join(output, 'frames');
         fs.mkdirSync(frames);

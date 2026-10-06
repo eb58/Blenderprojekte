@@ -37,9 +37,15 @@ const serveMuseumFile = async request => {
     }
 
     const staticFiles = {'/index.html': 'index.html', '/viewer.js': 'viewer.js'};
+    const imageFiles = {
+        '/park.png': path.join('assets', 'museum_park_panorama.png'),
+        '/mandelbrot.png': path.join('assets', 'mandelbrot_tapestry.png')
+    };
     const media = {'/model.glb': 'model', '/preview': 'preview'};
     const file = Object.hasOwn(staticFiles, url.pathname)
         ? path.join(__dirname, staticFiles[url.pathname])
+        : Object.hasOwn(imageFiles, url.pathname)
+            ? path.join(__dirname, '..', imageFiles[url.pathname])
         : Object.hasOwn(media, url.pathname)
             ? studio.mediaPath(media[url.pathname])
             : null;
@@ -125,8 +131,11 @@ const start = async () => {
     if (!smokeTest) return;
 
     const ready = await window.webContents.executeJavaScript(
-        '(async () => Boolean(globalThis.museumStudio.defaults && ' +
-        `document.getElementById('previewStage') && (await globalThis.museumStudio.status())))()`
+        '(async () => {' +
+        "const images = await Promise.all(['/park.png', '/mandelbrot.png'].map(path => fetch(path)));" +
+        'return Boolean(globalThis.museumStudio.defaults && document.getElementById(\'previewStage\') && ' +
+        '(await globalThis.museumStudio.status()) && images.every(response => response.ok));' +
+        '})()'
     );
     if (!ready) throw Error('IPC/Oberfläche wurde nicht geladen.');
     console.log('ELECTRON_IPC_SMOKE_OK');
