@@ -37,7 +37,11 @@ const serveMuseumFile = async request => {
         return new Response('Not found', {status: 404});
     }
 
-    const staticFiles = {'/index.html': 'index.html', '/viewer.js': 'viewer.js'};
+    const staticFiles = {
+        '/index.html': 'index.html',
+        '/styles.css': 'styles.css',
+        '/viewer.js': 'viewer.js'
+    };
     const imageFiles = {
         '/park.png': path.join('assets', 'museum_park_panorama.png'),
         '/mandelbrot.png': path.join('assets', 'mandelbrot_tapestry.png')
@@ -64,6 +68,7 @@ const serveMuseumFile = async request => {
         `object-src 'none'; base-uri 'none'; frame-ancestors 'none'`
     );
     if (url.pathname === '/viewer.js') headers.set('Content-Type', 'text/javascript');
+    if (url.pathname === '/styles.css') headers.set('Content-Type', 'text/css; charset=utf-8');
     if (url.pathname === '/index.html') headers.set('Content-Type', 'text/html; charset=utf-8');
     return new Response(response.body, {status: response.status, headers});
 };
@@ -133,10 +138,10 @@ const start = async () => {
 
     const ready = await window.webContents.executeJavaScript(
         '(async () => {' +
-        "const images = await Promise.all(['/park.png', '/mandelbrot.png'].map(path => fetch(path)));" +
+        "const assets = await Promise.all(['/styles.css', '/park.png', '/mandelbrot.png'].map(path => fetch(path)));" +
         "globalThis.setViewerAngle(125);" +
         'return Boolean(globalThis.museumStudio.defaults && document.getElementById(\'previewStage\') && ' +
-        '(await globalThis.museumStudio.status()) && images.every(response => response.ok) && ' +
+        '(await globalThis.museumStudio.status()) && assets.every(response => response.ok) && ' +
         '!document.getElementById(\'viewerApply\') && !document.getElementById(\'mp4\') && ' +
         'document.getElementById(\'viewerActions\').hidden && ' +
         'document.getElementById(\'START_ANGLE\').value === \'125\' && ' +

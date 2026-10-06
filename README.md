@@ -43,7 +43,15 @@ Der Startbefehl öffnet Museum Studio als Electron-Desktop-App. Es gibt keinen H
 
 ## Tests
 
-`npm test` prüft Validierung und die serverlose Auftragsverwaltung. Für den vollständigen Test mit Blender und FFmpeg in PowerShell:
+`npm test` prüft Validierung und die serverlose Auftragsverwaltung.
+
+Die schnellen Tests können einmalig als Pre-Commit-Hook aktiviert werden:
+
+```powershell
+npm run hooks:install
+```
+
+Danach verhindert Git einen Commit, wenn `npm test` fehlschlägt. Der langsamere vollständige Test mit Blender und FFmpeg bleibt bewusst eine separate Prüfung:
 
 ```powershell
 $env:MUSEUM_INTEGRATION = '1'
