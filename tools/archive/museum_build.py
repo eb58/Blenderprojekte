@@ -219,7 +219,7 @@ for i, x in enumerate((-9, -3, 3, 9)):
 mat("Tiefe Arkadennischen").node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.5, 0.4, 0.3, 1)  # vorher fast schwarz
 
 # --- Echte Marmorbueste (Poly Haven "Marble Bust 01", CC0) statt der Platzhalter-Figuren -------------
-BUSTE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "Modelle", "marble_bust_01")
+BUSTE = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "assets", "models", "marble_bust_01")
 if os.path.exists(os.path.join(BUSTE, "marble_bust_01.blend")):
     with D.libraries.load(os.path.join(BUSTE, "marble_bust_01.blend"), link=False) as (src, dst): dst.objects = list(src.objects)
     for im in D.images:

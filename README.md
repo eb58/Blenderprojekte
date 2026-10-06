@@ -173,6 +173,8 @@ PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation ka
 
 ## Lokale Möbelbibliothek
 
+`assets/models/` enthält zusätzliche Modelle wie die Marmorbüsten. `assets/library/` enthält die Möbel- und Landschaftsbibliotheken. `blenderkit_data/` ist ausschließlich der vom Add-on verwaltete Cache und bleibt getrennt sowie von Git ausgeschlossen.
+
 Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und die Waldlandschaft Pine Ridge. Modelle und Alternativen liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
 
 ## Projektdateien
@@ -184,7 +186,8 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und die Wald
 - Three.js, OrbitControls und GLTFLoader werden in der festgelegten Version `0.186.1` über jsDelivr geladen. Für die 3D-Vorschau ist deshalb eine Internetverbindung erforderlich.
 - `museum_studio.html` enthält Benutzeroberfläche und Statusanzeige.
 - `museum_komplett.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
-- `Archiv_Einzelskripte/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte.
+- `tools/assets/` enthält aktuelle Werkzeuge zur Modellvorbereitung.
+- `tools/archive/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte; sie werden vom Studio nicht verwendet.
 
 ## Fehlerbehebung
 
