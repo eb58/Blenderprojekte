@@ -203,7 +203,7 @@ test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet'
 test('Viewer bietet Tastatursteuerung, Rundgang und Drehen der Bildfolge', () => {
     const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
     const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
-    for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'standAt', 'floorMeshes.push']) assert.ok(viewer.includes(part), part);
+    for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'standAt', 'floorMeshes.push', "addEventListener('wheel'", 'PageUp', 'turnAround']) assert.ok(viewer.includes(part), part);
     // OrbitControls.update() setzt per lookAt den Blick; im Rundgang darf es nicht laufen.
     assert.match(viewer, /if \(!walk\.active\) controls\.update\(\)/);
     assert.ok(page.includes('id="viewerWalk"'));

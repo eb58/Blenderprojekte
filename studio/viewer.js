@@ -406,6 +406,14 @@ const setWalk = on => {
     }
 };
 
+// Verschiebt die Kamera im Rundgang um (dx, dz) und hält sie in der Halle und außerhalb der gesperrten Sockel.
+const walkBy = (dx, dz) => {
+    const x = THREE.MathUtils.clamp(camera.position.x + dx, -WALK_LIMIT.x, WALK_LIMIT.x);
+    const z = THREE.MathUtils.clamp(camera.position.z + dz, -WALK_LIMIT.z, WALK_LIMIT.z);
+    if (!blocked(x, camera.position.z)) camera.position.x = x;
+    if (!blocked(camera.position.x, z)) camera.position.z = z;
+};
+
 const tick = delta => {
     if (globalThis.museumViewMode !== '3d' || !loaded) return;
     const down = (...codes) => Number(codes.some(code => keys.has(code)));
@@ -415,12 +423,8 @@ const tick = delta => {
         const strafe = down('KeyD') - down('KeyA');
         if (forward || strafe) {
             const step = 3.2 * delta;
-            const x = THREE.MathUtils.clamp(camera.position.x +
-                (-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe) * step, -WALK_LIMIT.x, WALK_LIMIT.x);
-            const z = THREE.MathUtils.clamp(camera.position.z +
-                (-Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe) * step, -WALK_LIMIT.z, WALK_LIMIT.z);
-            if (!blocked(x, camera.position.z)) camera.position.x = x;
-            if (!blocked(camera.position.x, z)) camera.position.z = z;
+            walkBy((-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe) * step,
+                (-Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe) * step);
         }
         camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
         return;
@@ -476,11 +480,30 @@ image.addEventListener('pointermove', event => {
 });
 for (const name of ['pointerup', 'pointercancel']) image.addEventListener(name, () => { scrub.drag = null; });
 
+// Bild↑ und Bild↓: um 180° umdrehen (Rundgang), um das Museum herum (Rundumansicht) oder in der Bildfolge.
+const turnAround = () => {
+    if (walk.active) {
+        walk.yaw += Math.PI;
+        return;
+    }
+    const offset = camera.position.clone().sub(controls.target);
+    camera.position.set(controls.target.x - offset.x, camera.position.y, controls.target.z - offset.z);
+    controls.update();
+    updateAngle();
+    globalThis.setViewerAngle(currentAngle);
+};
+
 const typing = event => ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target?.tagName);
 globalThis.addEventListener('keydown', event => {
     if (typing(event) || event.ctrlKey || event.metaKey || event.altKey) return;
     if (globalThis.museumViewMode === 'render') {
         const info = scrubInfo();
+        if (info && ['PageUp', 'PageDown'].includes(event.code)) {
+            scrub.offset += 180;
+            showScrubFrame();
+            event.preventDefault();
+            return;
+        }
         if (!info || !['ArrowLeft', 'ArrowRight'].includes(event.code)) return;
         scrub.offset += (event.code === 'ArrowRight' ? -1 : 1) * info.degrees / (info.total - 1);
         showScrubFrame();
@@ -490,6 +513,11 @@ globalThis.addEventListener('keydown', event => {
     if (globalThis.museumViewMode !== '3d' || !loaded) return;
     if (event.code === 'Escape' && walk.active) {
         setWalk(false);
+        return;
+    }
+    if (['PageUp', 'PageDown'].includes(event.code)) {
+        if (!event.repeat) turnAround();
+        event.preventDefault();
         return;
     }
     // W, A, S, D gelten nur im Rundgang; die Pfeiltasten drehen und zoomen auch die Rundumansicht.
@@ -522,7 +550,14 @@ const standAt = event => {
     }
     camera.position.set(x, 1.65, z);
 };
-canvas.title = 'Klick auf den Boden: dorthin stellen';
+canvas.title = 'Klick auf den Boden: dorthin stellen · Mausrad: vor und zurück (im Rundgang)';
+// Mausrad im Rundgang: Rad nach vorn geht vorwärts, Rad nach hinten rückwärts (etwa 0,4 m je Rastung).
+canvas.addEventListener('wheel', event => {
+    if (!walk.active) return;
+    event.preventDefault();
+    const forward = -THREE.MathUtils.clamp(event.deltaY, -240, 240) * 0.004;
+    walkBy(-Math.sin(walk.yaw) * forward, -Math.cos(walk.yaw) * forward);
+}, {passive: false});
 canvas.addEventListener('pointerdown', event => {
     press = {x: event.clientX, y: event.clientY, time: performance.now()};
     if (!walk.active) return;
