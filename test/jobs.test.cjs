@@ -226,54 +226,76 @@ test('Der Rundgang ist der Standard, die Übersicht wird per Knopf gewählt', ()
     assert.ok(!viewer.includes('zoom * 0.8 * delta'), 'Pfeiltasten dürfen die Übersicht nicht mehr drehen');
 });
 
-test('Die Arkadenwand hat kein durchgehendes Sockelband mehr', () => {
-    // Es überlappte die Pfeilerbasen in derselben Ebene und flimmerte in Echtzeitansichten.
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    assert.ok(!scene.includes('Arkadengalerie Sockelband'));
-    assert.ok(scene.includes('Arkadengalerie Pfeilerbasis'));
-});
-
-test('Die Arkaden haben gestufte Steinbögen mit Schlussstein statt runder Röhren', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    assert.ok(!scene.includes('_Archivolte", "CURVE"'), 'Archivolte darf keine runde Kurve (Röhre) mehr sein');
-    for (const part of ['_Archivolte_Innen', '_Archivolte_Aussen', '_Schlussstein', '_Kaempfer_']) {
-        assert.ok(scene.includes(part), part);
-    }
-});
-
-test('Fensterrahmen sind aus hellem, nicht metallischem Holz', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    const match = /b\.inputs\["Base Color"\]\.default_value = \(([\d.]+), ([\d.]+), ([\d.]+), 1\); b\.inputs\["Metallic"\]\.default_value = ([\d.]+)/.exec(scene);
-    assert.ok(match, 'Fensterrahmen-Material nicht gefunden');
-    const [red, green, blue, metallic] = match.slice(1).map(Number);
-    assert.ok(Math.max(red, green, blue) >= 0.5, 'Holz soll hell sein');
-    assert.equal(metallic, 0);
-});
-
-test('Die Seitenwände haben ein profiliertes Kranzgesims statt eines Kantholzes', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    assert.ok(!/add_box\("Gesims (links|rechts)"/.test(scene), 'Gesims darf kein einfacher Quader sein');
-    assert.match(scene, /add_cornice\("Gesims links"/);
-    assert.match(scene, /add_cornice\("Gesims rechts"/);
-});
-
-test('Das Abschlussgesims der Arkadenwand ist ein Kranzgesims', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    assert.ok(!scene.includes('add_box("Arkadengalerie Abschlussgesims"'));
-    assert.match(scene, /add_cornice\("Arkadengalerie Abschlussgesims"/);
-});
-
-test('Die Arkadenwand hat Quadermauerwerk, kannelierte Pilaster und ein Gurtgesims', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
-    for (const part of ['ashlar_material(', 'ShaderNodeTexBrick', 'add_pilaster(f"Pilaster {index}"', 'Arkadengalerie Gurtgesims']) {
-        assert.ok(scene.includes(part), part);
-    }
-    // Der Rückfall der Grundfarbe sorgt dafür, dass die 3D-Vorschau die Wand nicht weiß zeigt.
-    assert.match(scene, /bsdf\.inputs\["Base Color"\]\.default_value = light/);
-});
-
 test('Der Viewer ersetzt das Material der Arkadenwand durch einen eigenen Stein', () => {
     const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
     assert.ok(viewer.includes('arkaden kalkstein'));
     assert.ok(viewer.includes('Three.js Arkadenstein'));
+});
+
+test('Das Kassettenraster der Decke füllt den Raum genau aus', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const match = /CEILING_X_MIN, CEILING_X_MAX, CEILING_Y_MIN, CEILING_Y_MAX = ([-\d.]+), ([-\d.]+), ([-\d.]+), ([-\d.]+)/.exec(scene);
+    assert.ok(match, 'Rasterbereich der Decke nicht gefunden');
+    const [xMin, xMax, yMin, yMax] = match.slice(1).map(Number);
+    // Innenflächen: Seitenwände bei ±15,75, Vorderwand bei -16,96, Arkadenwand bei 17.
+    assert.deepEqual([xMin, xMax, yMin, yMax], [-15.75, 15.75, -16.96, 17]);
+    assert.ok(!scene.includes('-16.45, -17.0, 3.29, 3.8'), 'altes, zu großes Raster');
+});
+
+test('Die Kassettendecke ist modern: helles Holz, Putzfelder, keine Zierrahmen mit Mittelblock', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(scene.includes('Deckenputz'));
+    assert.ok(!scene.includes('bx((cx, cy, ZD - 0.03), (0.34, 0.34, 0.06))'), 'kein Mittelblock mehr');
+    const match = /wood_ramp\.color_ramp\.elements\[1\]\.color = \(([\d.]+), ([\d.]+), ([\d.]+)/.exec(scene);
+    assert.ok(match && Math.max(...match.slice(1).map(Number)) >= 0.5, 'helles Holz erwartet');
+});
+
+test('Die Arkadenwand ist modern: Steinplatten, schlichte Nischen mit Lichtkante, keine klassischen Zierelemente', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    for (const part of ['ashlar_material(', 'ShaderNodeTexBrick', 'add_niche(f"Nische {index}"', 'Nischen Lichtkante']) {
+        assert.ok(scene.includes(part), part);
+    }
+    for (const klassisch of ['Archivolte', 'Schlussstein', 'Kaempfer', 'add_pilaster', 'Pfeilerbasis', 'Gurtgesims', 'Zwickel']) {
+        assert.ok(!scene.includes(klassisch), `${klassisch} passt nicht zu einem modernen Museum`);
+    }
+});
+
+test('Der Viewer zeichnet die Steinplatten der Arkadenwand mit Fugen', () => {
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    assert.ok(viewer.includes('museum-arcade-slabs'));
+    assert.ok(viewer.includes('wallPosition'));
+});
+
+test('Die Fenster sind schlichte, hohe Rechteckfenster ohne Bogen', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    for (const altmodisch of ['Steinbogen', 'Fensterbogen', 'arch(f"a{i}"']) {
+        assert.ok(!scene.includes(altmodisch), `${altmodisch} passt nicht zu modernen Fenstern`);
+    }
+    assert.ok(scene.includes('" Sturz"'));
+    const match = /YS, W, Z0, ZA = \[[^\]]+\], ([\d.]+), ([\d.]+), ([\d.]+)/.exec(scene);
+    assert.ok(match, 'Fensterabmessungen nicht gefunden');
+    const [width, sill, top] = match.slice(1).map(Number);
+    assert.ok(top - sill > 2.5 * width, 'hohes, schlankes Format erwartet');
+});
+
+test('Zwischen Wand und Decke gibt es keine Leiste oder Gesimse', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    for (const leiste of ['add_cornice', 'CORNICE', 'Gesims', 'Kranzgesims']) {
+        assert.ok(!scene.includes(leiste), `${leiste} hat in der modernen Raumhülle keinen Platz`);
+    }
+});
+
+
+test('Die Fenster sind Glas mit schlankem Titanrahmen, ohne Sprossen und Pfosten', () => {
+    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    assert.ok(scene.includes('Fensterglas {side}{i + 1}'));
+    assert.ok(scene.includes('Fensterrahmen Titan {side}{i + 1}'));
+    const frame = /FRAME_WIDTH = ([\d.]+)/.exec(scene);
+    assert.ok(frame && Number(frame[1]) <= 0.08, 'Rahmen soll schlank bleiben');
+    assert.match(scene, /titanium_bsdf\.inputs\["Metallic"\]\.default_value = 1\.0/);
+    assert.ok(!scene.includes('box("m", (x, y'), 'kein Mittelpfosten');
+    // Für Schattenstrahlen ist das Glas durchsichtig, sonst bliebe das Sonnenlicht draußen.
+    assert.ok(scene.includes('Is Shadow Ray'));
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    assert.ok(viewer.includes('fensterglas') && viewer.includes('fensterrahmen titan'));
 });

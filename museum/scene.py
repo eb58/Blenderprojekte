@@ -210,101 +210,6 @@ def simple_material(name, color, roughness, metallic=0.0):
     return material
 
 
-def arch_profile(radius, spring_z, steps=32):
-    left = [(-radius, 0.0), (-radius, spring_z)]
-    arc = [
-        (radius * math.cos(math.pi - math.pi * i / steps),
-         spring_z + radius * math.sin(math.pi - math.pi * i / steps))
-        for i in range(steps + 1)
-    ]
-    return left + arc + [(radius, 0.0)]
-
-
-def arch_band(name, x, y_front, z_spring, r_in, r_out, protrusion, material, steps=48):
-    """Halbkreisförmiges Steinband (Bogenstufe), das um `protrusion` aus der Wand vor y_front ragt."""
-    import bmesh
-    y_a, y_b = y_front - protrusion, y_front + 0.02
-    vertices = []
-    for i in range(steps + 1):
-        angle = math.pi * i / steps
-        cos, sin = math.cos(angle), math.sin(angle)
-        for y in (y_a, y_b):
-            vertices.append((x + r_in * cos, y, z_spring + r_in * sin))
-            vertices.append((x + r_out * cos, y, z_spring + r_out * sin))
-    faces = []
-    for i in range(steps):
-        p, q = 4 * i, 4 * (i + 1)  # je Winkel: innen-vorn, außen-vorn, innen-hinten, außen-hinten
-        faces += [(p, p + 1, q + 1, q), (p + 2, q + 2, q + 3, p + 3),
-                  (p, q, q + 2, p + 2), (p + 1, p + 3, q + 3, q + 1)]
-    faces += [(0, 2, 3, 1), (4 * steps, 4 * steps + 1, 4 * steps + 3, 4 * steps + 2)]
-    mesh = bpy.data.meshes.new(name + "_Mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(mesh)
-    bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    for polygon in mesh.polygons:
-        polygon.use_smooth = False
-    bevel = obj.modifiers.new("Weiche Steinkanten", "BEVEL")
-    bevel.width, bevel.segments = 0.012, 2
-    return obj
-
-
-def add_spandrel(name, x, y_front, z_spring, radius, z_top, half_width, material, steps=48):
-    """Füllt die Zwickel über dem Bogen: Mauerfläche bündig zur Pfeilerfront, vom Bogen bis zum Wandband."""
-    points = [(half_width, z_spring), (half_width, z_top), (-half_width, z_top), (-half_width, z_spring),
-              (-radius, z_spring)]
-    points += [(radius * math.cos(math.pi - math.pi * i / steps), z_spring + radius * math.sin(math.pi - math.pi * i / steps))
-               for i in range(1, steps + 1)]
-    mesh = bpy.data.meshes.new(name + "_Mesh")
-    mesh.from_pydata([(x + px, y_front, pz) for px, pz in points], [], [tuple(range(len(points)))])
-    mesh.update()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    return obj
-
-
-# Querschnitt eines Kranzgesimses (Abstand von der Wand, Höhe): Plättchen, geschwungene Hohlkehle, Kranzplatte mit Tropfkante.
-CORNICE_PROFILE = ((-0.03, 0.0), (0.05, 0.0), (0.05, 0.05), (0.09, 0.07), (0.13, 0.11), (0.155, 0.17),
-                   (0.22, 0.18), (0.22, 0.28), (0.17, 0.31), (-0.03, 0.31))
-
-
-def add_cornice(name, wall, center, length, z_bottom, inward, material, axis="x", scale=1.0):
-    """Profiliertes Gesims an einer Wand, die senkrecht zur Achse `axis` steht.
-
-    `wall` ist die Lage der Wandfläche auf dieser Achse, `inward` (+1 oder -1) die Richtung in den Raum;
-    das Gesims läuft über `length` um `center` entlang der anderen waagerechten Achse; `scale` vergrößert das Profil.
-    """
-    import bmesh
-    start, end = center - length / 2, center + length / 2
-    n = len(CORNICE_PROFILE)
-    profile = [(d * scale, z * scale) for d, z in CORNICE_PROFILE]
-    if axis == "x":
-        vertices = [(wall + inward * d, t, z_bottom + z) for t in (start, end) for d, z in profile]
-    else:
-        vertices = [(t, wall + inward * d, z_bottom + z) for t in (start, end) for d, z in profile]
-    faces = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
-    faces += [tuple(range(n)), tuple(range(n, 2 * n))]
-    mesh = bpy.data.meshes.new(name + "_Mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(mesh)
-    bm.free()
-    obj = bpy.data.objects.new(name, mesh)
-    bpy.context.collection.objects.link(obj)
-    obj.data.materials.append(material)
-    return obj
-
-
 def ashlar_material(name, light, dark, mortar, block_width=1.8, block_height=0.6):
     """Quadermauerwerk (Naturstein): Fugen und leichte Farbvariation; die Wandkoordinaten (x, z) steuern das Muster."""
     material = bpy.data.materials.new(name)
@@ -319,8 +224,8 @@ def ashlar_material(name, light, dark, mortar, block_width=1.8, block_height=0.6
     links.new(separate.outputs["Z"], combine.inputs["Y"])
     brick = nodes.new("ShaderNodeTexBrick")
     brick.offset, brick.squash = 0.5, 1.0
-    for key, value in (("Brick Width", block_width), ("Row Height", block_height), ("Mortar Size", 0.012),
-                       ("Mortar Smooth", 0.25), ("Scale", 1.0)):
+    for key, value in (("Brick Width", block_width), ("Row Height", block_height), ("Mortar Size", 0.005),
+                       ("Mortar Smooth", 0.6), ("Scale", 1.0)):
         brick.inputs[key].default_value = value
     brick.inputs["Color1"].default_value = light
     brick.inputs["Color2"].default_value = dark
@@ -341,7 +246,7 @@ def ashlar_material(name, light, dark, mortar, block_width=1.8, block_height=0.6
     links.new(ramp.outputs["Color"], tint.inputs["B"])
     links.new(tint.outputs["Result"], bsdf.inputs["Base Color"])
     bump = nodes.new("ShaderNodeBump")
-    bump.inputs["Strength"].default_value = 0.6
+    bump.inputs["Strength"].default_value = 0.2
     bump.inputs["Distance"].default_value = 0.02
     links.new(brick.outputs["Fac"], bump.inputs["Height"])
     links.new(bump.outputs["Normal"], bsdf.inputs["Normal"])
@@ -351,95 +256,38 @@ def ashlar_material(name, light, dark, mortar, block_width=1.8, block_height=0.6
     return material
 
 
-def add_pilaster(name, x, y_front, z_shaft_bottom, z_shaft_top, width, projection, material, flutes=5):
-    """Kannelierter Pilaster mit Basis und Kapitell (dorisch-schlicht) vor der Wand bei y_front (Blick nach +y)."""
-    import bmesh
-    pitch = width / flutes
-    section = [(-width / 2, 0.0), (-width / 2, projection)]
-    for i in range(flutes):
-        x0 = -width / 2 + i * pitch
-        rim = pitch * 0.2
-        section.append((x0 + rim, projection))
-        for k in range(1, 6):  # Kannelur als flache Hohlkehle
-            angle = math.pi * k / 6
-            section.append((x0 + rim + (pitch - 2 * rim) * (1 - math.cos(angle)) / 2,
-                            projection - 0.028 * math.sin(angle)))
-        section.append((x0 + pitch - rim, projection))
-    section += [(width / 2, projection), (width / 2, 0.0)]
-    n = len(section)
-    vertices = [(x + px, y_front + 0.02 - depth, z) for z in (z_shaft_bottom, z_shaft_top) for px, depth in section]
-    faces = [(i, (i + 1) % n, n + (i + 1) % n, n + i) for i in range(n)]
-    faces += [tuple(range(n)), tuple(range(n, 2 * n))]
-    mesh = bpy.data.meshes.new(name + "_Mesh")
-    mesh.from_pydata(vertices, [], faces)
-    mesh.update()
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(mesh)
-    bm.free()
-    shaft = bpy.data.objects.new(name + "_Schaft", mesh)
-    bpy.context.collection.objects.link(shaft)
-    shaft.data.materials.append(material)
-
-    def block(suffix, w, extra, z0, z1, bevel):
-        depth = projection + extra
-        return add_box(f"{name}_{suffix}", (x, y_front + 0.02 - depth / 2, (z0 + z1) / 2), (w, depth, z1 - z0),
-                       material, bevel)
-
-    block("Plinthe", width + 0.24, 0.12, z_shaft_bottom - 0.28, z_shaft_bottom - 0.10, 0.015)
-    block("Basiswulst", width + 0.12, 0.06, z_shaft_bottom - 0.10, z_shaft_bottom, 0.02)
-    block("Halsring", width + 0.04, 0.02, z_shaft_top, z_shaft_top + 0.06, 0.012)
-    block("Echinus", width + 0.10, 0.05, z_shaft_top + 0.06, z_shaft_top + 0.20, 0.025)
-    block("Abakus", width + 0.18, 0.09, z_shaft_top + 0.20, z_shaft_top + 0.34, 0.015)
+def emissive_material(name, color, strength):
+    """Warm leuchtende Fläche (Lichtkante); strahlt auch in Echtzeitansichten (glTF-Emission)."""
+    material = bpy.data.materials.new(name)
+    material.use_nodes = True
+    bsdf = material.node_tree.nodes["Principled BSDF"]
+    set_socket(bsdf, "Base Color", color)
+    set_socket(bsdf, "Emission Color", color)
+    set_socket(bsdf, "Emission Strength", strength)
+    return material
 
 
-def add_arch_recess(name, x, y_front, base_z, radius, spring_height, depth,
-                    wall_material, recess_material, reveal_material, spandrel_top, spandrel_half_width):
-    """Tiefe, wirklich räumliche Arkade: Rückfläche plus Laibung bis zur Front."""
-    profile = arch_profile(radius, spring_height)
+def add_niche(name, x, y_front, width, height, depth, back_material, reveal_material, light_material):
+    """Schlichte, hohe Rechtecknische: dunkle Rückwand, glatte steinerne Laibung und eine Lichtkante unter dem Sturz."""
+    half = width / 2
+    profile = [(-half, 0.0), (-half, height), (half, height), (half, 0.0)]
     y_back = y_front + depth
-    vertices = []
-    for y in (y_front, y_back):
-        vertices.extend((x + px, y, base_z + pz) for px, pz in profile)
-
-    n = len(profile)
-    faces = []
-    # Rückwand in der Form der Öffnung
-    faces.append(tuple(range(n, 2 * n)))
-    # Laibungsflächen an den beiden Seiten und am Rundbogen; Boden bleibt offen.
-    for i in range(n - 1):
-        faces.append((i, i + 1, n + i + 1, n + i))
-
+    vertices = [(x + px, y, pz) for y in (y_front, y_back) for px, pz in profile]
+    faces = [(4, 5, 6, 7)] + [(i, i + 1, 4 + i + 1, 4 + i) for i in range(3)]  # Rückwand, links/oben/rechts
     mesh = bpy.data.meshes.new(name + "_Mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
     obj = bpy.data.objects.new(name, mesh)
     bpy.context.collection.objects.link(obj)
-    # Rückwand dunkel (Material 0), seitliche Laibung und Bogenleibung aus Stein (Material 1).
-    obj.data.materials.append(recess_material)
+    obj.data.materials.append(back_material)
     obj.data.materials.append(reveal_material)
     for polygon in mesh.polygons[1:]:
         polygon.material_index = 1
-    # Zwischen Laibung und Pfeiler bleibt sonst ein Spalt: mit Mauerwerk füllen, damit die Laibung nicht frei steht.
+    # Zwischen Laibung und Pfeiler bleibt sonst ein Spalt: mit Mauerwerk füllen.
     for side, sign in (("L", -1), ("R", 1)):
-        add_box(f"{name}_Laibungsfuellung_{side}", (x + sign * (radius + 0.205), y_front + depth / 2,
-                                                    base_z + spring_height / 2),
-                (0.39, depth, spring_height), reveal_material)
-
-    # Zwickel: Die Füllung liegt hinter der gestuften Archivolte (Radius mittig im äußeren Band).
-    add_spandrel(name + "_Zwickel", x, y_front, base_z + spring_height, radius + 0.30, spandrel_top,
-                 spandrel_half_width, reveal_material)
-
-    # Gestufte steinerne Archivolte, Schlussstein und Kämpferblöcke an der Front.
-    z_spring = base_z + spring_height
-    arch_band(name + "_Archivolte_Innen", x, y_front, z_spring, radius, radius + 0.16, 0.07, wall_material)
-    arch_band(name + "_Archivolte_Aussen", x, y_front, z_spring, radius + 0.16, radius + 0.40, 0.14, wall_material)
-    add_box(name + "_Schlussstein", (x, y_front - 0.10, z_spring + radius + 0.21), (0.36, 0.24, 0.46),
-            wall_material, 0.02)
-    for side, sign in (("L", -1), ("R", 1)):
-        add_box(f"{name}_Kaempfer_{side}", (x + sign * (radius + 0.20), y_front - 0.09, z_spring - 0.02),
-                (0.52, 0.22, 0.20), wall_material, 0.02)
+        add_box(f"{name}_Laibungsfuellung_{side}", (x + sign * (half + 0.205), y_front + depth / 2, height / 2),
+                (0.39, depth, height), reveal_material)
+    add_box(name + "_Lichtkante", (x, y_front + 0.22, height - 0.04), (width - 0.24, 0.05, 0.03), light_material)
     return obj
 
 
@@ -713,13 +561,14 @@ sculpture_center_z = max(
 # Der Boden reicht bis in die Nischen hinein (bis zur Rückwand der Arkaden), sonst schimmert dort der Hintergrund durch.
 add_box("Museumsboden", (0, 0.55, -0.13), (36, 39.1, 0.26), floor_material, 0.015)
 
-# Geschlossene Galeriewand mit vier tiefen Rundbogennischen.
+# Geschlossene, ruhige Galeriewand aus großformatigen Steinplatten mit fünf hohen Nischen.
 arcade_front_y = 17.0
 arcade_depth = 2.8
 hall_height = 13.2
-arcade_stone = ashlar_material("Arkaden Kalkstein", (0.60, 0.52, 0.40, 1), (0.53, 0.45, 0.35, 1),
-                               (0.34, 0.29, 0.22, 1))
-niche_material = simple_material("Tiefe Arkadennischen", (0.17, 0.205, 0.185, 1), 0.86)
+arcade_stone = ashlar_material("Arkaden Kalkstein", (0.66, 0.63, 0.57, 1), (0.63, 0.60, 0.55, 1),
+                               (0.52, 0.50, 0.46, 1), block_width=2.4, block_height=1.2)
+niche_material = simple_material("Tiefe Arkadennischen", (0.075, 0.12, 0.10, 1), 0.62)
+niche_light = emissive_material("Nischen Lichtkante", (1.0, 0.86, 0.66, 1), 9.0)
 
 # Rückwand, oberes Wandband und breite gemeinsame Pfeiler bilden eine ruhige Einheit.
 # 2 cm Abstand zur Rückfläche der Nischen: Sonst liegen beide in einer Ebene und flimmern (Z-Fighting) in Echtzeitansichten.
@@ -728,37 +577,25 @@ add_box("Arkadengalerie Rueckwand", (0, arcade_front_y + arcade_depth + 0.18, ha
 add_box("Arkadengalerie Wandband", (0, arcade_front_y + arcade_depth / 2, 10.75),
         (34, arcade_depth, 4.9), arcade_stone)
 NICHE_XS = (-11.0, -5.5, 0.0, 5.5, 11.0)
+NICHE_WIDTH = 3.7
 PIER_WIDTH, PIER_HEIGHT = 1.05, 8.3  # Pfeiler zwischen den Nischen; darüber beginnt das Wandband
 for index, x in enumerate((-13.75, -8.25, -2.75, 2.75, 8.25, 13.75), 1):
     add_box(f"Arkadengalerie Pfeiler {index}", (x, arcade_front_y + arcade_depth / 2, PIER_HEIGHT / 2),
             (PIER_WIDTH, arcade_depth, PIER_HEIGHT), arcade_stone)
-    add_box(f"Arkadengalerie Pfeilerbasis {index}", (x, arcade_front_y - 0.01, 0.20),
-            (1.90, 0.22, 0.40), trim_material, 0.02)
-    add_pilaster(f"Pilaster {index}", x, arcade_front_y, 0.40 + 0.28, 5.40, 0.72, 0.13, trim_material)
 for index, x in enumerate((-15.75, 15.75), 1):
     add_box(f"Arkadengalerie Randfeld {index}", (x, arcade_front_y + arcade_depth / 2, PIER_HEIGHT / 2),
-            (2.5, arcade_depth, PIER_HEIGHT), arcade_stone)
-# Gurtgesims über den Bögen: trennt den Pfeilerbereich vom ruhigen Wandband darüber.
-add_cornice("Arkadengalerie Gurtgesims", arcade_front_y, 0, 34, 8.45, -1, trim_material, axis="y", scale=0.9)
-add_cornice("Arkadengalerie Abschlussgesims", arcade_front_y, 0, 34, 12.28, -1, trim_material, axis="y", scale=1.6)
+            (3.0, arcade_depth, PIER_HEIGHT), arcade_stone)  # reicht bis an den äußeren Pfeiler heran, kein Spalt
 
 for index, x in enumerate(NICHE_XS, 1):
-    add_arch_recess(
-        f"Tiefe Arkade {index}", x, arcade_front_y, 0.0,
-        radius=1.85, spring_height=6.0, depth=arcade_depth,
-        wall_material=trim_material, recess_material=niche_material, reveal_material=arcade_stone,
-        spandrel_top=PIER_HEIGHT, spandrel_half_width=5.5 / 2 - PIER_WIDTH / 2
-    )
+    add_niche(f"Nische {index}", x, arcade_front_y, NICHE_WIDTH, PIER_HEIGHT, arcade_depth,
+              niche_material, arcade_stone, niche_light)
     # Weiches Licht oben in der Nische, das die Rückwand und die Laibung aufhellt; selbst unsichtbar für die Kamera.
-    wall_wash = add_area_light(f"Nischenlicht {index}", (x, arcade_front_y + 0.6, 7.2), 260, 1.8,
+    wall_wash = add_area_light(f"Nischenlicht {index}", (x, arcade_front_y + 0.6, 7.7), 260, 1.8,
                                (1.0, 0.85, 0.68), (x, arcade_front_y + arcade_depth - 0.2, 3.0))
     wall_wash.visible_camera = False
 
 # Ruhige Seitenwände mit tiefen Fensternischen statt freistehender Kolonnaden.
 # Innenflächen der Seitenwände liegen bei x = ±15,75.
-# Von der Vorderwand (y = -16,96) bis zur Arkadenwand (y = 17): je 5 cm in die Wände eingebettet.
-add_cornice("Gesims links", -15.75, 0.02, 34.1, 11.0, 1, trim_material)
-add_cornice("Gesims rechts", 15.75, 0.02, 34.1, 11.0, -1, trim_material)
 add_box("Seitenwand links", (-16.2, 2, hall_height / 2), (0.90, 38, hall_height), wall_material)
 add_box("Seitenwand rechts", (16.2, 2, hall_height / 2), (0.90, 38, hall_height), wall_material)
 
@@ -907,68 +744,67 @@ def join(objs):
 
 # --- Fenster in beiden Seitenwaenden -------------------------------------------------------
 fcol = D.collections.new("Fenster"); S.collection.children.link(fcol)
-frame = D.materials.new("Fensterrahmen"); frame.use_nodes = True
-b = frame.node_tree.nodes["Principled BSDF"]
-# Helles Holz (Esche/Eiche natur) statt dunklem Metall: matt, nicht metallisch.
-b.inputs["Base Color"].default_value = (0.62, 0.46, 0.27, 1); b.inputs["Metallic"].default_value = 0.0; b.inputs["Roughness"].default_value = 0.52
+# Schlanker Rahmen in gebürstetem Titan (hell, kühl, metallisch).
+titanium = D.materials.new("Fensterrahmen Titan"); titanium.use_nodes = True
+titanium_bsdf = titanium.node_tree.nodes["Principled BSDF"]
+titanium_bsdf.inputs["Base Color"].default_value = (0.62, 0.62, 0.64, 1)
+titanium_bsdf.inputs["Metallic"].default_value = 1.0
+titanium_bsdf.inputs["Roughness"].default_value = 0.3
+FRAME_WIDTH = 0.05  # sichtbare Breite des Titanrahmens in der Ansicht
+# Glas für die Scheibe. Für Schattenstrahlen ist es durchsichtig, damit die Sonne weiter in den Raum fällt.
+glass = D.materials.new("Fensterglas"); glass.use_nodes = True
+glass_nodes, glass_links = glass.node_tree.nodes, glass.node_tree.links
+glass_bsdf = glass_nodes["Principled BSDF"]
+glass_bsdf.inputs["Transmission Weight"].default_value = 1.0
+glass_bsdf.inputs["Roughness"].default_value = 0.0
+glass_bsdf.inputs["IOR"].default_value = 1.45
+glass_bsdf.inputs["Base Color"].default_value = (0.92, 0.97, 1.0, 1)
+glass_clear = glass_nodes.new("ShaderNodeBsdfTransparent")
+glass_path = glass_nodes.new("ShaderNodeLightPath")
+glass_mix = glass_nodes.new("ShaderNodeMixShader")
+glass_links.new(glass_path.outputs["Is Shadow Ray"], glass_mix.inputs["Fac"])
+glass_links.new(glass_bsdf.outputs["BSDF"], glass_mix.inputs[1])
+glass_links.new(glass_clear.outputs["BSDF"], glass_mix.inputs[2])
+glass_links.new(glass_mix.outputs["Shader"], glass_nodes["Material Output"].inputs["Surface"])
 
-YS, W, Z0, ZA = [-7, -1, 5, 11], 3.2, 2.2, 8.4  # Fenstermitten (zwischen den Saeulen), Breite, Sohle, Bogenansatz
-R = W / 2
+# Hohe, schlichte Rechteckfenster zwischen den Säulen: Fenstermitten (y), Breite, Sohle und Oberkante der Öffnung.
+YS, W, Z0, ZA = [-7, -1, 5, 11], 2.6, 1.0, 9.6
 
 
 def window_niche(side, x, y, index):
-    """Massive Laibung mit echtem halbkreisförmigem Steinbogen."""
+    """Schlichte, tiefe Laibung aus Naturstein ohne Bogen: zwei Wangen, ein Sturz und eine schlanke Sohlbank."""
     inward = 1 if side == "L" else -1
     front_x = x + inward * 0.50
     back_x = x - inward * 0.10
     center_x = (front_x + back_x) / 2
     depth = abs(front_x - back_x)
-    border = 0.24
+    border = 0.20
     prefix = f"Fensternische {side}{index}"
     for sign in (-1, 1):
         obj = add_box(prefix + f" Laibung {sign}",
-                      (center_x, y + sign * (R + border / 2), (Z0 + ZA) / 2),
-                      (depth, border, ZA - Z0), trim_material, 0.025)
+                      (center_x, y + sign * (W / 2 + border / 2), (Z0 + ZA) / 2),
+                      (depth, border, ZA - Z0 + border), trim_material, 0.01)
         link(obj, fcol)
-    sill = add_box(prefix + " Fensterbank", (front_x - inward * 0.16, y, Z0 - 0.10),
-                   (0.95, W + 2 * border + 0.16, 0.20), trim_material, 0.035)
+    lintel = add_box(prefix + " Sturz", (center_x, y, ZA + border / 2), (depth, W + 2 * border, border),
+                     trim_material, 0.01)
+    link(lintel, fcol)
+    sill = add_box(prefix + " Fensterbank", (front_x - inward * 0.14, y, Z0 - 0.04),
+                   (0.62, W + 2 * border, 0.08), trim_material, 0.01)
     link(sill, fcol)
-    vertices, faces = [], []
-    segments = 48
-    for xx in (front_x, back_x):
-        for radius in (R, R + border):
-            for step in range(segments + 1):
-                angle = math.pi * step / segments
-                vertices.append((xx, y + radius * math.cos(angle), ZA + radius * math.sin(angle)))
-    stride = segments + 1
-    for step in range(segments):
-        for a, b_ in ((0, stride), (2 * stride, 3 * stride),
-                      (0, 2 * stride), (stride, 3 * stride)):
-            faces.append((a + step, a + step + 1, b_ + step + 1, b_ + step))
-    faces.extend(((0, stride, 3 * stride, 2 * stride),
-                  (segments, 2 * stride - 1, 4 * stride - 1, 3 * stride - 1)))
-    mesh = D.meshes.new(prefix + " Bogen Mesh")
-    mesh.from_pydata(vertices, [], faces); mesh.update()
-    obj = D.objects.new(prefix + " Steinbogen", mesh); fcol.objects.link(obj)
-    obj.data.materials.append(trim_material)
-    bevel = obj.modifiers.new("Weiche Steinkanten", "BEVEL")
-    bevel.width = 0.02; bevel.segments = 3
 
 
 for side, x in (("L", -16.2), ("R", 16.2)):
     cut = []
     for i, y in enumerate(YS):
-        cut += [box(f"c{i}", (x, y, (Z0 + ZA) / 2), (1.4, W, ZA - Z0), fcol), arch(f"a{i}", (x, y, ZA), R, 1.4, fcol)]
-        f = join([box("p", (x, y, (Z0 + ZA + R) / 2), (0.14, 0.12, ZA + R - Z0), fcol),
-                  box("q1", (x, y, Z0 + 2.1), (0.14, W, 0.12), fcol), box("q2", (x, y, Z0 + 4.2), (0.14, W, 0.12), fcol), box("q3", (x, y, ZA), (0.14, W, 0.14), fcol),
-                  box("l", (x, y - R + 0.06, (Z0 + ZA) / 2), (0.16, 0.14, ZA - Z0), fcol), box("r", (x, y + R - 0.06, (Z0 + ZA) / 2), (0.16, 0.14, ZA - Z0), fcol),
-                  box("s", (x, y, Z0), (0.30, W, 0.14), fcol)])
-        f.name = f"Fensterrahmen {side}{i + 1}"; f.data.materials.append(frame)
-        bpy.ops.mesh.primitive_torus_add(major_radius=R - 0.05, minor_radius=0.07, major_segments=48, minor_segments=8, location=(x, y, ZA), rotation=(0, math.pi / 2, 0))
-        t = C.active_object; t.name = f"Fensterbogen {side}{i + 1}"; t.data.materials.append(frame); link(t, fcol)
-        # Rahmen weiter außen, Laibungen öffnen sich zum Innenraum.
-        f.location.x -= (1 if side == "L" else -1) * 0.10
-        t.location.x -= (1 if side == "L" else -1) * 0.10
+        cut.append(box(f"c{i}", (x, y, (Z0 + ZA) / 2), (1.4, W, ZA - Z0), fcol))
+        # Glasscheibe in der Öffnung, umlaufend gefasst von einem schlanken Titanrahmen.
+        pane = box(f"Fensterglas {side}{i + 1}", (x, y, (Z0 + ZA) / 2), (0.03, W, ZA - Z0), fcol)
+        pane.data.materials.append(glass)
+        rim = join([box("l", (x, y - W / 2 + FRAME_WIDTH / 2, (Z0 + ZA) / 2), (0.07, FRAME_WIDTH, ZA - Z0), fcol),
+                    box("r", (x, y + W / 2 - FRAME_WIDTH / 2, (Z0 + ZA) / 2), (0.07, FRAME_WIDTH, ZA - Z0), fcol),
+                    box("t", (x, y, ZA - FRAME_WIDTH / 2), (0.07, W, FRAME_WIDTH), fcol),
+                    box("b", (x, y, Z0 + FRAME_WIDTH / 2), (0.07, W, FRAME_WIDTH), fcol)])
+        rim.name = f"Fensterrahmen Titan {side}{i + 1}"; rim.data.materials.append(titanium)
         window_niche(side, x, y, i + 1)
     c = join(cut); c.name = f"Fensterschnitt {side}"; c.display_type = 'WIRE'; c.hide_render = True
     wall = obj_by_name("Seitenwand links" if side == "L" else "Seitenwand rechts")
@@ -1476,18 +1312,30 @@ for index, x in enumerate((-5.5, 0, 5.5), 1):
 
 # --- Kassettendecke: Balkenraster unter der Decke, kleiner Rahmen in jedem Feld, Oberlicht in der Mitte --------
 ccol = D.collections.new("Kassettendecke"); S.collection.children.link(ccol)
-NX, NY, X0, Y0, DX, DY, ZD = 10, 10, -16.45, -17.0, 3.29, 3.8, 13.2  # Felder, Ursprung, Feldgroesse, Unterkante der Decke
+# Das Raster füllt den Innenraum genau: x zwischen den Seitenwänden (±15,75), y von der Vorderwand (-16,96)
+# bis zur Arkadenwand (17), damit kein Feld von einer Wand angeschnitten wird.
+NX, NY, ZD = 10, 10, 13.2  # Felder, Unterkante der Decke
+CEILING_X_MIN, CEILING_X_MAX, CEILING_Y_MIN, CEILING_Y_MAX = -15.75, 15.75, -16.96, 17.0
+X0, Y0 = CEILING_X_MIN, CEILING_Y_MIN
+DX, DY = (CEILING_X_MAX - CEILING_X_MIN) / NX, (CEILING_Y_MAX - CEILING_Y_MIN) / NY  # Feldgröße
 bm = bmesh.new()
 def bx(c, sz): bmesh.ops.create_cube(bm, size=1.0, matrix=Matrix.Translation(c) @ Matrix.Diagonal((*sz, 1)))
-for i in range(NX + 1): bx((X0 + i * DX, Y0 + NY * DY / 2, ZD - 0.2), (0.32, NY * DY, 0.4))   # Balken laengs
-for j in range(NY + 1): bx((0, Y0 + j * DY, ZD - 0.2), (NX * DX, 0.32, 0.4))                   # Balken quer
+BEAM, EDGE_BEAM, BEAM_DROP = 0.14, 0.26, 0.20  # Breite der Balken, Breite der Randbalken an den Wänden, Balkenhöhe
+for i in range(NX + 1):  # Balken laengs
+    edge = i in (0, NX)
+    inward = (EDGE_BEAM / 2 - 0.01) * (1 if i == 0 else -1) if edge else 0.0
+    bx((X0 + i * DX + inward, Y0 + NY * DY / 2, ZD - BEAM_DROP / 2), (EDGE_BEAM if edge else BEAM, NY * DY, BEAM_DROP))
+for j in range(NY + 1):  # Balken quer
+    edge = j in (0, NY)
+    inward = (EDGE_BEAM / 2 - 0.01) * (1 if j == 0 else -1) if edge else 0.0
+    bx((X0 + NX * DX / 2, Y0 + j * DY + inward, ZD - BEAM_DROP / 2), (NX * DX, EDGE_BEAM if edge else BEAM, BEAM_DROP))
 SKY = {(i, j) for i in (4, 5) for j in (4, 5)}                                                  # Felder des Oberlichts
 for i in range(NX):
     for j in range(NY):
         if (i, j) in SKY: continue
-        cx, cy = X0 + (i + .5) * DX, Y0 + (j + .5) * DY; fx, fy = DX - 1.1, DY - 1.1
-        for dx, dy, sx, sy in ((0, fy / 2, fx, .12), (0, -fy / 2, fx, .12), (fx / 2, 0, .12, fy), (-fx / 2, 0, .12, fy)): bx((cx + dx, cy + dy, ZD - 0.075), (sx, sy, 0.15))
-        bx((cx, cy, ZD - 0.05), (0.5, 0.5, 0.1))
+        # Moderne Ruhe: glatte, tiefe Putzfelder mit nur einer feinen Holzeinlage statt Zierrahmen und Mittelblock.
+        cx, cy = X0 + (i + .5) * DX, Y0 + (j + .5) * DY; fx, fy = DX - 0.62, DY - 0.62
+        for dx, dy, sx, sy in ((0, fy / 2, fx, .035), (0, -fy / 2, fx, .035), (fx / 2, 0, .035, fy), (-fx / 2, 0, .035, fy)): bx((cx + dx, cy + dy, ZD - 0.015), (sx, sy, 0.03))
 ceiling_wood = simple_material("Kassettendecke Eichenholz", (0.23, 0.105, 0.038, 1), 0.48)
 wood_nodes = ceiling_wood.node_tree.nodes; wood_links = ceiling_wood.node_tree.links
 wood_coords = wood_nodes.new("ShaderNodeTexCoord")
@@ -1497,8 +1345,8 @@ wood_noise = wood_nodes.new("ShaderNodeTexNoise")
 wood_noise.inputs["Scale"].default_value = 3.0
 wood_noise.inputs["Detail"].default_value = 3.0
 wood_ramp = wood_nodes.new("ShaderNodeValToRGB")
-wood_ramp.color_ramp.elements[0].color = (0.075, 0.026, 0.009, 1)
-wood_ramp.color_ramp.elements[1].color = (0.32, 0.17, 0.067, 1)
+wood_ramp.color_ramp.elements[0].color = (0.36, 0.22, 0.10, 1)  # helle Naturholz-Eiche
+wood_ramp.color_ramp.elements[1].color = (0.66, 0.48, 0.27, 1)
 wood_shader = wood_nodes["Principled BSDF"]
 wood_links.new(wood_coords.outputs["Object"], wood_mapping.inputs["Vector"])
 wood_links.new(wood_mapping.outputs["Vector"], wood_noise.inputs["Vector"])
@@ -1510,9 +1358,10 @@ wood_bump.inputs["Distance"].default_value = 0.008
 wood_links.new(wood_noise.outputs["Fac"], wood_bump.inputs["Height"])
 wood_links.new(wood_bump.outputs["Normal"], wood_shader.inputs["Normal"])
 me = D.meshes.new("Kassettendecke"); bm.to_mesh(me); bm.free(); ko = D.objects.new("Kassettendecke", me); ccol.objects.link(ko); me.materials.append(ceiling_wood)
-# Auch der Hintergrund der Kassetten erhält dieselbe Holzoberfläche.
+# Die Felder zwischen den Balken sind warm weißer Putz.
+ceiling_plaster = simple_material("Deckenputz", (0.80, 0.76, 0.68, 1), 0.88)
 obj_by_name("Decke").data.materials.clear()
-obj_by_name("Decke").data.materials.append(ceiling_wood)
+obj_by_name("Decke").data.materials.append(ceiling_plaster)
 
 # Fensterbänke aus Eiche statt Stein; Maserung längs der Fensterbreite (Y).
 sill_wood = ceiling_wood.copy()

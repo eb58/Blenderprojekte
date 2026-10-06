@@ -256,11 +256,41 @@ const improveMaterials = (root, imageTextures) => {
     });
     limestone.name = 'Three.js Kalkstein';
     // Arkadenwand: Blender zeigt sie als Quadermauerwerk, der glTF-Export kennt das Fugenmuster nicht.
+    const titaniumFrame = new THREE.MeshStandardMaterial({
+        color: 0xa9abb0, roughness: 0.42, metalness: 0.55, envMapIntensity: 0.9
+    });
+    titaniumFrame.name = 'Three.js Titan';
+    // Fensterglas: fast klar, leichte Spiegelung; der Himmel dahinter bleibt sichtbar.
+    const windowGlass = new THREE.MeshStandardMaterial({
+        color: 0xeaf4ff, transparent: true, opacity: 0.1, roughness: 0.04, metalness: 0,
+        envMapIntensity: 1.2, depthWrite: false, side: THREE.DoubleSide
+    });
+    windowGlass.name = 'Three.js Fensterglas';
     const arcadeStone = new THREE.MeshStandardMaterial({
-        map: stoneTexture([172, 160, 138], 12), color: 0xffffff,
-        roughness: 0.8, metalness: 0, envMapIntensity: 0.25
+        color: 0xb9b1a3, roughness: 0.82, metalness: 0, envMapIntensity: 0.25
     });
     arcadeStone.name = 'Three.js Arkadenstein';
+    arcadeStone.onBeforeCompile = shader => {
+        shader.vertexShader = shader.vertexShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 wallPosition;')
+            .replace('#include <begin_vertex>',
+                '#include <begin_vertex>\nwallPosition = (modelMatrix * vec4(position, 1.0)).xyz;');
+        shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', '#include <common>\nvarying vec3 wallPosition;')
+            .replace('#include <map_fragment>', `
+                #include <map_fragment>
+                // Steinplatten 2,4 m x 1,2 m, jede zweite Reihe um eine halbe Platte versetzt (wie in Blender).
+                float slabRow = floor(wallPosition.y / 1.2);
+                float shifted = wallPosition.x + mod(slabRow, 2.0) * 1.2;
+                float acrossSlab = mod(shifted, 2.4);
+                float upSlab = mod(wallPosition.y, 1.2);
+                float joint = min(min(acrossSlab, 2.4 - acrossSlab), min(upSlab, 1.2 - upSlab));
+                diffuseColor.rgb *= mix(1.0, 0.86, 1.0 - smoothstep(0.0, 0.006, joint));
+                vec2 slabId = vec2(floor(shifted / 2.4), slabRow);
+                diffuseColor.rgb *= 0.95 + 0.08 * fract(sin(dot(slabId, vec2(12.9898, 78.233))) * 43758.5453);
+            `);
+    };
+    arcadeStone.customProgramCacheKey = () => 'museum-arcade-slabs-v1';
     const floor = new THREE.MeshStandardMaterial({
         map: stoneTexture([82, 64, 48], 22), color: 0x806b55,
         roughness: 0.36, metalness: 0, envMapIntensity: 0.5
@@ -283,8 +313,8 @@ const improveMaterials = (root, imageTextures) => {
             float grain = sin(woodPosition.y * 180.0 +
                 sin(woodPosition.x * 1.8) * 4.0 + woodPosition.z * 90.0);
             float broad = sin(woodPosition.y * 19.0 + sin(woodPosition.x * 0.7) * 2.0);
-            diffuseColor.rgb *= mix(vec3(0.075, 0.026, 0.009),
-                vec3(0.32, 0.17, 0.067), clamp(0.5 + grain * 0.15 + broad * 0.25, 0.0, 1.0));
+            diffuseColor.rgb *= mix(vec3(0.36, 0.22, 0.10),
+                vec3(0.66, 0.48, 0.27), clamp(0.5 + grain * 0.15 + broad * 0.25, 0.0, 1.0));
         `);
     };
     ceilingWood.customProgramCacheKey = () => 'museum-ceiling-oak-v1';
@@ -346,6 +376,14 @@ const improveMaterials = (root, imageTextures) => {
             object.material = ceilingWood;
             object.castShadow = /fensterbank/.test(identity);
             object.receiveShadow = true;
+        } else if (/fensterrahmen titan/.test(identity)) {
+            // Gebürstetes Titan: Metall ohne Umgebungskarte wirkt schwarz, daher mattes Hellgrau mit etwas Glanz.
+            object.material = titaniumFrame;
+            object.castShadow = false;
+        } else if (/fensterglas/.test(identity)) {
+            object.material = windowGlass;
+            object.castShadow = false;
+            object.receiveShadow = false;
         } else if (/arkaden kalkstein/.test(identity)) {
             object.material = arcadeStone;
             object.receiveShadow = true;
