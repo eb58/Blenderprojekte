@@ -413,6 +413,8 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             total: frameCount(state.settings),
             preview: exists(state.preview) ? fs.statSync(state.preview).mtimeMs : null,
             video: exists(state.video) && state.code === 0,
+            complete: frames.length >= frameCount(state.settings),
+            orbit: {start: state.settings.START_ANGLE, degrees: state.settings.ORBIT_DEGREES},
             log,
             elapsed: running ? Math.floor((Date.now() - state.started) / 1000) : 0,
             ffmpeg: Boolean(findFFmpeg())
@@ -450,10 +452,12 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         await terminate(state.process);
         await stopWorker();
     };
-    const mediaPath = kind => {
+    const mediaPath = (kind, index) => {
+        const frame = kind === 'frame' && Number.isInteger(index) && index >= 1 && index <= frameCount(state.settings)
+            ? path.join(state.settings.OUTPUT_DIR, 'frames', `frame_${String(index).padStart(4, '0')}.png`) : null;
         const file = kind === 'model' ? model
             : kind === 'preview' ? state.preview
-                : kind === 'video' ? state.video : null;
+                : kind === 'video' ? state.video : frame;
         return exists(file) ? file : null;
     };
     return {

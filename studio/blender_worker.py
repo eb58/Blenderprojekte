@@ -49,7 +49,7 @@ def _export_preview_model():
     bpy.ops.object.select_all(action="DESELECT")
     selected = []
     for obj in bpy.context.scene.objects:
-        if (obj.type in {"MESH", "CURVE"} and not obj.hide_render
+        if (obj.type in {"MESH", "CURVE", "FONT"} and not obj.hide_render
                 and not obj.name.startswith("Lichtschacht")):
             obj.select_set(True)
             selected.append(obj)

@@ -161,3 +161,48 @@ test('Costa-Fläche liefert ein endliches, normiertes Netz', {
     assert.ok(Number(count) > 800 && Number(faces) > 700, `${count} Punkte, ${faces} Flächen`);
     assert.ok(Math.abs(Number(radius) - 2) < 1e-5, `Normierung: ${radius}`);
 });
+
+test('Viewer ordnet jeder Granitfläche der Szene das Granitmaterial zu', () => {
+    const root = path.resolve(__dirname, '..');
+    const scene = fs.readFileSync(path.join(root, 'museum', 'scene.py'), 'utf8');
+    const viewer = fs.readFileSync(path.join(root, 'studio', 'viewer.js'), 'utf8');
+    const pattern = /\/([^/\n]*brown granite[^/\n]*)\/\.test\(identity\)/.exec(viewer);
+    assert.ok(pattern, 'Granit-Zuordnung im Viewer nicht gefunden');
+    const granite = new RegExp(pattern[1]);
+    const names = [...scene.matchAll(/granitskulptur\("([^"]+)"/g)].map(match => match[1]);
+    assert.ok(names.length >= 5, `Granitflächen in scene.py: ${names}`);
+    // Three.js ersetzt Leerzeichen in Knotennamen durch Unterstriche.
+    for (const name of names) assert.match(name.toLowerCase().replaceAll(' ', '_'), granite, name);
+});
+
+test('3D-Vorschau exportiert auch Textobjekte (Sockelbeschriftungen)', () => {
+    const worker = fs.readFileSync(path.join(__dirname, '..', 'studio', 'blender_worker.py'), 'utf8');
+    assert.match(worker, /obj\.type in \{[^}]*"FONT"/);
+});
+
+test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet', async () => {
+    const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'museum-frames-'));
+    const jobs = createStudio({workDir: path.join(folder, 'worker')});
+    try {
+        jobs.state.settings = {...DEFAULTS, OUTPUT_DIR: folder, FPS: 1, DURATION: 2, START_ANGLE: 30, ORBIT_DEGREES: 90};
+        fs.mkdirSync(path.join(folder, 'frames'));
+        fs.writeFileSync(path.join(folder, 'frames', 'frame_0001.png'), 'x');
+        assert.equal(jobs.status().complete, false);
+        fs.writeFileSync(path.join(folder, 'frames', 'frame_0002.png'), 'x');
+        const status = jobs.status();
+        assert.equal(status.complete, true);
+        assert.deepEqual(status.orbit, {start: 30, degrees: 90});
+        assert.equal(jobs.mediaPath('frame', 2), path.join(folder, 'frames', 'frame_0002.png'));
+        for (const index of [0, 3, 1.5, '1', -1, NaN, undefined]) assert.equal(jobs.mediaPath('frame', index), null, String(index));
+    } finally {
+        await jobs.close();
+        fs.rmSync(folder, {recursive: true, force: true});
+    }
+});
+
+test('Viewer bietet Tastatursteuerung, Rundgang und Drehen der Bildfolge', () => {
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
+    for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'standAt', 'floorMeshes.push']) assert.ok(viewer.includes(part), part);
+    assert.ok(page.includes('id="viewerWalk"'));
+});

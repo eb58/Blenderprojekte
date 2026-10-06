@@ -128,6 +128,12 @@ Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin 
 
 Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig in der App gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. Der horizontale Blickwinkel wird beim Loslassen automatisch mit dem Kamerarad synchronisiert. **Testbild rendern** verwendet dadurch immer die zuletzt gewählte Perspektive. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
 
+In der 3D-Vorschau drehen ← und → die Ansicht um das Museum, ↑ und ↓ zoomen. **Rundgang** schaltet auf eine Ich-Perspektive um: Mit W, A, S, D oder den Pfeiltasten gehst du durch die Ausstellung, Ziehen mit der Maus dreht den Blick, Esc beendet den Rundgang. Ein kurzer Klick auf den Boden stellt dich in jeder Ansicht an diese Stelle und startet den Rundgang dort. Die beiden großen Sockel sind dabei begehbar gesperrt; die Wände begrenzen den Raum.
+
+Sind alle Frames einer Animation gerendert, lässt sich auch das Renderbild drehen: Mit der Maus ziehen oder ← und → drücken wählt das Einzelbild entlang der Kamerafahrt. Das setzt voraus, dass Dauer, Bildrate und Ausgabeordner der Animation noch den Einstellungen des laufenden Studios entsprechen.
+
+Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks; der Wandteppich hat rechts unten daneben eine eigene.
+
 Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
 ## Parameter

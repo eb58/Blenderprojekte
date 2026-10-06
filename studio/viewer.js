@@ -23,6 +23,7 @@ let model;
 let loaded = false;
 let loading = false;
 let currentAngle = 0;
+let floorMeshes = [];
 
 const setActiveMode = is3d => {
     globalThis.museumViewMode = is3d ? '3d' : 'render';
@@ -77,6 +78,7 @@ const initialize = () => {
     controls.addEventListener('end', () => globalThis.setViewerAngle(currentAngle));
     new ResizeObserver(resize).observe(stage);
     renderer.setAnimationLoop(() => {
+        tick(Math.min(clock.getDelta(), 0.1));
         controls.update();
         renderer.render(scene, camera);
     });
@@ -302,7 +304,8 @@ const improveMaterials = (root, imageTextures) => {
                 side: THREE.DoubleSide
             });
             if (texture) texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-        } else if (/kusner|s41_7_5|brown granite/.test(identity) && !/sockel/.test(identity)) {
+        } else if (/kusner|s41_7_5|costa|henneberg|cobra|double[ _]trefoil|brown granite/.test(identity) &&
+            !/sockel/.test(identity)) {
             object.material = granite;
             object.castShadow = true;
         } else if (/bordeaux leder|cognac leder/.test(identity)) {
@@ -320,6 +323,9 @@ const improveMaterials = (root, imageTextures) => {
             const materials = Array.isArray(object.material) ? object.material : [object.material];
             for (const material of materials) {
                 if (material.map) material.map.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+                // Holz soll nicht wie Metall die helle Umgebung spiegeln und weiß wirken.
+                material.metalness = Math.min(material.metalness ?? 0, 0.1);
+                material.roughness = Math.max(material.roughness ?? 1, 0.55);
                 material.envMapIntensity = 0.45;
             }
             object.castShadow = true;
@@ -328,11 +334,15 @@ const improveMaterials = (root, imageTextures) => {
             object.material = ceilingWood;
             object.castShadow = /fensterbank/.test(identity);
             object.receiveShadow = true;
+        } else if (/sockelschild/.test(identity)) {
+            // Tafeln und Messingschrift behalten ihre Blender-Materialien.
+            object.receiveShadow = true;
         } else if (/sockel/.test(identity) && !/statue|büste|buste/.test(identity)) {
             object.material = limestone;
             object.castShadow = true;
             object.receiveShadow = true;
         } else if (/museumsboden|polierter museumsboden/.test(identity)) {
+            floorMeshes.push(object);
             // Die Boden-UVs kommen aus Blender; die Textur wird im Viewer zuverlässig erzeugt.
             if (document.getElementById('BODEN').value === 'parkett') {
                 parquet.channel = original?.map?.channel ?? 1;
@@ -363,6 +373,181 @@ const improveMaterials = (root, imageTextures) => {
     });
 };
 
+// --- Tastatur, Rundgang und Drehen in der fertigen Bildfolge -------------------------------
+const clock = new THREE.Clock();
+const keys = new Set();
+const walk = {active: false, yaw: 0, pitch: 0};
+const walkButton = document.getElementById('viewerWalk');
+// Begehbarer Bereich der Halle; die Sockel von Kusner und S41 sind als Rechtecke (x0, x1, z0, z1) gesperrt.
+const WALK_LIMIT = {x: 13.6, z: 14.0};
+const WALK_BLOCKS = [[-6.3, -1.6, -1.7, 1.7], [1.6, 6.3, -1.7, 1.7]];
+const MOVE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD']);
+const blocked = (x, z) => WALK_BLOCKS.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
+let lookDrag = null;
+
+const setWalk = on => {
+    walk.active = on;
+    keys.clear();
+    walkButton.textContent = on ? 'Rundgang beenden' : 'Rundgang';
+    walkButton.classList.toggle('active', on);
+    controls.enabled = !on;
+    canvas.style.cursor = on ? 'grab' : '';
+    if (on) {
+        camera.position.set(0, 1.65, 11);
+        walk.yaw = 0;
+        walk.pitch = 0;
+        camera.rotation.set(0, 0, 0, 'YXZ');
+    } else {
+        setCameraFromDial();
+    }
+};
+
+const tick = delta => {
+    if (globalThis.museumViewMode !== '3d' || !loaded) return;
+    const down = (...codes) => Number(codes.some(code => keys.has(code)));
+    if (walk.active) {
+        walk.yaw += (down('ArrowLeft') - down('ArrowRight')) * 1.6 * delta;
+        const forward = down('ArrowUp', 'KeyW') - down('ArrowDown', 'KeyS');
+        const strafe = down('KeyD') - down('KeyA');
+        if (forward || strafe) {
+            const step = 3.2 * delta;
+            const x = THREE.MathUtils.clamp(camera.position.x +
+                (-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe) * step, -WALK_LIMIT.x, WALK_LIMIT.x);
+            const z = THREE.MathUtils.clamp(camera.position.z +
+                (-Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe) * step, -WALK_LIMIT.z, WALK_LIMIT.z);
+            if (!blocked(x, camera.position.z)) camera.position.x = x;
+            if (!blocked(camera.position.x, z)) camera.position.z = z;
+        }
+        camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
+        return;
+    }
+    const turn = down('ArrowRight') - down('ArrowLeft');
+    const zoom = down('ArrowDown') - down('ArrowUp');
+    if (!turn && !zoom) return;
+    const offset = camera.position.clone().sub(controls.target);
+    const radius = THREE.MathUtils.clamp(Math.hypot(offset.x, offset.z) * (1 + zoom * 0.8 * delta), 8, 15.9);
+    const azimuth = Math.atan2(offset.x, offset.z) + turn * 0.9 * delta;
+    camera.position.set(controls.target.x + radius * Math.sin(azimuth), camera.position.y,
+        controls.target.z + radius * Math.cos(azimuth));
+    controls.update();
+    updateAngle();
+};
+
+// Fertige Animation: Ziehen oder Pfeiltasten wählen das Einzelbild entlang der Kamerafahrt.
+const scrub = {offset: 0, shown: 0, drag: null};
+const scrubInfo = () => {
+    const info = globalThis.museumRender;
+    return info?.complete && info.total > 1 && info.degrees ? info : null;
+};
+const showScrubFrame = () => {
+    const info = scrubInfo();
+    if (!info) return;
+    const steps = info.total - 1;
+    const position = Math.round(scrub.offset / info.degrees * steps);
+    const wrapped = Math.abs(info.degrees) >= 360
+        ? ((position % steps) + steps) % steps
+        : THREE.MathUtils.clamp(position, 0, steps);
+    if (wrapped + 1 === scrub.shown) return;
+    scrub.shown = wrapped + 1;
+    image.src = `museum://studio/frame/${scrub.shown}`;
+};
+image.draggable = false;
+image.style.touchAction = 'none';
+image.addEventListener('pointerenter', () => {
+    const info = scrubInfo();
+    image.style.cursor = info ? 'ew-resize' : '';
+    image.title = info ? 'Ziehen oder ←/→: durch die fertige Animation drehen' : '';
+});
+image.addEventListener('pointerdown', event => {
+    if (!scrubInfo()) return;
+    image.setPointerCapture(event.pointerId);
+    scrub.drag = event.clientX;
+});
+image.addEventListener('pointermove', event => {
+    if (scrub.drag === null) return;
+    scrub.offset -= (event.clientX - scrub.drag) * 0.35;
+    scrub.drag = event.clientX;
+    showScrubFrame();
+});
+for (const name of ['pointerup', 'pointercancel']) image.addEventListener(name, () => { scrub.drag = null; });
+
+const typing = event => ['INPUT', 'SELECT', 'TEXTAREA'].includes(event.target?.tagName);
+globalThis.addEventListener('keydown', event => {
+    if (typing(event) || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (globalThis.museumViewMode === 'render') {
+        const info = scrubInfo();
+        if (!info || !['ArrowLeft', 'ArrowRight'].includes(event.code)) return;
+        scrub.offset += (event.code === 'ArrowRight' ? 1 : -1) * info.degrees / (info.total - 1);
+        showScrubFrame();
+        event.preventDefault();
+        return;
+    }
+    if (globalThis.museumViewMode !== '3d' || !loaded) return;
+    if (event.code === 'Escape' && walk.active) {
+        setWalk(false);
+        return;
+    }
+    // W, A, S, D gelten nur im Rundgang; die Pfeiltasten drehen und zoomen auch die Rundumansicht.
+    if (!MOVE_KEYS.has(event.code) || (!walk.active && event.code.startsWith('Key'))) return;
+    keys.add(event.code);
+    event.preventDefault();
+});
+globalThis.addEventListener('keyup', event => {
+    if (!keys.delete(event.code)) return;
+    if (!walk.active && globalThis.museumViewMode === '3d') globalThis.setViewerAngle(currentAngle);
+});
+globalThis.addEventListener('blur', () => keys.clear());
+// Ein kurzer Klick auf den Boden stellt dich an diese Stelle (Ich-Perspektive im Rundgang).
+const raycaster = new THREE.Raycaster();
+let press = null;
+const standAt = event => {
+    const rect = canvas.getBoundingClientRect();
+    raycaster.setFromCamera(new THREE.Vector2(
+        (event.clientX - rect.left) / rect.width * 2 - 1,
+        -((event.clientY - rect.top) / rect.height * 2 - 1)), camera);
+    const hit = raycaster.intersectObjects(floorMeshes, false).find(entry => entry.point.y < 0.6);
+    if (!hit) return;
+    const {x, z} = hit.point;
+    if (Math.abs(x) > WALK_LIMIT.x || Math.abs(z) > WALK_LIMIT.z || blocked(x, z)) return;
+    if (!walk.active) {
+        const view = camera.getWorldDirection(new THREE.Vector3());
+        setWalk(true);
+        walk.yaw = Math.atan2(-view.x, -view.z);
+        walk.pitch = 0;
+    }
+    camera.position.set(x, 1.65, z);
+};
+canvas.title = 'Klick auf den Boden: dorthin stellen';
+canvas.addEventListener('pointerdown', event => {
+    press = {x: event.clientX, y: event.clientY, time: performance.now()};
+    if (!walk.active) return;
+    canvas.setPointerCapture(event.pointerId);
+    lookDrag = {x: event.clientX, y: event.clientY};
+    canvas.style.cursor = 'grabbing';
+});
+canvas.addEventListener('pointermove', event => {
+    if (!lookDrag) return;
+    walk.yaw -= (event.clientX - lookDrag.x) * 0.004;
+    walk.pitch = THREE.MathUtils.clamp(walk.pitch - (event.clientY - lookDrag.y) * 0.004, -1.2, 1.2);
+    lookDrag = {x: event.clientX, y: event.clientY};
+});
+canvas.addEventListener('pointerup', event => {
+    lookDrag = null;
+    if (walk.active) canvas.style.cursor = 'grab';
+    const click = press && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 5 &&
+        performance.now() - press.time < 500;
+    press = null;
+    if (click && loaded && globalThis.museumViewMode === '3d') standAt(event);
+});
+canvas.addEventListener('pointercancel', () => {
+    lookDrag = null;
+    press = null;
+    if (walk.active) canvas.style.cursor = 'grab';
+});
+walkButton.addEventListener('click', () => {
+    if (loaded) setWalk(!walk.active);
+});
+
 const savePng = async () => {
     await show3d();
     if (!loaded) return;
@@ -386,6 +571,7 @@ const savePng = async () => {
 const recordVideo = async () => {
     await show3d();
     if (!loaded) return;
+    if (walk.active) setWalk(false);
     if (!canvas.captureStream || !globalThis.MediaRecorder) {
         throw new Error('Dieser Browser unterstützt keine Canvas-Videoaufnahme.');
     }
@@ -456,6 +642,7 @@ const show3d = async () => {
             texture.flipY = false;
         }
         model = gltf.scene;
+        floorMeshes = [];
         improveMaterials(model, {park: parkTexture, mandelbrot: mandelbrotTexture});
         scene.add(model);
         loaded = true;
@@ -469,6 +656,8 @@ const show3d = async () => {
 };
 
 const showRender = () => {
+    if (walk.active) setWalk(false);
+    keys.clear();
     setActiveMode(false);
 };
 

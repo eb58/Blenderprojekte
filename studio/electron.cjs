@@ -47,13 +47,14 @@ const serveMuseumFile = async request => {
         '/mandelbrot.png': path.join('assets', 'mandelbrot_tapestry.png')
     };
     const media = {'/model.glb': 'model', '/preview': 'preview'};
+    const frameMatch = /^\/frame\/(\d{1,6})$/.exec(url.pathname);
     const file = Object.hasOwn(staticFiles, url.pathname)
         ? path.join(__dirname, staticFiles[url.pathname])
         : Object.hasOwn(imageFiles, url.pathname)
             ? path.join(__dirname, '..', imageFiles[url.pathname])
         : Object.hasOwn(media, url.pathname)
             ? studio.mediaPath(media[url.pathname])
-            : null;
+            : frameMatch ? studio.mediaPath('frame', Number(frameMatch[1])) : null;
 
     if (!file) return new Response('Not found', {status: 404});
 

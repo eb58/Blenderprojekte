@@ -25,7 +25,7 @@
                     <div class="symbol">∿</div><strong>Hier entsteht dein Museum.</strong><small>Ein Testbild zeigt
                         Licht, Material und Perspektive.</small>
                 </div><canvas id="viewer" hidden></canvas>
-                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
+                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button id="viewerWalk" type="button">Rundgang</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
                     alt="Gerendertes Museum" hidden>
             </div>
             <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
@@ -168,6 +168,10 @@
                     ? Math.min(100, state.frames / state.total * 100)
                     : state.code === 0 && state.kind ? 100 : 0;
                 document.getElementById('log').textContent = state.log || 'Noch kein Auftrag gestartet.';
+                globalThis.museumRender = {
+                    complete: state.complete && !state.running, total: state.total,
+                    start: state.orbit.start, degrees: state.orbit.degrees
+                };
                 document.getElementById('videoLink').style.display = state.video ? 'inline-block' : 'none';
                 if (state.preview && state.preview !== stamp) {
                     stamp = state.preview;
