@@ -116,13 +116,23 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
     };
     let mutation = false;
     let closed = false;
+    const modified = file => {
+        try {
+            return fs.statSync(file).mtimeMs;
+        } catch {
+            return null;
+        }
+    };
     const signature = settings => JSON.stringify([
         settings.BODEN,
         settings.SCULPTURE_SCALE,
         settings.THICKNESS,
-        fs.statSync(path.join(ROOT, 'museum', 'scene.py')).mtimeMs,
-        fs.statSync(path.join(__dirname, 'blender_worker.py')).mtimeMs,
-        fs.statSync(path.join(ROOT, 'assets', 'museum_park_panorama.png')).mtimeMs
+        modified(path.join(ROOT, 'museum', 'scene.py')),
+        modified(path.join(ROOT, 'museum', 'sierpinski.py')),
+        modified(path.join(ROOT, 'museum', 'weierstrass.py')),
+        modified(path.join(ROOT, 'museum', 'costa.py')),
+        modified(path.join(__dirname, 'blender_worker.py')),
+        modified(path.join(ROOT, 'assets', 'museum_park_panorama.png'))
     ]);
     const launch = (command, args, logFile, env, cwd) => {
         const fd = fs.openSync(logFile, 'w');

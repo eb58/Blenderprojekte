@@ -6,15 +6,21 @@ Verwendung in Blender:
 3. "Run Script" drücken.
 
 Das Skript ersetzt beim erneuten Ausführen ausschließlich die Sammlung
-"Sierpinski Entwurf". Andere Objekte der geöffneten Blender-Datei bleiben
+"Sierpinski Pyramide". Andere Objekte der geöffneten Blender-Datei bleiben
 unangetastet.
 """
 
 import math
+import os
+import sys
 
 import bmesh
 import bpy
 from mathutils import Vector
+
+sys.path.insert(0, os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "museum"))
+import sierpinski  # noqa: E402
 
 
 # Diese Werte können vor dem Ausführen angepasst werden.
@@ -46,51 +52,10 @@ def sammlung_neu_anlegen():
     return sammlung
 
 
-def kanten_sammeln(stufen):
-    """Liefert die eindeutigen Kanten aller kleinsten Tetraeder."""
-    ecken = tuple(Vector(punkt) for punkt in (
-        (0, 0, 1),
-        (0, -math.sqrt(8 / 9), -1 / 3),
-        (-math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3),
-        (math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3),
-    ))
-    kanten = set()
-
-    def unterteilen(mitte, massstab, verbleibend):
-        if verbleibend:
-            for ecke in ecken:
-                unterteilen(mitte + ecke * massstab / 2,
-                            massstab / 2, verbleibend - 1)
-            return
-        punkte = [mitte + ecke * massstab for ecke in ecken]
-        for erster in range(4):
-            for zweiter in range(erster + 1, 4):
-                start = tuple(round(wert, 7) for wert in punkte[erster])
-                ende = tuple(round(wert, 7) for wert in punkte[zweiter])
-                kanten.add(tuple(sorted((start, ende))))
-
-    unterteilen(Vector(), 1.0, stufen)
-    return kanten
-
-
 def pyramide_erzeugen(sammlung, bronze):
     mesh = bpy.data.meshes.new("Sierpinski-Pyramide Mesh")
     bm = bmesh.new()
-    for startwerte, endwerte in kanten_sammeln(REKURSIONSSTUFEN):
-        start, ende = Vector(startwerte), Vector(endwerte)
-        richtung = ende - start
-        transformation = richtung.to_track_quat('Z', 'Y').to_matrix().to_4x4()
-        transformation.translation = (start + ende) / 2
-        bmesh.ops.create_cone(
-            bm,
-            cap_ends=True,
-            cap_tris=False,
-            segments=ZYLINDERSEGMENTE,
-            radius1=STREBENRADIUS,
-            radius2=STREBENRADIUS,
-            depth=richtung.length,
-            matrix=transformation,
-        )
+    sierpinski.streben_in_bmesh(bm, REKURSIONSSTUFEN, STREBENRADIUS, ZYLINDERSEGMENTE)
     bm.to_mesh(mesh)
     bm.free()
     mesh.materials.append(bronze)
@@ -158,7 +123,7 @@ def main():
     stein = material("Sierpinski Kalkstein", (0.58, 0.45, 0.29, 1), 0.48)
     wand = material("Sierpinski Hintergrund", (0.012, 0.018, 0.015, 1), 0.88)
 
-    pyramide = pyramide_erzeugen(sammlung, wand)
+    pyramide = pyramide_erzeugen(sammlung, bronze)
     quader("Sockel Basis", (0, 0, .22), (4.4, 3.4, .44), stein, sammlung, .07)
     quader("Sockel Deckplatte", (0, 0, .64), (3.8, 2.9, .40), stein, sammlung, .05)
     quader("Dunkle Rückwand", (0, 1.7, 3.1), (7.5, .18, 6.2), wand, sammlung)
@@ -178,7 +143,7 @@ def main():
         if objekt != pyramide:
             objekt.select_set(False)
     print(f"Sierpiński-Pyramide erzeugt: {4 ** REKURSIONSSTUFEN} Tetraeder, "
-          f"{len(kanten_sammeln(REKURSIONSSTUFEN))} eindeutige Streben")
+          f"{len(sierpinski.kanten(REKURSIONSSTUFEN))} eindeutige Streben")
 
 
 if __name__ == "__main__":

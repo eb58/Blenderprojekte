@@ -50,10 +50,15 @@ if config_path:
 
 GRANITE_SPEC = json.loads("{\"interface\":[],\"links\":[[\"Group\",0,\"Material Output\",0]],\"name\":\"Shader Nodetree\",\"nodes\":[{\"idname\":\"ShaderNodeOutputMaterial\",\"in\":{\"2\":[0,0,0],\"3\":0},\"loc\":[1599,420],\"name\":\"Material Output\",\"parent\":null,\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Material Output\",\"target\":\"ALL\",\"width\":140}},{\"group\":{\"interface\":[{\"in_out\":\"OUTPUT\",\"name\":\"BSDF\",\"socket_type\":\"NodeSocketShader\"},{\"default\":1,\"in_out\":\"INPUT\",\"max_value\":3.4028234663852886e+38,\"min_value\":-3.4028234663852886e+38,\"name\":\"Scale\",\"socket_type\":\"NodeSocketFloat\"},{\"default\":[0.17788739502429962,0.07036018371582031,0.031896062195301056,1],\"in_out\":\"INPUT\",\"name\":\"Color 1\",\"socket_type\":\"NodeSocketColor\"},{\"default\":[0.31398674845695496,0.24228137731552124,0.11953852325677872,1],\"in_out\":\"INPUT\",\"name\":\"Color 2\",\"socket_type\":\"NodeSocketColor\"},{\"default\":[0.05612814798951149,0.036889489740133286,0.02315337210893631,1],\"in_out\":\"INPUT\",\"name\":\"Color 3\",\"socket_type\":\"NodeSocketColor\"},{\"default\":[0.3231411874294281,0.23074033856391907,0.1620294749736786,1],\"in_out\":\"INPUT\",\"name\":\"Color 4\",\"socket_type\":\"NodeSocketColor\"},{\"default\":[0.31854474544525146,0.2874411344528198,0.14126339554786682,1],\"in_out\":\"INPUT\",\"name\":\"Color 5\",\"socket_type\":\"NodeSocketColor\"},{\"default\":15,\"in_out\":\"INPUT\",\"max_value\":15,\"min_value\":0,\"name\":\"Detail\",\"socket_type\":\"NodeSocketFloat\"},{\"default\":1,\"in_out\":\"INPUT\",\"max_value\":2,\"min_value\":0,\"name\":\"Rougness\",\"socket_type\":\"NodeSocketFloat\"}],\"links\":[[\"Color Ramp.002\",0,\"Mix.003\",0],[\"Color Ramp\",0,\"Mix\",0],[\"Voronoi Texture\",0,\"Color Ramp.002\",0],[\"Mix.002\",2,\"Mix.003\",6],[\"Hue/Saturation/Value\",0,\"Principled BSDF\",2],[\"Noise Texture.001\",0,\"Color Ramp.001\",0],[\"Noise Texture\",0,\"Color Ramp\",0],[\"Mix.003\",2,\"Color Ramp.003\",0],[\"Mix.001\",2,\"Mix.002\",6],[\"Mapping\",0,\"Noise Texture\",0],[\"Texture Coordinate\",3,\"Mapping\",0],[\"Mapping\",0,\"Noise Texture.001\",0],[\"Color Ramp.001\",0,\"Mix.001\",0],[\"Mapping\",0,\"Noise Texture.002\",0],[\"Mix\",2,\"Mix.002\",7],[\"Mix.003\",2,\"Principled BSDF\",0],[\"Color Ramp.003\",0,\"Hue/Saturation/Value\",4],[\"Noise Texture.002\",1,\"Voronoi Texture\",0],[\"Principled BSDF\",0,\"Group Output\",0],[\"Group Input\",0,\"Mapping\",3],[\"Group Input\",1,\"Mix.001\",6],[\"Group Input\",2,\"Mix.001\",7],[\"Group Input\",3,\"Mix\",6],[\"Group Input\",4,\"Mix\",7],[\"Group Input\",5,\"Mix.003\",7],[\"Group Input\",6,\"Noise Texture.002\",3],[\"Group Input\",6,\"Noise Texture.001\",3],[\"Group Input\",6,\"Noise Texture\",3],[\"Group Input\",7,\"Hue/Saturation/Value\",2]],\"name\":\"Procedural Brown Granite\",\"nodes\":[{\"idname\":\"NodeGroupOutput\",\"in\":{},\"loc\":[1485,0],\"name\":\"Group Output\",\"parent\":null,\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Group Output\",\"width\":140}},{\"idname\":\"NodeGroupInput\",\"in\":{},\"loc\":[-1095,-573],\"name\":\"Group Input\",\"parent\":null,\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Group Input\",\"width\":140}},{\"idname\":\"ShaderNodeBsdfPrincipled\",\"in\":{\"1\":0,\"3\":1.5,\"4\":1,\"5\":false,\"6\":[0,0,0],\"7\":0,\"8\":0,\"9\":0,\"10\":[1,0.20000000298023224,0.10000000149011612],\"11\":0.05000000074505806,\"12\":1.399999976158142,\"13\":0,\"14\":0.5,\"15\":[1,1,1,1],\"16\":0,\"17\":0,\"18\":[0,0,0],\"19\":0,\"20\":0,\"21\":0.029999999329447746,\"22\":1.5,\"23\":[1,1,1,1],\"24\":[0,0,0],\"25\":0,\"26\":0.5,\"27\":[1,1,1,1],\"28\":[1,1,1,1],\"29\":0,\"30\":0,\"31\":1.3300000429153442},\"loc\":[1195,108],\"name\":\"Principled BSDF\",\"parent\":null,\"props\":{\"distribution\":\"MULTI_GGX\",\"height\":100,\"label\":\"\",\"name\":\"Principled BSDF\",\"subsurface_method\":\"RANDOM_WALK_LEGACY\",\"width\":240}},{\"idname\":\"ShaderNodeTexNoise\",\"in\":{\"1\":0,\"2\":4,\"4\":1,\"5\":2,\"6\":0,\"7\":1,\"8\":0},\"loc\":[30,-30],\"name\":\"Noise Texture\",\"parent\":\"Frame\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Noise Texture\",\"noise_dimensions\":\"4D\",\"noise_type\":\"FBM\",\"normalize\":false,\"width\":140}},{\"idname\":\"ShaderNodeMapping\",\"in\":{\"1\":[0,0,0],\"2\":[0,0,0]},\"loc\":[210,-30],\"name\":\"Mapping\",\"parent\":\"Frame.001\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Mapping\",\"vector_type\":\"POINT\",\"width\":140}},{\"idname\":\"ShaderNodeTexCoord\",\"in\":{},\"loc\":[30,-30],\"name\":\"Texture Coordinate\",\"parent\":\"Frame.001\",\"props\":{\"from_instancer\":false,\"height\":100,\"label\":\"\",\"name\":\"Texture Coordinate\",\"width\":140}},{\"idname\":\"ShaderNodeMix\",\"in\":{\"1\":[0.5,0.5,0.5],\"2\":0,\"3\":0,\"4\":[0,0,0],\"5\":[0,0,0],\"8\":[0,0,0],\"9\":[0,0,0]},\"loc\":[504,-51],\"name\":\"Mix\",\"parent\":\"Frame\",\"props\":{\"blend_type\":\"MIX\",\"clamp_factor\":true,\"clamp_result\":false,\"data_type\":\"RGBA\",\"factor_mode\":\"UNIFORM\",\"height\":100,\"label\":\"\",\"name\":\"Mix\",\"width\":140}},{\"idname\":\"ShaderNodeValToRGB\",\"in\":{},\"loc\":[207,-60],\"name\":\"Color Ramp\",\"parent\":\"Frame\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Color Ramp\",\"width\":240},\"ramp\":{\"els\":[[0,[0,0,0,1]],[0.4580153524875641,[1,1,1,1]]],\"interp\":\"LINEAR\",\"mode\":\"RGB\"}},{\"idname\":\"NodeFrame\",\"in\":{},\"loc\":[-677,-380],\"name\":\"Frame\",\"parent\":null,\"props\":{\"height\":361.6744384765625,\"label\":\"\",\"label_size\":20,\"name\":\"Frame\",\"shrink\":true,\"width\":674.1395874023438}},{\"idname\":\"NodeFrame\",\"in\":{},\"loc\":[-1196,-188],\"name\":\"Frame.001\",\"parent\":null,\"props\":{\"height\":349.9535217285156,\"label\":\"\",\"label_size\":20,\"name\":\"Frame.001\",\"shrink\":true,\"width\":380.27911376953125}},{\"idname\":\"ShaderNodeTexNoise\",\"in\":{\"1\":0,\"2\":6,\"4\":0.7300000190734863,\"5\":4.599999904632568,\"6\":0,\"7\":1,\"8\":0},\"loc\":[30,-30],\"name\":\"Noise Texture.001\",\"parent\":\"Frame.002\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Noise Texture.001\",\"noise_dimensions\":\"3D\",\"noise_type\":\"FBM\",\"normalize\":true,\"width\":140}},{\"idname\":\"ShaderNodeValToRGB\",\"in\":{},\"loc\":[202,-51],\"name\":\"Color Ramp.001\",\"parent\":\"Frame.002\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Color Ramp.001\",\"width\":240},\"ramp\":{\"els\":[[0.3358778655529022,[0,0,0,1]],[0.6755727529525757,[1,1,1,1]]],\"interp\":\"LINEAR\",\"mode\":\"RGB\"}},{\"idname\":\"ShaderNodeMix\",\"in\":{\"1\":[0.5,0.5,0.5],\"2\":0,\"3\":0,\"4\":[0,0,0],\"5\":[0,0,0],\"8\":[0,0,0],\"9\":[0,0,0]},\"loc\":[500,-51],\"name\":\"Mix.001\",\"parent\":\"Frame.002\",\"props\":{\"blend_type\":\"MIX\",\"clamp_factor\":true,\"clamp_result\":false,\"data_type\":\"RGBA\",\"factor_mode\":\"UNIFORM\",\"height\":100,\"label\":\"\",\"name\":\"Mix.001\",\"width\":140}},{\"idname\":\"NodeFrame\",\"in\":{},\"loc\":[-671,53],\"name\":\"Frame.002\",\"parent\":null,\"props\":{\"height\":339.906982421875,\"label\":\"\",\"label_size\":20,\"name\":\"Frame.002\",\"shrink\":true,\"width\":670.7907104492188}},{\"idname\":\"ShaderNodeTexVoronoi\",\"in\":{\"1\":0,\"2\":20,\"3\":6.699999809265137,\"4\":0.4699999988079071,\"5\":5.300000190734863,\"6\":1,\"7\":0.5,\"8\":1},\"loc\":[209,-44],\"name\":\"Voronoi Texture\",\"parent\":\"Frame.003\",\"props\":{\"distance\":\"EUCLIDEAN\",\"feature\":\"DISTANCE_TO_EDGE\",\"height\":100,\"label\":\"\",\"name\":\"Voronoi Texture\",\"normalize\":false,\"voronoi_dimensions\":\"3D\",\"width\":140}},{\"idname\":\"ShaderNodeTexNoise\",\"in\":{\"1\":0,\"2\":2,\"4\":0.6800000071525574,\"5\":2,\"6\":0,\"7\":1,\"8\":0},\"loc\":[30,-30],\"name\":\"Noise Texture.002\",\"parent\":\"Frame.003\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Noise Texture.002\",\"noise_dimensions\":\"3D\",\"noise_type\":\"FBM\",\"normalize\":true,\"width\":140}},{\"idname\":\"ShaderNodeValToRGB\",\"in\":{},\"loc\":[369,-50],\"name\":\"Color Ramp.002\",\"parent\":\"Frame.003\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Color Ramp.002\",\"width\":240},\"ramp\":{\"els\":[[0.030534353107213974,[0,0,0,1]],[0.27099260687828064,[1,1,1,1]]],\"interp\":\"LINEAR\",\"mode\":\"RGB\"}},{\"idname\":\"NodeFrame\",\"in\":{},\"loc\":[-654,440],\"name\":\"Frame.003\",\"parent\":null,\"props\":{\"height\":344.93023681640625,\"label\":\"\",\"label_size\":20,\"name\":\"Frame.003\",\"shrink\":true,\"width\":638.5115966796875}},{\"idname\":\"ShaderNodeMix\",\"in\":{\"0\":1,\"1\":[0.5,0.5,0.5],\"2\":0,\"3\":0,\"4\":[0,0,0],\"5\":[0,0,0],\"8\":[0,0,0],\"9\":[0,0,0]},\"loc\":[242,-140],\"name\":\"Mix.002\",\"parent\":null,\"props\":{\"blend_type\":\"DARKEN\",\"clamp_factor\":true,\"clamp_result\":false,\"data_type\":\"RGBA\",\"factor_mode\":\"UNIFORM\",\"height\":100,\"label\":\"\",\"name\":\"Mix.002\",\"width\":140}},{\"idname\":\"ShaderNodeMix\",\"in\":{\"1\":[0.5,0.5,0.5],\"2\":0,\"3\":0,\"4\":[0,0,0],\"5\":[0,0,0],\"8\":[0,0,0],\"9\":[0,0,0]},\"loc\":[425,89],\"name\":\"Mix.003\",\"parent\":null,\"props\":{\"blend_type\":\"MIX\",\"clamp_factor\":true,\"clamp_result\":false,\"data_type\":\"RGBA\",\"factor_mode\":\"UNIFORM\",\"height\":100,\"label\":\"\",\"name\":\"Mix.003\",\"width\":140}},{\"idname\":\"ShaderNodeValToRGB\",\"in\":{},\"loc\":[30,-71],\"name\":\"Color Ramp.003\",\"parent\":\"Frame.004\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Color Ramp.003\",\"width\":240},\"ramp\":{\"els\":[[0,[0.03820410370826721,0.03820440545678139,0.0382043831050396,1]],[1,[1,1,1,1]]],\"interp\":\"LINEAR\",\"mode\":\"RGB\"}},{\"idname\":\"ShaderNodeHueSaturation\",\"in\":{\"0\":0.5,\"1\":1,\"3\":1},\"loc\":[311,-30],\"name\":\"Hue/Saturation/Value\",\"parent\":\"Frame.004\",\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Hue/Saturation/Value\",\"width\":150}},{\"idname\":\"NodeFrame\",\"in\":{},\"loc\":[601,-42],\"name\":\"Frame.004\",\"parent\":null,\"props\":{\"height\":304.7441711425781,\"label\":\"\",\"label_size\":20,\"name\":\"Frame.004\",\"shrink\":true,\"width\":490.74420166015625}}]},\"idname\":\"ShaderNodeGroup\",\"in\":{\"0\":1,\"1\":[0.08074022829532623,0.11972354352474213,0.18556973338127136,1],\"2\":[0.31398674845695496,0.24228137731552124,0.11953852325677872,1],\"3\":[0.05612814798951149,0.036889489740133286,0.02315337210893631,1],\"4\":[0.22557133436203003,0.16208183765411377,0.11446116119623184,1],\"5\":[0.3443961441516876,0.3106135427951813,0.15228861570358276,1],\"6\":15,\"7\":1},\"loc\":[1395,431],\"name\":\"Group\",\"parent\":null,\"props\":{\"height\":100,\"label\":\"\",\"name\":\"Group\",\"width\":140}}]}")
 
+import sys
+
 import bpy
-import cmath
 import math
 from mathutils import Vector
+
+sys.path.insert(0, os.path.join(PROJECT_DIR, "museum"))
+import costa
+import weierstrass
 
 
 def enable_optix():
@@ -355,6 +360,26 @@ recess_material = simple_material("Tiefe Arkadennischen", (0.018, 0.013, 0.010, 
 base_material = simple_material("Sockelgranit", (0.022, 0.022, 0.021, 1), 0.30)
 
 
+def granitskulptur(name, mesh_name, eckpunkte, flaechen):
+    """Legt eine Granitfläche mit Granitdicke und sanften Kanten an."""
+    mesh = bpy.data.meshes.new(mesh_name)
+    mesh.from_pydata(eckpunkte, [], flaechen)
+    mesh.update()
+    skulptur = bpy.data.objects.new(name, mesh)
+    bpy.context.collection.objects.link(skulptur)
+    skulptur.data.materials.append(granite)
+    for polygon in mesh.polygons:
+        polygon.use_smooth = True
+    solidify = skulptur.modifiers.new("Granitdicke", "SOLIDIFY")
+    solidify.thickness = THICKNESS
+    solidify.offset = 0
+    solidify.use_even_offset = True
+    bevel = skulptur.modifiers.new("Sanfte Kanten", "BEVEL")
+    bevel.width = 0.012
+    bevel.segments = 2
+    return skulptur
+
+
 # ============================================================
 # KUSNER-FLÄCHE p=7 – FUNKTIONIERENDE GEOMETRIE UNVERÄNDERT
 # ============================================================
@@ -371,8 +396,6 @@ r2 = outer_pole - margin
 u_segments = 70 + round(p * 4)
 v_segments = 361 + round(p * 40)
 SEAM_OVERLAP = 0.10
-u_count = u_segments + 1
-v_count = v_segments + 1
 
 
 def F(z):
@@ -383,68 +406,10 @@ def G(z):
     return z**(p - 1) * (z**p - A) / (A * z**p + 1)
 
 
-def segment_delta(z0, z1):
-    z = (z0 + z1) * 0.5
-    dz = z1 - z0
-    f = F(z)
-    g = G(z)
-    x = (f * (1 - g * g) * 0.5 * dz).real
-    y = (1j * f * (1 + g * g) * 0.5 * dz).real
-    zz = (f * g * dz).real
-    return Vector((x, y, zz)) if all(map(math.isfinite, (x, y, zz))) else Vector()
+vertices, faces = weierstrass.flaeche(F, G, r1, r2, u_segments, v_segments,
+                                      SEAM_OVERLAP, SCULPTURE_SCALE)
 
-
-radii = [r1 + (r2 - r1) * i / u_segments for i in range(u_count)]
-angles = [(2 * math.pi + SEAM_OVERLAP) * j / v_segments for j in range(v_count)]
-grid = [[Vector() for _ in range(u_count)] for _ in range(v_count)]
-
-for i in range(1, u_count):
-    grid[0][i] = grid[0][i - 1] + segment_delta(complex(radii[i - 1], 0),
-                                                 complex(radii[i], 0))
-
-for j in range(1, v_count):
-    e0 = cmath.exp(1j * angles[j - 1])
-    e1 = cmath.exp(1j * angles[j])
-    for i, radial in enumerate(radii):
-        grid[j][i] = grid[j - 1][i] + segment_delta(radial * e0, radial * e1)
-
-all_points = [point for row in grid for point in row]
-center = Vector(tuple(sum(getattr(point, axis) for point in all_points) / len(all_points)
-                      for axis in ("x", "y", "z")))
-centered = [point - center for point in all_points]
-normalizing_radius = max(point.length for point in centered)
-centered = [point / normalizing_radius for point in centered]
-
-vertices = [
-    (point.x * SCULPTURE_SCALE,
-     -point.z * SCULPTURE_SCALE,
-     point.y * SCULPTURE_SCALE)
-    for point in centered
-]
-
-faces = []
-for j in range(v_count - 1):
-    for i in range(u_count - 1):
-        a = j * u_count + i
-        b = (j + 1) * u_count + i
-        faces.append((a, b, b + 1, a + 1))
-
-mesh = bpy.data.meshes.new("Kusner_p7_Mesh")
-mesh.from_pydata(vertices, [], faces)
-mesh.update()
-kusner = bpy.data.objects.new("Kusner p=7", mesh)
-bpy.context.collection.objects.link(kusner)
-kusner.data.materials.append(granite)
-for polygon in mesh.polygons:
-    polygon.use_smooth = True
-
-solidify = kusner.modifiers.new("Granitdicke", "SOLIDIFY")
-solidify.thickness = THICKNESS
-solidify.offset = 0
-solidify.use_even_offset = True
-bevel = kusner.modifiers.new("Sanfte Kanten", "BEVEL")
-bevel.width = 0.012
-bevel.segments = 2
+kusner = granitskulptur("Kusner p=7", "Kusner_p7_Mesh", vertices, faces)
 
 
 # ============================================================
@@ -453,81 +418,90 @@ bevel.segments = 2
 
 # Dieselbe Weierstrass-Darstellung und derselbe Ringbereich wie in
 # https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
-S41_M, S41_N = 7, 5
-s41_r1, s41_r2 = 1.1, 1.3
-s41_u_segments, s41_v_segments = 58, 221
-s41_u_count = s41_u_segments + 1
-s41_v_count = s41_v_segments + 1
+S41_U_SEGMENTS, S41_V_SEGMENTS = 58, 221
 
 
-def s41_f(z):
-    return 1j * (z**S41_N + 1)**2 / z**(S41_M + 1)
+def s41_funktionen(m, n):
+    def f(z):
+        return 1j * (z**n + 1)**2 / z**(m + 1)
+
+    def g(z):
+        return z**(m - n) * (z**n - 1) / (z**n + 1)
+
+    return f, g
 
 
-def s41_g(z):
-    return z**(S41_M - S41_N) * (z**S41_N - 1) / (z**S41_N + 1)
+s41_vertices, s41_faces = weierstrass.flaeche(*s41_funktionen(7, 5), 1.1, 1.3, S41_U_SEGMENTS,
+                                              S41_V_SEGMENTS, SEAM_OVERLAP, SCULPTURE_SCALE)
+s41 = granitskulptur("S41_7_5", "S41_7_5_Mesh", s41_vertices, s41_faces)
+
+# Doppeltes Kleeblatt "S41_5_3 Double Trefoil" derselben Seite (m = 5, n = 3, Ring 1,1 bis 1,5).
+trefoil_vertices, trefoil_faces = weierstrass.flaeche(
+    *s41_funktionen(5, 3), 1.1, 1.5, S41_U_SEGMENTS, S41_V_SEGMENTS, SEAM_OVERLAP, SCULPTURE_SCALE)
+double_trefoil = granitskulptur("Double Trefoil", "Double_Trefoil_Mesh",
+                                trefoil_vertices, trefoil_faces)
 
 
-def s41_segment_delta(z0, z1):
-    z = (z0 + z1) * 0.5
-    dz = z1 - z0
-    f = s41_f(z)
-    g = s41_g(z)
-    x = (f * (1 - g * g) * 0.5 * dz).real
-    y = (1j * f * (1 + g * g) * 0.5 * dz).real
-    zz = (f * g * dz).real
-    return Vector((x, y, zz)) if all(map(math.isfinite, (x, y, zz))) else Vector()
+# ============================================================
+# HENNEBERG-FLÄCHE – DRITTE NICHTORIENTIERBARE MINIMALFLÄCHE
+# ============================================================
+
+# Voreinstellung "Henneberg" (m = 5) von
+# https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
+HENNEBERG_M = 5
+henneberg_r1, henneberg_r2 = 1.8, 2.0
+henneberg_u_segments, henneberg_v_segments = 60, 241 + 24 * HENNEBERG_M
+henneberg_phase = (1, 1j, -1, -1j)[(HENNEBERG_M - 1) % 4]
 
 
-s41_radii = [s41_r1 + (s41_r2 - s41_r1) * i / s41_u_segments
-             for i in range(s41_u_count)]
-s41_angles = [(2 * math.pi + SEAM_OVERLAP) * j / s41_v_segments
-              for j in range(s41_v_count)]
-s41_grid = [[Vector() for _ in range(s41_u_count)] for _ in range(s41_v_count)]
+def henneberg_f(z):
+    return henneberg_phase * (z**(2 * HENNEBERG_M + 2) - 1) / z**(HENNEBERG_M + 3)
 
-for i in range(1, s41_u_count):
-    s41_grid[0][i] = s41_grid[0][i - 1] + s41_segment_delta(
-        complex(s41_radii[i - 1], 0), complex(s41_radii[i], 0))
 
-for j in range(1, s41_v_count):
-    e0 = cmath.exp(1j * s41_angles[j - 1])
-    e1 = cmath.exp(1j * s41_angles[j])
-    for i, radial in enumerate(s41_radii):
-        s41_grid[j][i] = s41_grid[j - 1][i] + s41_segment_delta(radial * e0, radial * e1)
+def henneberg_g(z):
+    return z
 
-s41_points = [point for row in s41_grid for point in row]
-s41_center = Vector(tuple(sum(getattr(point, axis) for point in s41_points) / len(s41_points)
-                           for axis in ("x", "y", "z")))
-s41_centered = [point - s41_center for point in s41_points]
-s41_radius = max(point.length for point in s41_centered)
-s41_centered = [point / s41_radius for point in s41_centered]
-s41_vertices = [
-    (point.x * SCULPTURE_SCALE, -point.z * SCULPTURE_SCALE, point.y * SCULPTURE_SCALE)
-    for point in s41_centered
-]
-s41_faces = []
-for j in range(s41_v_count - 1):
-    for i in range(s41_u_count - 1):
-        a = j * s41_u_count + i
-        b = (j + 1) * s41_u_count + i
-        s41_faces.append((a, b, b + 1, a + 1))
 
-s41_mesh = bpy.data.meshes.new("S41_7_5_Mesh")
-s41_mesh.from_pydata(s41_vertices, [], s41_faces)
-s41_mesh.update()
-s41 = bpy.data.objects.new("S41_7_5", s41_mesh)
-bpy.context.collection.objects.link(s41)
-s41.data.materials.append(granite)
-for polygon in s41_mesh.polygons:
-    polygon.use_smooth = True
+henneberg_vertices, henneberg_faces = weierstrass.flaeche(
+    henneberg_f, henneberg_g, henneberg_r1, henneberg_r2, henneberg_u_segments,
+    henneberg_v_segments, SEAM_OVERLAP, SCULPTURE_SCALE)
+henneberg = granitskulptur("Henneberg", "Henneberg_Mesh", henneberg_vertices, henneberg_faces)
 
-s41_solidify = s41.modifiers.new("Granitdicke", "SOLIDIFY")
-s41_solidify.thickness = THICKNESS
-s41_solidify.offset = 0
-s41_solidify.use_even_offset = True
-s41_bevel = s41.modifiers.new("Sanfte Kanten", "BEVEL")
-s41_bevel.width = 0.012
-s41_bevel.segments = 2
+
+# ============================================================
+# COBRA-FLÄCHE
+# ============================================================
+
+# Voreinstellung "Cobra" (m = 5, t = 1) von
+# https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
+COBRA_M, COBRA_T = 5, 1.0
+cobra_r1, cobra_r2 = 1.0, 1.2
+cobra_u_segments, cobra_v_segments = 58, 221
+
+
+def cobra_f(z):
+    return COBRA_T**2 * (z + 1)**2 * (z + 1j / COBRA_T)**2 / z**(COBRA_M + 1)
+
+
+def cobra_g(z):
+    return (z**(COBRA_M - 2) * (z - 1) * (z - 1j * COBRA_T)
+            / (COBRA_T * (z + 1) * (z + 1j / COBRA_T)))
+
+
+cobra_vertices, cobra_faces = weierstrass.flaeche(
+    cobra_f, cobra_g, cobra_r1, cobra_r2, cobra_u_segments, cobra_v_segments,
+    SEAM_OVERLAP, SCULPTURE_SCALE)
+cobra = granitskulptur("Cobra", "Cobra_Mesh", cobra_vertices, cobra_faces)
+
+
+# ============================================================
+# COSTA-FLÄCHE
+# ============================================================
+
+# Parametrisierung und Endenausschnitt (ε = 0,12) wie auf
+# https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
+costa_vertices, costa_faces = costa.flaeche(SCULPTURE_SCALE)
+costa_skulptur = granitskulptur("Costa", "Costa_Mesh", costa_vertices, costa_faces)
 
 
 # ============================================================
@@ -1015,80 +989,78 @@ for source, target in (
 for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
     D.objects[n].material_slots[0].material = plinth_stone
 
-# --- Die fünf Platonischen Körper als mathematische Exponate -------------------------------
-scol = D.collections.new("Platonische Koerper"); S.collection.children.link(scol)
-platonic_bronze = simple_material("Platonische Koerper Bronze", (.24, .075, .022, 1), .34, .68)
+# --- Die fünf mathematischen Exponate in den Nischen ---------------------------------------
+import sierpinski
+
+scol = D.collections.new("Nischenexponate"); S.collection.children.link(scol)
 sierpinski_bronze = simple_material("Sierpinski Bronze", (.40, .085, .018, 1), .26, .78)
-golden = (1 + math.sqrt(5)) / 2
-inverse_golden = 1 / golden
-platonic_vertices = (
-    ("Tetraeder", ((1, 1, 1), (-1, -1, 1), (-1, 1, -1), (1, -1, -1))),
-    ("Wuerfel", tuple((x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1))),
-    ("Sierpinski-Pyramide", None),
-    ("Dodekaeder", tuple(
-        [(x, y, z) for x in (-1, 1) for y in (-1, 1) for z in (-1, 1)] +
-        [(0, y * inverse_golden, z * golden) for y in (-1, 1) for z in (-1, 1)] +
-        [(x * inverse_golden, y * golden, 0) for x in (-1, 1) for y in (-1, 1)] +
-        [(x * golden, 0, z * inverse_golden) for x in (-1, 1) for z in (-1, 1)])),
-    ("Ikosaeder", tuple(
-        [(0, y, z * golden) for y in (-1, 1) for z in (-1, 1)] +
-        [(x, y * golden, 0) for x in (-1, 1) for y in (-1, 1)] +
-        [(x * golden, 0, z) for x in (-1, 1) for z in (-1, 1)])),
-)
+exponate = ("Costa", "Henneberg", "Sierpinski-Pyramide", "Cobra", "Double Trefoil")
 
 
-def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
-    mesh = D.meshes.new(name + " Mesh")
-    bm = bmesh.new()
-    if name == "Sierpinski-Pyramide":
-        # Aufrechte reguläre Pyramide: eine Spitze oben, drei Ecken in einer
-        # waagerechten Grundebene. Frontal entsteht die klare Dreiecksform.
-        corners = tuple(Vector(vertex) for vertex in (
-            (0, 0, 1),
-            (0, -math.sqrt(8 / 9), -1 / 3),
-            (-math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3),
-            (math.sqrt(2 / 3), math.sqrt(2 / 9), -1 / 3)))
-        edges = set()
+# Granitflächen aus dem Hauptaufbau ziehen in ihre Nische um.
+granit_exponate = {"Costa": costa_skulptur, "Henneberg": henneberg, "Cobra": cobra,
+                   "Double Trefoil": double_trefoil}
 
-        def collect_edges(center, scale, level):
-            if level:
-                for corner in corners:
-                    collect_edges(center + corner * scale / 2, scale / 2, level - 1)
-                return
-            points = [center + corner * scale for corner in corners]
-            for first in range(4):
-                for second in range(first + 1, 4):
-                    a = tuple(round(value, 6) for value in points[first])
-                    b = tuple(round(value, 6) for value in points[second])
-                    edges.add(tuple(sorted((a, b))))
 
-        collect_edges(Vector(), 1.0, 4)
-        for start_values, end_values in edges:
-            start, end = Vector(start_values), Vector(end_values)
-            direction = end - start
-            transform = direction.to_track_quat('Z', 'Y').to_matrix().to_4x4()
-            transform.translation = (start + end) / 2
-            bmesh.ops.create_cone(bm, cap_ends=True, cap_tris=False, segments=8,
-                                  radius1=.018, radius2=.018, depth=direction.length,
-                                  matrix=transform)
+# --- Beschriftungen: Messingschrift auf anthrazitfarbener Tafel an der Sockelvorderseite ---
+beschriftungen = D.collections.new("Sockelbeschriftungen"); S.collection.children.link(beschriftungen)
+schild_stein = simple_material("Sockelschild Anthrazit", (.012, .016, .015, 1), .38)
+schild_messing = simple_material("Sockelschild Messing", (.72, .43, .12, 1), .22, .9)
+SOCKELTEXTE = {
+    "Costa": ("COSTA-FLÄCHE", "Geschlecht 1, drei Enden"),
+    "Henneberg": ("HENNEBERG-FLÄCHE", "nichtorientierbar, m = 5"),
+    "Sierpinski-Pyramide": ("SIERPIŃSKI-PYRAMIDE", "Fraktal, Stufe 4"),
+    "Cobra": ("COBRA-FLÄCHE", "m = 5, t = 1"),
+    "Double Trefoil": ("DOUBLE TREFOIL", "S41, m = 5, n = 3"),
+}
+
+
+def sockelschild(name, titel, untertitel, x, y_vorne, z, breite, hoehe):
+    """Setzt eine Tafel mit zweizeiliger Messingschrift vor die Sockelseite bei y_vorne (Blick nach +y)."""
+    tafel = box(f"{name} Tafel", (x, y_vorne - .01, z), (breite, .02, hoehe), beschriftungen)
+    tafel.data.materials.append(schild_stein)
+    for zeile, text, anteil, dz in (("Titel", titel, .30, .17), ("Untertitel", untertitel, .20, -.22)):
+        kurve = D.curves.new(f"{name} {zeile}", "FONT"); kurve.body = text
+        kurve.align_x = 'CENTER'; kurve.align_y = 'CENTER'
+        # Schriftbreite grob mit 0,7 Schrifthöhen je Zeichen abschätzen, damit der Text auf die Tafel passt.
+        kurve.size = min(hoehe * anteil, breite * .9 / (len(text) * .7))
+        kurve.extrude = .004; kurve.materials.append(schild_messing)
+        schrift = D.objects.new(f"{name} {zeile}", kurve); beschriftungen.objects.link(schrift)
+        schrift.location = (x, y_vorne - .022, z + hoehe * dz)
+        schrift.rotation_euler.x = math.radians(90)
+
+
+def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
+    if name in granit_exponate:
+        solid = granit_exponate[name]
+        for old_collection in list(solid.users_collection):
+            old_collection.objects.unlink(solid)
+        scol.objects.link(solid)
+        mesh = solid.data
+        modifier = solid.modifiers.new("Subdivision", "SUBSURF")
+        modifier.levels, modifier.render_levels = 1, 2
     else:
-        solid_vertices = [bm.verts.new(vertex) for vertex in vertices]
-        bmesh.ops.convex_hull(bm, input=solid_vertices, use_existing_faces=False)
-        bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
-    bm.to_mesh(mesh); bm.free()
-    solid = D.objects.new(name, mesh); scol.objects.link(solid)
-    if name == "Sierpinski-Pyramide":
+        mesh = D.meshes.new(name + " Mesh")
+        bm = bmesh.new()
+        sierpinski.streben_in_bmesh(bm, 4, .018, 8)
+        bm.to_mesh(mesh); bm.free()
+        solid = D.objects.new(name, mesh); scol.objects.link(solid)
+    if name in granit_exponate:
+        C.view_layer.update()
+        uniform_scale = 3.0 / max(solid.dimensions)
+        solid.scale = (uniform_scale,) * 3
+        C.view_layer.update()
+        solid.location = (x, y, pedestal_height + .26 - min(v[2] for v in solid.bound_box) * uniform_scale + .02)
+        solid.rotation_euler = (0, 0, 0)
+    else:
         C.view_layer.update()
         uniform_scale = 3.25 / max(solid.dimensions)
         solid.scale = (uniform_scale,) * 3
         C.view_layer.update()
         solid.location = (x, y, pedestal_height + .26 + solid.dimensions.z / 2 - .01)
         solid.rotation_euler = (0, 0, 0)
-    else:
-        solid.dimensions = (1.75, 1.75, 1.75)
-        solid.location = (x, y, pedestal_height + 1.02)
-        solid.rotation_euler = (math.radians(12 + index * 4), math.radians(18), math.radians(index * 17 - 28))
-    mesh.materials.append(sierpinski_bronze if name == "Sierpinski-Pyramide" else platonic_bronze)
+    if name not in granit_exponate:
+        mesh.materials.append(sierpinski_bronze)
 
     pedestal_base = box(f"Koerpersockel Basis {index}", (x, y, .12), (1.62, 1.48, .24), scol)
     pedestal_base.data.materials.append(plinth_stone)
@@ -1098,6 +1070,7 @@ def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
     cap = box(f"Koerpersockel Deckplatte {index}", (x, y, pedestal_height + .18),
               (1.58, 1.42, .16), scol)
     cap.data.materials.append(plinth_stone)
+    sockelschild(f"Nische {index}", *SOCKELTEXTE[name], x, y - .59, pedestal_height / 2 + .12, 1.0, .46)
 
     light_data = D.lights.new(f"Koerperlicht {index}", "SPOT")
     light_data.energy = 1100 if name == "Sierpinski-Pyramide" else 780
@@ -1122,8 +1095,8 @@ def platonic_solid(index, name, vertices, x, y=18.2, pedestal_height=1.1):
             fill.rotation_euler = (target - fill.location).to_track_quat('-Z', 'Y').to_euler()
 
 
-for index, ((name, vertices), x) in enumerate(zip(platonic_vertices, NICHE_XS), 1):
-    platonic_solid(index, name, vertices, x)
+for index, (name, x) in enumerate(zip(exponate, NICHE_XS), 1):
+    nischenexponat(index, name, x)
 
 # --- Gestaltbare, geschlossene Museumswand gegenüber den Arkaden ----------------------------
 gcol = D.collections.new("Wandgestaltung"); S.collection.children.link(gcol)
@@ -1422,6 +1395,8 @@ for work in main_works:
 for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
     obj_by_name(n).scale.x *= 0.6
     obj_by_name(n).scale.y *= 0.6
+sockelschild("Kusner", "KUSNER-FLÄCHE", "p = 7", -EXHIBIT_X, -1.44, 0.30, 2.6, 0.44)
+sockelschild("S41", "S41_7_5", "nichtorientierbar, m = 7, n = 5", EXHIBIT_X, -1.44, 0.30, 2.6, 0.44)
 
 work_centers = [work.location.z + (min(v[2] for v in work.bound_box) +
                                    max(v[2] for v in work.bound_box)) * SK / 2

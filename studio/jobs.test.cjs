@@ -100,3 +100,64 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         fs.rmSync(folder, {recursive: true, force: true});
     }
 });
+
+const BLENDER = process.env.MUSEUM_BLENDER || 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
+
+test('Sierpiński-Geometrie wird von Szene und Entwurfsskript gemeinsam genutzt', {
+    skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
+}, () => {
+    const root = path.resolve(__dirname, '..');
+    for (const file of [path.join('museum', 'scene.py'), path.join('tools', 'sierpinski_pyramide.py')]) {
+        const source = fs.readFileSync(path.join(root, file), 'utf8');
+        assert.match(source, /import sierpinski/, file);
+        assert.doesNotMatch(source, /math\.sqrt\(8 \/ 9\)/, `${file} dupliziert die Pyramidenecken`);
+    }
+    const {spawnSync} = require('node:child_process');
+    const result = spawnSync(BLENDER, [
+        '--background', '--factory-startup', '--python-exit-code', '1', '--python-expr',
+        'import sys; sys.path.insert(0, "museum"); import sierpinski as s; ' +
+        'print("KANTEN", [len(s.kanten(n)) for n in range(5)])'
+    ], {cwd: root, encoding: 'utf8', windowsHide: true});
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /KANTEN \[6, 24, 96, 384, 1536\]/);
+});
+
+test('Weierstraß-Flächen kommen aus einem gemeinsamen Modul', {
+    skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
+}, () => {
+    const root = path.resolve(__dirname, '..');
+    const scene = fs.readFileSync(path.join(root, 'museum', 'scene.py'), 'utf8');
+    assert.match(scene, /import weierstrass/);
+    assert.doesNotMatch(scene, /def \w*segment_delta/, 'scene.py rechnet die Integration selbst');
+    for (const name of ['Kusner p=7', 'S41_7_5', 'Henneberg', 'Cobra', 'Double Trefoil']) assert.ok(scene.includes(`"${name}"`), name);
+    const {spawnSync} = require('node:child_process');
+    const result = spawnSync(BLENDER, [
+        '--background', '--factory-startup', '--python-exit-code', '1', '--python-expr',
+        'import sys, math; sys.path.insert(0, "museum"); import weierstrass as w; ' +
+        'v, f = w.flaeche(lambda z: (z**12 - 1) / z**8, lambda z: z, 1.8, 2.0, 6, 24, 0.1, 2.0); ' +
+        'print("FLAECHE", len(v), len(f), round(max(math.dist(p, (0, 0, 0)) for p in v), 6))'
+    ], {cwd: root, encoding: 'utf8', windowsHide: true});
+    assert.equal(result.status, 0, result.stderr);
+    assert.match(result.stdout, /FLAECHE 175 144 [\d.]+/);
+    const radius = Number(/FLAECHE \d+ \d+ ([\d.]+)/.exec(result.stdout)[1]);
+    assert.ok(radius > 0 && radius <= 2.0 + 1e-6, `Normierung: ${radius}`);
+});
+
+test('Costa-Fläche liefert ein endliches, normiertes Netz', {
+    skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
+}, () => {
+    const {spawnSync} = require('node:child_process');
+    const result = spawnSync(BLENDER, [
+        '--background', '--factory-startup', '--python-exit-code', '1', '--python-expr',
+        'import sys, math; sys.path.insert(0, "museum"); import costa; ' +
+        'v, f = costa.flaeche(2.0, 0.12, 40, 40); ' +
+        'zs = [p[2] for p in v]; ' +
+        'print("COSTA", len(v), len(f), round(max(math.dist(p, (0, 0, 0)) for p in v), 6), ' +
+        'all(math.isfinite(c) for p in v for c in p), round(sum(zs) / len(zs), 3))'
+    ], {cwd: path.resolve(__dirname, '..'), encoding: 'utf8', windowsHide: true});
+    assert.equal(result.status, 0, result.stderr);
+    const [, count, faces, radius, finite] = /COSTA (\d+) (\d+) ([\d.]+) (\w+)/.exec(result.stdout);
+    assert.equal(finite, 'True');
+    assert.ok(Number(count) > 800 && Number(faces) > 700, `${count} Punkte, ${faces} Flächen`);
+    assert.ok(Math.abs(Number(radius) - 2) < 1e-5, `Normierung: ${radius}`);
+});

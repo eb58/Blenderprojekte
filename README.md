@@ -1,6 +1,6 @@
 # Museum Studio
 
-Museum Studio erzeugt mit Blender eine virtuelle Museumsszene mit zwei mathematischen Granitskulpturen: der Kusner-Fläche für `p=7` und der nichtorientierbaren Minimalfläche `S41_7_5`. Eine lokale Weboberfläche steuert Material, Größe, Kamerafahrt, Renderqualität und Ausgabe. Animationen werden zunächst als PNG-Bildfolge gerendert und anschließend mit FFmpeg zu einem MP4 zusammengefügt.
+Museum Studio erzeugt mit Blender eine virtuelle Museumsszene mit zwei mathematischen Granitskulpturen: der Kusner-Fläche für `p=7` und der nichtorientierbaren Minimalfläche `S41_7_5`. In fünf Wandnischen stehen außerdem mathematische Exponate: die Costa-Fläche, die Henneberg-Fläche (`m=5`), die Cobra-Fläche (`m=5`, `t=1`) und das Double Trefoil (`S41_5_3`) – alle aus Granit – sowie die bronzene Sierpiński-Pyramide. Alle Sockel tragen eine Tafel mit Messingschrift (Name und Parameter). Eine lokale Desktopoberfläche steuert Material, Größe, Kamerafahrt, Renderqualität und Ausgabe. Animationen werden zunächst als PNG-Bildfolge gerendert und anschließend mit FFmpeg zu einem MP4 zusammengefügt.
 
 ## Voraussetzungen
 
@@ -43,7 +43,7 @@ Der Startbefehl öffnet Museum Studio als Electron-Desktop-App. Es gibt keinen H
 
 ## Tests
 
-`npm test` prüft Validierung und die serverlose Auftragsverwaltung.
+`npm test` prüft Validierung und die serverlose Auftragsverwaltung. Ist Blender installiert (oder `MUSEUM_BLENDER` gesetzt), prüft er außerdem die gemeinsame Sierpiński-Geometrie.
 
 Die schnellen Tests können einmalig als Pre-Commit-Hook aktiviert werden:
 
@@ -122,20 +122,20 @@ Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen.
 3. Mit **Animation erstellen** fehlende PNG-Einzelbilder rendern und anschließend automatisch das MP4-Video erzeugen.
 4. Das fertige Video über **Video herunterladen** öffnen oder speichern.
 
-Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nächsten Öffnen wiederhergestellt.
+Die Formularwerte werden im `localStorage` der Oberfläche gespeichert und beim nächsten Öffnen wiederhergestellt.
 
 Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Das GLB-Modell wird unabhängig davon erst beim Öffnen der 3D-Vorschau exportiert. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
 
-Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. Der horizontale Blickwinkel wird beim Loslassen automatisch mit dem Kamerarad synchronisiert. **Testbild rendern** verwendet dadurch immer die zuletzt gewählte Perspektive. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
+Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig in der App gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. Der horizontale Blickwinkel wird beim Loslassen automatisch mit dem Kamerarad synchronisiert. **Testbild rendern** verwendet dadurch immer die zuletzt gewählte Perspektive. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
 
-Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
+Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
 ## Parameter
 
 | Parameter | Bedeutung |
 | --- | --- |
 | Boden | Marmor- oder Parkettboden |
-| Skulpturgröße | Gemeinsame Skalierung der beiden Granitskulpturen |
+| Skulpturgröße | Gemeinsame Skalierung der beiden großen Granitskulpturen |
 | Granitdicke | Stärke der mittels Solidify erzeugten Oberflächen |
 | Dauer | Länge der Animation in Sekunden |
 | Bilder/Sekunde | Bildrate des Renders und des MP4-Videos |
@@ -146,7 +146,7 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG 
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 
-Auf der geschlossenen Museumswand gegenüber den Arkaden hängt ein großer, gewebter Wandteppich mit einer kupfer- und petrolfarbenen Mandelbrot-Welt. Das Motiv liegt als Projekt-Asset unter `Assets/mandelbrot_tapestry.png`.
+Auf der geschlossenen Museumswand gegenüber den Arkaden hängt ein großer, gewebter Wandteppich mit einer kupfer- und petrolfarbenen Mandelbrot-Welt. Das Motiv liegt als Projekt-Asset unter `assets/mandelbrot_tapestry.png`.
 
 ## Render-Presets
 
@@ -194,6 +194,9 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine lei
 - Three.js, OrbitControls und GLTFLoader werden in der festgelegten Version `0.186.1` über jsDelivr geladen. Für die 3D-Vorschau ist deshalb eine Internetverbindung erforderlich.
 - `studio/index.html` enthält Benutzeroberfläche und Statusanzeige.
 - `museum/scene.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
+- `museum/weierstrass.py` berechnet die Minimalflächen (Kusner, S41_7_5, Henneberg, Cobra, Double Trefoil) aus ihrer Weierstraß-Darstellung über einem Kreisring; die Formeln stammen von der [Seite zu nichtorientierbaren Minimalflächen](https://eb58.github.io/Non-Orientable-Minimal-Surfaces/).
+- `museum/costa.py` berechnet die Costa-Fläche über dem Einheitstorus (Port der Parametrisierung der oben genannten Seite, Endenausschnitt ε = 0,12).
+- `museum/sierpinski.py` enthält die gemeinsame Geometrie der Sierpiński-Pyramide. Szene und Entwurfsskript `tools/sierpinski_pyramide.py` verwenden sie gemeinsam.
 - `tools/assets/` enthält aktuelle Werkzeuge zur Modellvorbereitung.
 - `tools/archive/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte; sie werden vom Studio nicht verwendet.
 

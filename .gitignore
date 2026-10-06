@@ -2,8 +2,8 @@
 *.blend1
 *.blend2
 *.png
-!Assets/
-!Assets/*.png
+!assets/
+!assets/*.png
 *.mp4
 Render/
 assets/models/**/textures/
