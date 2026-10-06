@@ -129,10 +129,6 @@
             color: #23311c
         }
 
-        .viewer-apply {
-            box-shadow: 0 5px 18px #0008
-        }
-
         .viewer-actions {
             position: absolute;
             z-index: 4;
@@ -142,6 +138,10 @@
             display: flex;
             gap: 7px;
             white-space: nowrap
+        }
+
+        .viewer-actions[hidden] {
+            display: none !important
         }
 
         .viewer-actions button {
@@ -463,13 +463,11 @@
                     <div class="symbol">∿</div><strong>Hier entsteht dein Museum.</strong><small>Ein Testbild zeigt
                         Licht, Material und Perspektive.</small>
                 </div><canvas id="viewer" hidden></canvas>
-                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button class="viewer-apply" id="viewerApply"
-                    type="button">Mit Cycles rendern</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
+                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
                     alt="Gerendertes Museum" hidden>
             </div>
             <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
-                    class="job" id="renderAnimation">Animation rendern</button><button class="job" id="mp4">MP4
-                    erstellen</button><button id="stop"
+                    class="job" id="renderAnimation">Animation erstellen</button><button id="stop"
                     disabled>Abbrechen</button><a class="download" id="videoLink" href="#"
                     download="museum.mp4">Video herunterladen</a></div>
             <div class="status"><span id="status">Bereit für dein erstes Testbild</span><span id="counter"></span></div>
@@ -590,11 +588,8 @@
                 const state = await globalThis.museumStudio.status();
                 document.querySelectorAll('.job').forEach(button => button.disabled = state.running);
                 document.getElementById('stop').disabled = !state.running;
-                document.getElementById('mp4').title = state.ffmpeg
-                    ? 'Video aus PNG-Frames erstellen'
-                    : 'FFmpeg muss im PATH installiert sein';
                 document.getElementById('status').textContent = state.running
-                    ? state.kind === 'video' ? 'Video wird erstellt …'
+                    ? state.phase === 'video' ? 'Video wird erstellt …'
                         : state.kind === 'still' ? 'Testbild wird gerendert …'
                             : 'Animation wird gerendert …'
                     : state.kind
@@ -602,12 +597,12 @@
                             : state.code !== null ? 'Auftrag abgebrochen oder fehlgeschlagen – siehe Meldungen'
                                 : 'Bereit'
                         : 'Bereit für dein erstes Testbild';
-                document.getElementById('counter').textContent = state.kind === 'animation'
+                document.getElementById('counter').textContent = state.phase === 'animation'
                     ? `${state.frames} / ${state.total} Frames · ${state.elapsed}s`
                     : state.running ? `${state.elapsed}s` : '';
                 const progress = document.getElementById('progress');
-                if (state.running && state.kind !== 'animation') progress.removeAttribute('value');
-                else progress.value = state.kind === 'animation'
+                if (state.running && state.phase !== 'animation') progress.removeAttribute('value');
+                else progress.value = state.phase === 'animation'
                     ? Math.min(100, state.frames / state.total * 100)
                     : state.code === 0 && state.kind ? 100 : 0;
                 document.getElementById('log').textContent = state.log || 'Noch kein Auftrag gestartet.';
@@ -714,8 +709,7 @@
             scheduleAnglePreview();
         });
         document.getElementById('renderStill').addEventListener('click', () => start('still'));
-        document.getElementById('renderAnimation').addEventListener('click', () => start('animation'));
-        document.getElementById('mp4').addEventListener('click', () => start('video'));
+        document.getElementById('renderAnimation').addEventListener('click', () => start('animation_video'));
         document.getElementById('stop').addEventListener('click', stop);
         document.getElementById('videoLink').addEventListener('click', async event => {
             event.preventDefault();
@@ -727,13 +721,11 @@
         });
 
         globalThis.prepareMuseumModel = () => api('model', {settings: settings()});
-        globalThis.applyViewerAngle = angle => {
+        globalThis.setViewerAngle = angle => {
             angleInput.value = Math.round(((angle % 360) + 360) % 360);
             updateOrbitDial();
             saveSettings();
-            start('still');
         };
-
         updateOrbitDial();
         update();
         setInterval(update, 1500);

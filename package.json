@@ -5,7 +5,8 @@
   "main": "studio/electron.cjs",
   "scripts": {
     "start": "node studio/launch.cjs",
-    "test": "node --test studio/jobs.test.cjs"
+    "test": "node --test studio/jobs.test.cjs",
+    "test:electron": "node studio/launch.cjs --smoke-test"
   },
   "engines": {
     "node": ">=22"

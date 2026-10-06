@@ -9,7 +9,6 @@ const image = document.getElementById('preview');
 const empty = document.getElementById('empty');
 const mode3d = document.getElementById('mode3d');
 const modeRender = document.getElementById('modeRender');
-const applyButton = document.getElementById('viewerApply');
 const viewerActions = document.getElementById('viewerActions');
 const pngButton = document.getElementById('viewerPng');
 const videoButton = document.getElementById('viewerVideo');
@@ -74,6 +73,7 @@ const initialize = () => {
     controls.minPolarAngle = THREE.MathUtils.degToRad(72);
     controls.maxPolarAngle = THREE.MathUtils.degToRad(102);
     controls.addEventListener('change', updateAngle);
+    controls.addEventListener('end', () => globalThis.setViewerAngle(currentAngle));
     new ResizeObserver(resize).observe(stage);
     renderer.setAnimationLoop(() => {
         controls.update();
@@ -473,10 +473,6 @@ const showRender = () => {
 
 mode3d.addEventListener('click', show3d);
 modeRender.addEventListener('click', showRender);
-applyButton.addEventListener('click', () => {
-    globalThis.applyViewerAngle(currentAngle);
-    showRender();
-});
 pngButton.addEventListener('click', () => savePng().catch(error => {
     errorBox.textContent = error.message;
 }));

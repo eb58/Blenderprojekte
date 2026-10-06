@@ -86,7 +86,7 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
             path.join(output, 'settings.json'),
             JSON.stringify({...videoSettings, MAKE_VIDEO: true, RESUME_RENDER: true})
         );
-        await jobs.start('video', videoSettings);
+        await jobs.start('animation_video', videoSettings);
         do {
             await new Promise(resolve => setTimeout(resolve, 100));
             status = jobs.status();

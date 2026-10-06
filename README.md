@@ -51,6 +51,12 @@ npm test
 Remove-Item Env:MUSEUM_INTEGRATION
 ```
 
+Die Electron-Oberfläche und ihre sichere IPC-Anbindung werden separat in einem unsichtbaren Testfenster geprüft:
+
+```powershell
+npm run test:electron
+```
+
 Die Integrationstests verwenden eigene temporäre Ordner und lassen vorhandene Renderausgaben unangetastet. Electron verwendet ein isoliertes Fenster ohne Node.js-Zugriff der Oberfläche. Ein Installer beziehungsweise eine verteilbare EXE ist noch nicht Bestandteil des Projekts.
 
 ## Kommandozeilenaufrufe
@@ -105,17 +111,16 @@ Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen.
 
 1. Rechts die gewünschten Szenen- und Rendereinstellungen wählen.
 2. Mit **Testbild rendern** Licht, Material und Perspektive prüfen.
-3. Mit **Animation rendern** die PNG-Einzelbilder erzeugen.
-4. Nach abgeschlossenem Rendern mit **MP4 erstellen** die Bildfolge in ein Video umwandeln.
-5. Das fertige Video über **Video herunterladen** öffnen oder speichern.
+3. Mit **Animation erstellen** fehlende PNG-Einzelbilder rendern und anschließend automatisch das MP4-Video erzeugen.
+4. Das fertige Video über **Video herunterladen** öffnen oder speichern.
 
 Die Formularwerte werden im `localStorage` des Browsers gespeichert und beim nächsten Öffnen wiederhergestellt.
 
 Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Das GLB-Modell wird unabhängig davon erst beim Öffnen der 3D-Vorschau exportiert. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
 
-Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. **Mit Cycles rendern** überträgt den horizontalen Blickwinkel an das Kamerarad und startet ein hochwertiges Cycles-Testbild. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
+Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig im Browser gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. Der horizontale Blickwinkel wird beim Loslassen automatisch mit dem Kamerarad synchronisiert. **Testbild rendern** verwendet dadurch immer die zuletzt gewählte Perspektive. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
 
-Im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. **Mit Cycles rendern** bleibt als Qualitätsvergleich verfügbar. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
+Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt im Browser: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
 ## Parameter
 

@@ -111,7 +111,8 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         preview: null,
         video: null,
         code: null,
-        preparing: false
+        preparing: false,
+        phase: ''
     };
     let mutation = false;
     let closed = false;
@@ -231,6 +232,29 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         }
         throw Error('3D-Vorschaumodell war nach 180 Sekunden noch nicht bereit.');
     };
+    const prepareVideo = (settings, folder) => {
+        for (let frame = 1; frame <= frameCount(settings); frame++) {
+            if (!exists(path.join(folder, 'frames', `frame_${String(frame).padStart(4, '0')}.png`))) {
+                throw Error(`Frame ${frame} fehlt. Animation erst fertig rendern.`);
+            }
+        }
+        const command = findFFmpeg();
+        if (!command) throw Error('FFmpeg fehlt im PATH. PNG-Frames können bereits gerendert werden.');
+        if (settings.RESOLUTION_X % 2 || settings.RESOLUTION_Y % 2) {
+            throw Error('Für MP4 bitte eine gerade Bildbreite und -höhe verwenden.');
+        }
+        const output = path.join(folder, `museum_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.mp4`);
+        return {
+            command,
+            output,
+            args: [
+                '-n', '-framerate', String(settings.FPS), '-start_number', '1',
+                '-i', path.join(folder, 'frames', 'frame_%04d.png'),
+                '-frames:v', String(frameCount(settings)), '-c:v', 'libx264',
+                '-crf', '18', '-pix_fmt', 'yuv420p', output
+            ]
+        };
+    };
     const startJob = async (kind, data) => {
         if (alive(state.process) || state.job) throw Error('Ein Auftrag läuft bereits.');
         let s = validate(data);
@@ -262,7 +286,7 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         const env = {...process.env};
         let args;
         let command;
-        if (kind === 'animation') {
+        if (kind === 'animation' || kind === 'animation_video') {
             s = {...s, MAKE_VIDEO: true, RESUME_RENDER: true};
             const config = path.join(folder, 'settings.json');
             if (files(path.join(folder, 'frames')).some(name => /^frame_.*\.png$/.test(name))) {
@@ -288,26 +312,50 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             s = validate(json(config));
             // Never accept a settings file redirecting encoding into a different folder.
             if (s.OUTPUT_DIR !== folder) throw Error('Ausgabeordner stimmt nicht mit settings.json überein.');
-            for (let frame = 1; frame <= frameCount(s); frame++) {
-                if (!exists(path.join(folder, 'frames', `frame_${String(frame).padStart(4, '0')}.png`))) {
-                    throw Error(`Frame ${frame} fehlt. Animation erst fertig rendern.`);
-                }
-            }
-            command = findFFmpeg();
-            if (!command) throw Error('FFmpeg fehlt im PATH. PNG-Frames können bereits gerendert werden.');
-            if (s.RESOLUTION_X % 2 || s.RESOLUTION_Y % 2) throw Error('Für MP4 bitte eine gerade Bildbreite und -höhe verwenden.');
-            state.video = path.join(folder, `museum_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.mp4`);
-            args = [
-                '-n', '-framerate', String(s.FPS), '-start_number', '1',
-                '-i', path.join(folder, 'frames', 'frame_%04d.png'),
-                '-frames:v', String(frameCount(s)), '-c:v', 'libx264',
-                '-crf', '18', '-pix_fmt', 'yuv420p', state.video
-            ];
+            const video = prepareVideo(s, folder);
+            command = video.command;
+            args = video.args;
+            state.video = video.output;
         } else throw Error('Unbekannter Auftrag.');
         fs.mkdirSync(path.join(folder, 'logs'), {recursive: true});
         const log = path.join(folder, 'logs', `${kind}_${Date.now()}.log`);
         const child = launch(command, args, log, env, folder);
-        Object.assign(state, {process: child, job: null, settings: s, kind, log, started: Date.now(), code: null});
+        Object.assign(state, {
+            process: child,
+            job: null,
+            settings: s,
+            kind,
+            phase: kind === 'animation_video' ? 'animation' : kind,
+            log,
+            started: Date.now(),
+            code: null
+        });
+        if (kind === 'animation_video') {
+            child.once('close', code => {
+                if (closed || state.process !== child || state.kind !== kind) return;
+                if (code !== 0) {
+                    state.code = code ?? 1;
+                    return;
+                }
+                try {
+                    const video = prepareVideo(s, folder);
+                    const videoLog = path.join(folder, 'logs', `video_${Date.now()}.log`);
+                    const videoChild = launch(video.command, video.args, videoLog, process.env, folder);
+                    Object.assign(state, {
+                        process: videoChild,
+                        phase: 'video',
+                        video: video.output,
+                        log: videoLog,
+                        started: Date.now(),
+                        code: null
+                    });
+                } catch (error) {
+                    state.process = null;
+                    state.code = 1;
+                    fs.appendFileSync(log, `\n${error.message}\n`);
+                }
+            });
+        }
     };
     const status = () => {
         if (state.job) {
@@ -326,7 +374,7 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         const stills = files(folder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
             .map(name => path.join(folder, name))
             .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
-        state.preview = state.kind !== 'animation' && stills.length
+        state.preview = !['animation', 'animation_video'].includes(state.kind) && stills.length
             ? stills[0]
             : frames.length ? path.join(folder, 'frames', frames.at(-1)) : null;
         if (state.process && state.process.exitCode !== null) state.code = state.process.exitCode;
@@ -347,6 +395,7 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             running,
             code: state.code,
             kind: state.kind,
+            phase: state.phase,
             frames: frames.length,
             total: frameCount(state.settings),
             preview: exists(state.preview) ? fs.statSync(state.preview).mtimeMs : null,

@@ -19,6 +19,7 @@ protocol.registerSchemesAsPrivileged([{
 
 const page = 'museum://studio/index.html';
 const smokeTest = process.argv.includes('--smoke-test');
+if (smokeTest) app.setPath('userData', path.join(app.getPath('temp'), `museum-studio-smoke-${process.pid}`));
 let studio;
 let window;
 let quitting = false;
@@ -133,8 +134,13 @@ const start = async () => {
     const ready = await window.webContents.executeJavaScript(
         '(async () => {' +
         "const images = await Promise.all(['/park.png', '/mandelbrot.png'].map(path => fetch(path)));" +
+        "globalThis.setViewerAngle(125);" +
         'return Boolean(globalThis.museumStudio.defaults && document.getElementById(\'previewStage\') && ' +
-        '(await globalThis.museumStudio.status()) && images.every(response => response.ok));' +
+        '(await globalThis.museumStudio.status()) && images.every(response => response.ok) && ' +
+        '!document.getElementById(\'viewerApply\') && !document.getElementById(\'mp4\') && ' +
+        'document.getElementById(\'viewerActions\').hidden && ' +
+        'document.getElementById(\'START_ANGLE\').value === \'125\' && ' +
+        'document.getElementById(\'renderAnimation\').textContent.trim() === \'Animation erstellen\');' +
         '})()'
     );
     if (!ready) throw Error('IPC/Oberfläche wurde nicht geladen.');
