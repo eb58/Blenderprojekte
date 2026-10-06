@@ -132,7 +132,7 @@ In der 3D-Vorschau drehen ← und → die Ansicht um das Museum, ↑ und ↓ zoo
 
 Sind alle Frames einer Animation gerendert, lässt sich auch das Renderbild drehen: Mit der Maus ziehen oder ← und → drücken wählt das Einzelbild entlang der Kamerafahrt. Das setzt voraus, dass Dauer, Bildrate und Ausgabeordner der Animation noch den Einstellungen des laufenden Studios entsprechen.
 
-Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks; der Wandteppich hat rechts unten daneben eine eigene.
+Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks, dem Schöpfer und dem Jahr; der Wandteppich hat rechts unten daneben eine eigene. Die Texte stehen gesammelt in `PLAKETTENTEXTE` in `museum/scene.py`.
 
 Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 

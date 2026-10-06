@@ -79,7 +79,8 @@ const initialize = () => {
     new ResizeObserver(resize).observe(stage);
     renderer.setAnimationLoop(() => {
         tick(Math.min(clock.getDelta(), 0.1));
-        controls.update();
+        // OrbitControls richtet die Kamera bei jedem update() auf das Ziel aus und würde den Blick im Rundgang überschreiben.
+        if (!walk.active) controls.update();
         renderer.render(scene, camera);
     });
 };

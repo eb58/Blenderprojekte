@@ -1006,32 +1006,42 @@ granit_exponate = {"Costa": costa_skulptur, "Henneberg": henneberg, "Cobra": cob
 beschriftungen = D.collections.new("Sockelbeschriftungen"); S.collection.children.link(beschriftungen)
 schild_kupfer = simple_material("Sockelschild Kupfer", (.62, .30, .17, 1), .32, .9)
 schild_schrift = simple_material("Sockelschild Schrift", (.025, .012, .007, 1), .55)
-SOCKELTEXTE = {
-    "Costa": "Der schwebende Hut",
-    "Henneberg": "Die Steinrose",
-    "Sierpinski-Pyramide": "Der Spitzenberg",
-    "Cobra": "Der Mondring",
-    "Double Trefoil": "Das doppelte Glück",
+PLAKETTENTEXTE = {  # Name des Werks, Schöpfer und Jahr
+    "Costa": ("Der schwebende Hut", "Celso Costa, 1982"),
+    "Henneberg": ("Die Steinrose", "Lebrecht Henneberg, 1875"),
+    "Sierpinski-Pyramide": ("Der Spitzenberg", "Wacław Sierpiński, 1915"),
+    "Cobra": ("Der Mondring", "Erich Brandl, 2026"),
+    "Double Trefoil": ("Das doppelte Glück", "Erich Brandl, 2026"),
+    "Kusner": ("Das Siebengestirn", "Robert Kusner, 1987"),
+    "S41": ("Das steinerne Band", "Erich Brandl, 2026"),
+    "Teppich": ("Der endlose Atem", "Benoit Mandelbrot, 1980"),
 }
 
 
-def kupferschild_text(name, text, breite, hoehe):
-    """Liefert die Schriftkurve; die Größe passt den Text grob (0,7 Schrifthöhen je Zeichen) auf die Plakette."""
-    kurve = D.curves.new(name, "FONT"); kurve.body = text
-    kurve.align_x = 'CENTER'; kurve.align_y = 'CENTER'
-    kurve.size = min(hoehe * .45, breite * .88 / (len(text) * .7))
-    kurve.extrude = .003; kurve.materials.append(schild_schrift)
-    return kurve
+def plakettenzeilen(name, titel, urheber, breite, hoehe):
+    """Liefert zwei Schriftkurven (Name groß, Schöpfer mit Jahr kleiner) samt Höhenversatz zur Plakettenmitte.
+
+    Die Größe passt den Text grob (0,7 Schrifthöhen je Zeichen) auf die Plakette.
+    """
+    zeilen = []
+    for zeile, text, anteil, versatz in (("Titel", titel, .30, .17), ("Urheber", urheber, .20, -.22)):
+        kurve = D.curves.new(f"{name} {zeile}", "FONT"); kurve.body = text
+        kurve.align_x = 'CENTER'; kurve.align_y = 'CENTER'
+        kurve.size = min(hoehe * anteil, breite * .88 / (len(text) * .7))
+        kurve.extrude = .003; kurve.materials.append(schild_schrift)
+        zeilen.append((f"{name} {zeile}", kurve, hoehe * versatz))
+    return zeilen
 
 
-def sockelschild(name, text, x, y_vorne, z, breite=.62, hoehe=.13):
-    """Setzt eine kleine Kupferplakette mit einzeiligem Namen vor die Sockelseite bei y_vorne (Blick nach +y)."""
+def sockelschild(name, schluessel, x, y_vorne, z, breite=.75, hoehe=.2):
+    """Setzt eine kleine Kupferplakette vor die Sockelseite bei y_vorne (Blick nach +y)."""
     tafel = box(f"{name} Tafel", (x, y_vorne - .006, z), (breite, .012, hoehe), beschriftungen)
     tafel.data.materials.append(schild_kupfer)
-    schrift = D.objects.new(f"{name} Titel", kupferschild_text(f"{name} Titel", text, breite, hoehe))
-    beschriftungen.objects.link(schrift)
-    schrift.location = (x, y_vorne - .0125, z)
-    schrift.rotation_euler.x = math.radians(90)
+    for objektname, kurve, dz in plakettenzeilen(name, *PLAKETTENTEXTE[schluessel], breite, hoehe):
+        schrift = D.objects.new(objektname, kurve)
+        beschriftungen.objects.link(schrift)
+        schrift.location = (x, y_vorne - .0125, z + dz)
+        schrift.rotation_euler.x = math.radians(90)
 
 
 def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
@@ -1074,7 +1084,7 @@ def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
     cap = box(f"Koerpersockel Deckplatte {index}", (x, y, pedestal_height + .18),
               (1.58, 1.42, .16), scol)
     cap.data.materials.append(plinth_stone)
-    sockelschild(f"Nische {index}", SOCKELTEXTE[name], x, y - .59, pedestal_height / 2 + .12)
+    sockelschild(f"Nische {index}", name, x, y - .59, pedestal_height / 2 + .12)
 
     light_data = D.lights.new(f"Koerperlicht {index}", "SPOT")
     light_data.energy = 1100 if name == "Sierpinski-Pyramide" else 780
@@ -1250,13 +1260,15 @@ elif WANDGESTALTUNG == "wandteppich":
         wall_box("Teppichfranse", x, tapestry_center_z - 3.57, 0.04, 0.38, 0.03, brass, WALL_Y + 0.11)
     # Kleine Kupferplakette rechts unten neben dem Teppich (Blick nach -y: rechts ist -x).
     plaque_x, plaque_z = -(7.4 + 0.75), tapestry_center_z - 2.9
-    wall_box("Teppichtafel", plaque_x, plaque_z, 1.0, 0.2, 0.012, schild_kupfer, WALL_Y + 0.066)
-    plaque_text = D.objects.new("Teppichtafel Titel", kupferschild_text("Teppichtafel Titel", "Der endlose Atem", 1.0, 0.2))
-    gcol.objects.link(plaque_text)
-    plaque_text.location = (plaque_x, WALL_Y + 0.0725, plaque_z)
-    plaque_text.rotation_euler.x = math.radians(90)
-    plaque_text.scale.x = -1
-    plaque_text.scale.z = -1
+    plaque_width, plaque_height = 1.15, 0.26
+    wall_box("Teppichtafel", plaque_x, plaque_z, plaque_width, plaque_height, 0.012, schild_kupfer, WALL_Y + 0.066)
+    for objektname, kurve, dz in plakettenzeilen("Teppichtafel", *PLAKETTENTEXTE["Teppich"], plaque_width, plaque_height):
+        plaque_text = D.objects.new(objektname, kurve)
+        gcol.objects.link(plaque_text)
+        plaque_text.location = (plaque_x, WALL_Y + 0.0725, plaque_z + dz)
+        plaque_text.rotation_euler.x = math.radians(90)
+        plaque_text.scale.x = -1
+        plaque_text.scale.z = -1
 
 # Warmes, flaches Museumslicht für den Wandteppich.
 for index, x in enumerate((-5.5, 0, 5.5), 1):
@@ -1408,8 +1420,8 @@ for work in main_works:
 for n in ("Sockel unten", "Sockel oben", "S41 Sockel unten", "S41 Sockel oben"):
     obj_by_name(n).scale.x *= 0.6
     obj_by_name(n).scale.y *= 0.6
-sockelschild("Kusner", "Das Siebengestirn", -EXHIBIT_X, -1.44, 0.30, 1.2, 0.2)
-sockelschild("S41", "Das steinerne Band", EXHIBIT_X, -1.44, 0.30, 1.2, 0.2)
+sockelschild("Kusner", "Kusner", -EXHIBIT_X, -1.44, 0.30, 1.2, 0.26)
+sockelschild("S41", "S41", EXHIBIT_X, -1.44, 0.30, 1.2, 0.26)
 
 work_centers = [work.location.z + (min(v[2] for v in work.bound_box) +
                                    max(v[2] for v in work.bound_box)) * SK / 2
