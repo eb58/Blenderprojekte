@@ -24,6 +24,7 @@ let loaded = false;
 let loading = false;
 let currentAngle = 0;
 let floorMeshes = [];
+let workMeshes = [];
 
 const setActiveMode = is3d => {
     globalThis.museumViewMode = is3d ? '3d' : 'render';
@@ -286,6 +287,8 @@ const improveMaterials = (root, imageTextures) => {
         if (!object.isMesh) return;
         const original = Array.isArray(object.material) ? object.material[0] : object.material;
         const identity = `${object.name} ${original?.name || ''}`.toLowerCase();
+        if (/kusner|s41_7_5|costa|henneberg|cobra|double[ _]trefoil|sierpinski[-_ ]pyramide/.test(identity) &&
+            !/sockel/.test(identity)) workMeshes.push(object);
         if (/aussenwelt parkpanorama/.test(identity)) {
             const texture = imageTextures.park;
             object.material = new THREE.MeshBasicMaterial({
@@ -379,7 +382,8 @@ const improveMaterials = (root, imageTextures) => {
 // --- Tastatur, Rundgang und Drehen in der fertigen Bildfolge -------------------------------
 const clock = new THREE.Clock();
 const keys = new Set();
-const walk = {active: false, yaw: 0, pitch: 0};
+const walk = {active: false, yaw: 0, pitch: 0, saved: null};
+let fly = null;
 const walkButton = document.getElementById('viewerWalk');
 // Begehbarer Bereich der Halle; die Sockel von Kusner und S41 sind als Rechtecke (x0, x1, z0, z1) gesperrt.
 const WALK_LIMIT = {x: 13.6, z: 14.0};
@@ -389,21 +393,67 @@ const MOVE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'K
 const blocked = (x, z) => WALK_BLOCKS.some(([x0, x1, z0, z1]) => x > x0 && x < x1 && z > z0 && z < z1);
 let lookDrag = null;
 
-const setWalk = on => {
-    walk.active = on;
+const DEFAULT_START = {x: 0, y: 1.65, z: 11, yaw: 0, pitch: 0};
+
+// Wechselt zwischen Rundgang (Ich-Perspektive, Standard) und Übersicht (Rundumansicht mit der Maus).
+const setWalk = (on, start) => {
+    fly = null;
     keys.clear();
-    walkButton.textContent = on ? 'Rundgang beenden' : 'Rundgang';
+    if (!on && walk.active) {
+        walk.saved = {x: camera.position.x, y: 1.65, z: camera.position.z, yaw: walk.yaw, pitch: walk.pitch};
+    }
+    walk.active = on;
+    walkButton.textContent = on ? 'Übersicht' : 'Rundgang';
     walkButton.classList.toggle('active', on);
     controls.enabled = !on;
     canvas.style.cursor = on ? 'grab' : '';
     if (on) {
-        camera.position.set(0, 1.65, 11);
-        walk.yaw = 0;
-        walk.pitch = 0;
-        camera.rotation.set(0, 0, 0, 'YXZ');
+        const target = start ?? walk.saved ?? DEFAULT_START;
+        camera.position.set(target.x, target.y, target.z);
+        walk.yaw = target.yaw;
+        walk.pitch = target.pitch;
+        camera.rotation.set(target.pitch, target.yaw, 0, 'YXZ');
     } else {
         setCameraFromDial();
     }
+};
+
+// Aus der Übersicht heraus in den Rundgang wechseln, ohne dass die Ansicht springt.
+const ensureWalk = () => {
+    if (walk.active) return;
+    const view = camera.getWorldDirection(new THREE.Vector3());
+    setWalk(true, {
+        x: camera.position.x, y: camera.position.y, z: camera.position.z,
+        yaw: Math.atan2(-view.x, -view.z),
+        pitch: THREE.MathUtils.clamp(Math.asin(view.y), -WALK_PITCH, WALK_PITCH)
+    });
+};
+
+// Sanfter Kameraflug zu einem Standpunkt {x, y, z, yaw, pitch}.
+const flyTo = target => {
+    fly = {
+        from: {x: camera.position.x, y: camera.position.y, z: camera.position.z, yaw: walk.yaw, pitch: walk.pitch},
+        to: target, t: 0, duration: 0.9
+    };
+};
+
+// Geht zu einem Werk: Standpunkt davor (Richtung Eingangswand), Blick auf die Mitte des Werks.
+const goToWork = object => {
+    ensureWalk();
+    const box = new THREE.Box3().setFromObject(object);
+    const center = box.getCenter(new THREE.Vector3());
+    const size = box.getSize(new THREE.Vector3());
+    const x = THREE.MathUtils.clamp(center.x, -WALK_LIMIT.x, WALK_LIMIT.x);
+    let z = center.z + THREE.MathUtils.clamp(Math.max(size.x, size.y, size.z) * 1.5, 3.5, 7);
+    for (let i = 0; i < 10 && blocked(x, z); i++) z += 0.5;
+    z = Math.min(z, WALK_LIMIT.z);
+    if (blocked(x, z)) return;
+    const dx = center.x - x;
+    const dz = center.z - z;
+    flyTo({
+        x, y: 1.65, z, yaw: Math.atan2(-dx, -dz),
+        pitch: THREE.MathUtils.clamp(Math.atan2(center.y - 1.65, Math.hypot(dx, dz)), -WALK_PITCH, WALK_PITCH)
+    });
 };
 
 // Verschiebt die Kamera im Rundgang um (dx, dz) und hält sie in der Halle und außerhalb der gesperrten Sockel.
@@ -417,7 +467,17 @@ const walkBy = (dx, dz) => {
 const tick = delta => {
     if (globalThis.museumViewMode !== '3d' || !loaded) return;
     const down = (...codes) => Number(codes.some(code => keys.has(code)));
-    if (walk.active) {
+    if (!walk.active) return;
+    if (fly) {
+        fly.t = Math.min(1, fly.t + delta / fly.duration);
+        const k = fly.t * fly.t * (3 - 2 * fly.t);
+        const {from, to} = fly;
+        camera.position.set(from.x + (to.x - from.x) * k, from.y + (to.y - from.y) * k, from.z + (to.z - from.z) * k);
+        walk.yaw = from.yaw + Math.atan2(Math.sin(to.yaw - from.yaw), Math.cos(to.yaw - from.yaw)) * k;
+        walk.pitch = from.pitch + (to.pitch - from.pitch) * k;
+        if (fly.t >= 1) fly = null;
+    }
+    {
         walk.yaw += (down('ArrowLeft') - down('ArrowRight')) * 1.6 * delta;
         const forward = down('ArrowUp', 'KeyW') - down('ArrowDown', 'KeyS');
         const strafe = down('KeyD') - down('KeyA');
@@ -427,19 +487,7 @@ const tick = delta => {
                 (-Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe) * step);
         }
         camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
-        return;
     }
-    // → wirkt wie Ziehen mit der Maus nach rechts: Das Museum dreht sich nach rechts, die Kamera wandert nach links.
-    const turn = down('ArrowLeft') - down('ArrowRight');
-    const zoom = down('ArrowDown') - down('ArrowUp');
-    if (!turn && !zoom) return;
-    const offset = camera.position.clone().sub(controls.target);
-    const radius = THREE.MathUtils.clamp(Math.hypot(offset.x, offset.z) * (1 + zoom * 0.8 * delta), 8, 15.9);
-    const azimuth = Math.atan2(offset.x, offset.z) + turn * 0.9 * delta;
-    camera.position.set(controls.target.x + radius * Math.sin(azimuth), camera.position.y,
-        controls.target.z + radius * Math.cos(azimuth));
-    controls.update();
-    updateAngle();
 };
 
 // Fertige Animation: Ziehen oder Pfeiltasten wählen das Einzelbild entlang der Kamerafahrt.
@@ -520,47 +568,57 @@ globalThis.addEventListener('keydown', event => {
         event.preventDefault();
         return;
     }
-    // W, A, S, D gelten nur im Rundgang; die Pfeiltasten drehen und zoomen auch die Rundumansicht.
-    if (!MOVE_KEYS.has(event.code) || (!walk.active && event.code.startsWith('Key'))) return;
+    // Die Tasten gelten nur im Rundgang; in der Übersicht dreht allein die Maus.
+    if (!walk.active || !MOVE_KEYS.has(event.code)) return;
+    fly = null;
     keys.add(event.code);
     event.preventDefault();
 });
-globalThis.addEventListener('keyup', event => {
-    if (!keys.delete(event.code)) return;
-    if (!walk.active && globalThis.museumViewMode === '3d') globalThis.setViewerAngle(currentAngle);
-});
+globalThis.addEventListener('keyup', event => keys.delete(event.code));
 globalThis.addEventListener('blur', () => keys.clear());
-// Ein kurzer Klick auf den Boden stellt dich an diese Stelle (Ich-Perspektive im Rundgang).
+// Ein kurzer Klick auf den Boden geht dorthin, ein Klick auf ein Werk führt dich davor.
 const raycaster = new THREE.Raycaster();
 let press = null;
-const standAt = event => {
+const clickAt = event => {
     const rect = canvas.getBoundingClientRect();
     raycaster.setFromCamera(new THREE.Vector2(
         (event.clientX - rect.left) / rect.width * 2 - 1,
         -((event.clientY - rect.top) / rect.height * 2 - 1)), camera);
+    // Werke werden über ihren Umriss gewählt: Gitterwerke wie die Pyramide haben Lücken, durch die der Strahl fällt.
+    let work = null;
+    let workDistance = Infinity;
+    for (const mesh of workMeshes) {
+        const point = raycaster.ray.intersectBox(new THREE.Box3().setFromObject(mesh), new THREE.Vector3());
+        const distance = point ? point.distanceTo(camera.position) : Infinity;
+        if (distance < workDistance) {
+            work = mesh;
+            workDistance = distance;
+        }
+    }
     const hit = raycaster.intersectObjects(floorMeshes, false).find(entry => entry.point.y < 0.6);
+    if (work && (!hit || workDistance < hit.distance)) {
+        goToWork(work);
+        return;
+    }
     if (!hit) return;
     const {x, z} = hit.point;
     if (Math.abs(x) > WALK_LIMIT.x || Math.abs(z) > WALK_LIMIT.z || blocked(x, z)) return;
-    if (!walk.active) {
-        const view = camera.getWorldDirection(new THREE.Vector3());
-        setWalk(true);
-        walk.yaw = Math.atan2(-view.x, -view.z);
-        walk.pitch = 0;
-    }
-    camera.position.set(x, 1.65, z);
+    ensureWalk();
+    flyTo({x, y: 1.65, z, yaw: walk.yaw, pitch: walk.pitch});
 };
-canvas.title = 'Klick auf den Boden: dorthin stellen · Mausrad: vor und zurück (im Rundgang)';
+canvas.title = 'Klick auf den Boden: dorthin gehen · Klick auf ein Werk: hingehen · Mausrad: vor und zurück';
 // Mausrad im Rundgang: Rad nach vorn geht vorwärts, Rad nach hinten rückwärts (etwa 0,4 m je Rastung).
 canvas.addEventListener('wheel', event => {
     if (!walk.active) return;
     event.preventDefault();
+    fly = null;
     const forward = -THREE.MathUtils.clamp(event.deltaY, -240, 240) * 0.004;
     walkBy(-Math.sin(walk.yaw) * forward, -Math.cos(walk.yaw) * forward);
 }, {passive: false});
 canvas.addEventListener('pointerdown', event => {
     press = {x: event.clientX, y: event.clientY, time: performance.now()};
     if (!walk.active) return;
+    fly = null;
     canvas.setPointerCapture(event.pointerId);
     lookDrag = {x: event.clientX, y: event.clientY};
     canvas.style.cursor = 'grabbing';
@@ -577,7 +635,7 @@ canvas.addEventListener('pointerup', event => {
     const click = press && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 5 &&
         performance.now() - press.time < 500;
     press = null;
-    if (click && loaded && globalThis.museumViewMode === '3d') standAt(event);
+    if (click && loaded && globalThis.museumViewMode === '3d') clickAt(event);
 });
 canvas.addEventListener('pointercancel', () => {
     lookDrag = null;
@@ -585,7 +643,10 @@ canvas.addEventListener('pointercancel', () => {
     if (walk.active) canvas.style.cursor = 'grab';
 });
 walkButton.addEventListener('click', () => {
-    if (loaded) setWalk(!walk.active);
+    if (loaded) {
+        if (walk.active) setWalk(false);
+        else ensureWalk();
+    }
 });
 
 const savePng = async () => {
@@ -683,10 +744,12 @@ const show3d = async () => {
         }
         model = gltf.scene;
         floorMeshes = [];
+        workMeshes = [];
         improveMaterials(model, {park: parkTexture, mandelbrot: mandelbrotTexture});
         scene.add(model);
         loaded = true;
         empty.hidden = true;
+        if (!walk.active) setWalk(true);
     } catch (error) {
         errorBox.textContent = `3D-Vorschau: ${error.message}`;
         setActiveMode(false);

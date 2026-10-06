@@ -200,10 +200,10 @@ test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet'
     }
 });
 
-test('Viewer bietet Tastatursteuerung, Rundgang und Drehen der Bildfolge', () => {
+test('Viewer startet im Rundgang und bietet Klick-Navigation, Tasten, Mausrad und Drehen der Bildfolge', () => {
     const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
     const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
-    for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'standAt', 'floorMeshes.push', "addEventListener('wheel'", 'PageUp', 'turnAround']) assert.ok(viewer.includes(part), part);
+    for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'clickAt', 'goToWork', 'flyTo', 'intersectBox', 'floorMeshes.push', "addEventListener('wheel'", 'PageUp', 'turnAround']) assert.ok(viewer.includes(part), part);
     // OrbitControls.update() setzt per lookAt den Blick; im Rundgang darf es nicht laufen.
     assert.match(viewer, /if \(!walk\.active\) controls\.update\(\)/);
     assert.ok(page.includes('id="viewerWalk"'));
@@ -216,4 +216,12 @@ test('Content-Security-Policy erlaubt blob: für eingebettete GLB-Texturen', () 
     assert.ok(connect, 'connect-src fehlt');
     assert.match(connect[1], /\bblob:/);
     assert.ok(!/\*/.test(connect[1]), 'connect-src darf nicht offen sein');
+});
+
+test('Der Rundgang ist der Standard, die Übersicht wird per Knopf gewählt', () => {
+    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    // Nach dem Laden des Modells startet der Rundgang; in der Übersicht gibt es keine Pfeiltasten-Drehung mehr.
+    assert.match(viewer, /loaded = true;[\s\S]{0,80}if \(!walk\.active\) setWalk\(true\)/);
+    assert.match(viewer, /on \? 'Übersicht' : 'Rundgang'/);
+    assert.ok(!viewer.includes('zoom * 0.8 * delta'), 'Pfeiltasten dürfen die Übersicht nicht mehr drehen');
 });
