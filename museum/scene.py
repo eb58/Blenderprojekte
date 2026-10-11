@@ -39,10 +39,10 @@ if config_path:
         config = json.load(config_file)
     for setting in ("BODEN", "RENDER_PRESET", "MAKE_VIDEO", "FPS", "DURATION",
                     "ORBIT_DEGREES", "START_ANGLE", "SCULPTURE_SCALE", "THICKNESS",
-                    "OUTPUT_DIR", "RESUME_RENDER", "RESOLUTION_X", "RESOLUTION_Y"):
+                    "OUTPUT_DIR", "FRAMES_DIR", "RESUME_RENDER", "RESOLUTION_X", "RESOLUTION_Y"):
         if setting in config:
             globals()[setting] = config[setting]
-    FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
+    FRAMES_DIR = config.get("FRAMES_DIR", os.path.join(OUTPUT_DIR, "frames"))
     STILL_OUTPUT = os.path.join(OUTPUT_DIR, "kusner_p7_museum_test.png")
     ANIMATION_OUTPUT = os.path.join(FRAMES_DIR, "frame_####")
 

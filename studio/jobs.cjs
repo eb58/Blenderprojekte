@@ -7,6 +7,7 @@ const {spawn, spawnSync} = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 const VIDEO_DIR = path.join(ROOT, 'Videos');
+const VIDEO_ENCODING = {codec: 'h264', crf: 18, pixelFormat: 'yuv420p'};
 const DEFAULTS = {
     RENDER_PRESET: 'test',
     BODEN: 'marmor',
@@ -31,6 +32,15 @@ const frameCount = settings => {
     const low = Math.floor(frames);
     return Math.max(2, frames - low === 0.5 ? low + low % 2 : Math.round(frames));
 };
+const framesFolderName = settings => [
+    'frames',
+    `${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}`,
+    `${settings.FPS}fps`,
+    VIDEO_ENCODING.codec,
+    `crf${VIDEO_ENCODING.crf}`,
+    VIDEO_ENCODING.pixelFormat
+].join('_');
+const animationFramesFolder = settings => path.join(settings.OUTPUT_DIR, framesFolderName(settings));
 
 const validate = data => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Ungültige Einstellungen.');
@@ -244,8 +254,9 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         throw Error('3D-Vorschaumodell war nach 180 Sekunden noch nicht bereit.');
     };
     const prepareVideo = (settings, folder) => {
+        const framesFolder = animationFramesFolder(settings);
         for (let frame = 1; frame <= frameCount(settings); frame++) {
-            if (!exists(path.join(folder, 'frames', `frame_${String(frame).padStart(4, '0')}.png`))) {
+            if (!exists(path.join(framesFolder, `frame_${String(frame).padStart(4, '0')}.png`))) {
                 throw Error(`Frame ${frame} fehlt. Animation erst fertig rendern.`);
             }
         }
@@ -261,9 +272,9 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             output,
             args: [
                 '-n', '-framerate', String(settings.FPS), '-start_number', '1',
-                '-i', path.join(folder, 'frames', 'frame_%04d.png'),
+                '-i', path.join(framesFolder, 'frame_%04d.png'),
                 '-frames:v', String(frameCount(settings)), '-c:v', 'libx264',
-                '-crf', '18', '-pix_fmt', 'yuv420p', output
+                '-crf', String(VIDEO_ENCODING.crf), '-pix_fmt', VIDEO_ENCODING.pixelFormat, output
             ]
         };
     };
@@ -301,9 +312,9 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         let args;
         let command;
         if (kind === 'animation' || kind === 'animation_video') {
-            s = {...s, MAKE_VIDEO: true, RESUME_RENDER: true};
+            s = {...s, MAKE_VIDEO: true, RESUME_RENDER: true, FRAMES_DIR: animationFramesFolder(s)};
             const config = path.join(folder, 'settings.json');
-            if (files(path.join(folder, 'frames')).some(name => /^frame_.*\.png$/.test(name))) {
+            if (files(s.FRAMES_DIR).some(name => /^frame_.*\.png$/.test(name))) {
                 const saved = exists(config) ? json(config) : null;
                 if (!saved || Object.keys(s).some(key => saved[key] !== s[key]) ||
                     Object.keys(saved).some(key => !Object.hasOwn(s, key))) {
@@ -384,10 +395,11 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             }
         }
         const folder = state.settings.OUTPUT_DIR;
-        const framesFolder = path.join(folder, 'frames');
+        const framesFolder = animationFramesFolder(state.settings);
         const frames = files(framesFolder).filter(name => /^frame_.*\.png$/.test(name)).sort();
-        const stills = files(framesFolder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
-            .map(name => path.join(framesFolder, name))
+        const stillsFolder = path.join(folder, 'frames');
+        const stills = files(stillsFolder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
+            .map(name => path.join(stillsFolder, name))
             .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
         state.preview = !['animation', 'animation_video'].includes(state.kind) && stills.length
             ? stills[0]
@@ -456,7 +468,7 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
     };
     const mediaPath = (kind, index) => {
         const frame = kind === 'frame' && Number.isInteger(index) && index >= 1 && index <= frameCount(state.settings)
-            ? path.join(state.settings.OUTPUT_DIR, 'frames', `frame_${String(index).padStart(4, '0')}.png`) : null;
+            ? path.join(animationFramesFolder(state.settings), `frame_${String(index).padStart(4, '0')}.png`) : null;
         const file = kind === 'model' ? model
             : kind === 'preview' ? state.preview
                 : kind === 'video' ? state.video : frame;
@@ -473,4 +485,4 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
     };
 };
 
-module.exports = {createStudio, validate, frameCount, DEFAULTS, VIDEO_DIR};
+module.exports = {createStudio, validate, frameCount, framesFolderName, DEFAULTS, VIDEO_DIR};

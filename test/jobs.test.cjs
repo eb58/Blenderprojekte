@@ -3,10 +3,17 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {createStudio, validate, frameCount, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
+const {createStudio, validate, frameCount, framesFolderName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
 
 test('MP4-Videos werden im Videos-Ordner des Projekts gespeichert', () => {
     assert.equal(VIDEO_DIR, path.join(path.resolve(__dirname, '..'), 'Videos'));
+});
+
+test('Animationsframes liegen in einem Ordner mit den Kodierungseinstellungen', () => {
+    assert.equal(
+        framesFolderName({...DEFAULTS, RESOLUTION_X: 1920, RESOLUTION_Y: 1080, FPS: 30}),
+        'frames_1920x1080_30fps_h264_crf18_yuv420p'
+    );
 });
 
 test('validation and Python-compatible frame counts', () => {
@@ -78,17 +85,18 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         const floor = gltf.materials.find(material => material.name === 'Polierter Museumsboden');
         assert.equal(floor?.pbrMetallicRoughness?.baseColorTexture?.texCoord, 1);
 
-        const frames = path.join(output, 'frames');
+        const videoSettings = {...settings, DURATION: 0.1};
+        const frames = path.join(output, framesFolderName(videoSettings));
+        fs.mkdirSync(frames);
         for (let frame = 1; frame <= 2; frame++) {
             fs.copyFileSync(
                 jobs.mediaPath('preview'),
                 path.join(frames, `frame_${String(frame).padStart(4, '0')}.png`)
             );
         }
-        const videoSettings = {...settings, DURATION: 0.1};
         fs.writeFileSync(
             path.join(output, 'settings.json'),
-            JSON.stringify({...videoSettings, MAKE_VIDEO: true, RESUME_RENDER: true})
+            JSON.stringify({...videoSettings, MAKE_VIDEO: true, RESUME_RENDER: true, FRAMES_DIR: frames})
         );
         await jobs.start('animation_video', videoSettings);
         do {
@@ -190,14 +198,15 @@ test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet'
     const jobs = createStudio({workDir: path.join(folder, 'worker')});
     try {
         jobs.state.settings = {...DEFAULTS, OUTPUT_DIR: folder, FPS: 1, DURATION: 2, START_ANGLE: 30, ORBIT_DEGREES: 90};
-        fs.mkdirSync(path.join(folder, 'frames'));
-        fs.writeFileSync(path.join(folder, 'frames', 'frame_0001.png'), 'x');
+        const framesFolder = path.join(folder, framesFolderName(jobs.state.settings));
+        fs.mkdirSync(framesFolder);
+        fs.writeFileSync(path.join(framesFolder, 'frame_0001.png'), 'x');
         assert.equal(jobs.status().complete, false);
-        fs.writeFileSync(path.join(folder, 'frames', 'frame_0002.png'), 'x');
+        fs.writeFileSync(path.join(framesFolder, 'frame_0002.png'), 'x');
         const status = jobs.status();
         assert.equal(status.complete, true);
         assert.deepEqual(status.orbit, {start: 30, degrees: 90});
-        assert.equal(jobs.mediaPath('frame', 2), path.join(folder, 'frames', 'frame_0002.png'));
+        assert.equal(jobs.mediaPath('frame', 2), path.join(framesFolder, 'frame_0002.png'));
         for (const index of [0, 3, 1.5, '1', -1, NaN, undefined]) assert.equal(jobs.mediaPath('frame', index), null, String(index));
     } finally {
         await jobs.close();

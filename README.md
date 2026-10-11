@@ -106,14 +106,14 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Render\kusner_p7_granit_museum\settings.js
 ```powershell
 ffmpeg -framerate 24 `
     -start_number 1 `
-    -i ".\Render\kusner_p7_granit_museum\frames\frame_%04d.png" `
+    -i ".\Render\kusner_p7_granit_museum\frames_1280x800_24fps_h264_crf18_yuv420p\frame_%04d.png" `
     -c:v libx264 `
     -crf 18 `
     -pix_fmt yuv420p `
     ".\Videos\museum.mp4"
 ```
 
-Der Ordner `Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen. Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
+Der Ordner `Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. Auflösung und Bildrate im Frame-Ordnernamen müssen den Werten in `settings.json` entsprechen. Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
 
 ## Bedienung
 
@@ -177,7 +177,9 @@ Standardmäßig werden die Ergebnisse hier abgelegt:
 Projektordner\
 ├── Render\
 │   └── kusner_p7_granit_museum\
-│       ├── frames\              Testbilder und PNG-Einzelbilder der Animation
+│       ├── frames\              Testbilder
+│       ├── frames_1280x800_24fps_h264_crf18_yuv420p\
+│       │                         PNG-Einzelbilder der Animation
 │       ├── logs\                Blender- und FFmpeg-Ausgaben
 │       ├── settings.json        Einstellungen der Animation
 │       └── test-settings.json   Einstellungen des Testbilds
@@ -185,7 +187,7 @@ Projektordner\
     └── museum_*.mp4             Fertige Videos
 ```
 
-PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen. MP4-Videos werden unabhängig vom gewählten Ausgabeordner im Ordner `Videos` direkt im Projektverzeichnis abgelegt.
+PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Der Name ihres Ordners dokumentiert Auflösung, Bildrate, Codec, CRF-Wert und Pixelformat der MP4-Kodierung. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen. MP4-Videos werden unabhängig vom gewählten Ausgabeordner im Ordner `Videos` direkt im Projektverzeichnis abgelegt.
 
 ## Lokale Möbelbibliothek
 
