@@ -3,10 +3,9 @@
 *.blend2
 *.png
 !assets/
-!assets/*.png
+!assets/bilder/*.png
 *.mp4
 Render/
-assets/models/**/textures/
 blenderkit_data/
 __pycache__/
 *.py[cod]

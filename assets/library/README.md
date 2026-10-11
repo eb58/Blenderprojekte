@@ -2,7 +2,7 @@
 
 ## Gartenkulisse
 
-Der Garten verwendet `assets/museum_park_panorama.png` als leichte, zusammenhängende Parkkulisse. Dadurch entstehen hinter den Fenstern keine erkennbar wiederholten Einzelbäume.
+Der Garten verwendet `assets/bilder/museum_park_panorama.png` als leichte, zusammenhängende Parkkulisse. Dadurch entstehen hinter den Fenstern keine erkennbar wiederholten Einzelbäume.
 
 Diese Sammlung enthält drei CC0-Modelle von Poly Haven mit 1K-Texturen:
 

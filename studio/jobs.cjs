@@ -134,16 +134,16 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
             return null;
         }
     };
+    // Jede Änderung an Szenenmodulen oder Bildtexturen erfordert einen neu aufgebauten Worker.
+    const sources = folder => files(folder).filter(name => /\.(py|json|png)$/.test(name)).sort()
+        .map(name => [name, modified(path.join(folder, name))]);
     const signature = settings => JSON.stringify([
         settings.BODEN,
         settings.SCULPTURE_SCALE,
         settings.THICKNESS,
-        modified(path.join(ROOT, 'museum', 'scene.py')),
-        modified(path.join(ROOT, 'museum', 'sierpinski.py')),
-        modified(path.join(ROOT, 'museum', 'weierstrass.py')),
-        modified(path.join(ROOT, 'museum', 'costa.py')),
+        sources(path.join(ROOT, 'museum')),
         modified(path.join(__dirname, 'blender_worker.py')),
-        modified(path.join(ROOT, 'assets', 'museum_park_panorama.png'))
+        sources(path.join(ROOT, 'assets', 'bilder'))
     ]);
     const launch = (command, args, logFile, env, cwd) => {
         const fd = fs.openSync(logFile, 'w');

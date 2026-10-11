@@ -5,6 +5,13 @@ const os = require('node:os');
 const path = require('node:path');
 const {createStudio, validate, frameCount, framesFolderName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
 
+// Der Szenenaufbau ist auf mehrere Module in museum/ verteilt.
+const museumQuelltext = () => {
+    const ordner = path.join(__dirname, '..', 'museum');
+    return fs.readdirSync(ordner).filter(datei => datei.endsWith('.py')).sort()
+        .map(datei => fs.readFileSync(path.join(ordner, datei), 'utf8')).join('\n');
+};
+
 test('MP4-Videos werden im Videos-Ordner des Projekts gespeichert', () => {
     assert.equal(VIDEO_DIR, path.join(path.resolve(__dirname, '..'), 'Videos'));
 });
@@ -116,11 +123,24 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
 
 const BLENDER = process.env.MUSEUM_BLENDER || 'C:/Program Files/Blender Foundation/Blender 5.2/blender.exe';
 
+test('Der Szenenaufbau ist nach Verantwortlichkeit auf Module verteilt', () => {
+    const ordner = path.join(__dirname, '..', 'museum');
+    const scene = fs.readFileSync(path.join(ordner, 'scene.py'), 'utf8');
+    for (const modul of ['einstellungen', 'rendering', 'materialien', 'bauteile', 'ausstattung']) {
+        assert.ok(fs.existsSync(path.join(ordner, `${modul}.py`)), `${modul}.py fehlt`);
+        assert.match(scene, new RegExp(`^import ${modul}$`, 'm'), `scene.py nutzt ${modul}.py nicht`);
+    }
+    // Die Renderpresets stehen genau einmal und werden vom Worker direkt verwendet.
+    const worker = fs.readFileSync(path.join(__dirname, '..', 'studio', 'blender_worker.py'), 'utf8');
+    assert.match(worker, /rendering\.preset_anwenden\(/);
+    assert.doesNotMatch(museumQuelltext(), /def preset_test/);
+});
+
 test('Sierpiński-Geometrie wird von Szene und Entwurfsskript gemeinsam genutzt', {
     skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
 }, () => {
     const root = path.resolve(__dirname, '..');
-    for (const file of [path.join('museum', 'scene.py'), path.join('tools', 'sierpinski_pyramide.py')]) {
+    for (const file of [path.join('museum', 'scene.py'), path.join('tools', 'entwurf', 'sierpinski_pyramide.py')]) {
         const source = fs.readFileSync(path.join(root, file), 'utf8');
         assert.match(source, /import sierpinski/, file);
         assert.doesNotMatch(source, /math\.sqrt\(8 \/ 9\)/, `${file} dupliziert die Pyramidenecken`);
@@ -139,7 +159,7 @@ test('Weierstraß-Flächen kommen aus einem gemeinsamen Modul', {
     skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
 }, () => {
     const root = path.resolve(__dirname, '..');
-    const scene = fs.readFileSync(path.join(root, 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     assert.match(scene, /import weierstrass/);
     assert.doesNotMatch(scene, /def \w*segment_delta/, 'scene.py rechnet die Integration selbst');
     for (const name of ['Kusner p=7', 'S41_7_5', 'Henneberg', 'Cobra', 'Double Trefoil']) assert.ok(scene.includes(`"${name}"`), name);
@@ -177,7 +197,7 @@ test('Costa-Fläche liefert ein endliches, normiertes Netz', {
 
 test('Viewer ordnet jeder Granitfläche der Szene das Granitmaterial zu', () => {
     const root = path.resolve(__dirname, '..');
-    const scene = fs.readFileSync(path.join(root, 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     const viewer = fs.readFileSync(path.join(root, 'studio', 'viewer.js'), 'utf8');
     const pattern = /\/([^/\n]*brown granite[^/\n]*)\/\.test\(identity\)/.exec(viewer);
     assert.ok(pattern, 'Granit-Zuordnung im Viewer nicht gefunden');
@@ -247,7 +267,7 @@ test('Der Viewer ersetzt das Material der Arkadenwand durch einen eigenen Stein'
 });
 
 test('Das Kassettenraster der Decke füllt den Raum genau aus', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     const match = /CEILING_X_MIN, CEILING_X_MAX, CEILING_Y_MIN, CEILING_Y_MAX = ([-\d.]+), ([-\d.]+), ([-\d.]+), ([-\d.]+)/.exec(scene);
     assert.ok(match, 'Rasterbereich der Decke nicht gefunden');
     const [xMin, xMax, yMin, yMax] = match.slice(1).map(Number);
@@ -257,7 +277,7 @@ test('Das Kassettenraster der Decke füllt den Raum genau aus', () => {
 });
 
 test('Die Kassettendecke ist modern: helles Holz, Putzfelder, keine Zierrahmen mit Mittelblock', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     assert.ok(scene.includes('Deckenputz'));
     assert.ok(!scene.includes('bx((cx, cy, ZD - 0.03), (0.34, 0.34, 0.06))'), 'kein Mittelblock mehr');
     const match = /wood_ramp\.color_ramp\.elements\[1\]\.color = \(([\d.]+), ([\d.]+), ([\d.]+)/.exec(scene);
@@ -265,7 +285,7 @@ test('Die Kassettendecke ist modern: helles Holz, Putzfelder, keine Zierrahmen m
 });
 
 test('Die Arkadenwand ist modern: Steinplatten, schlichte Nischen mit Lichtkante, keine klassischen Zierelemente', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     for (const part of ['ashlar_material(', 'ShaderNodeTexBrick', 'add_niche(f"Nische {index}"', 'Nischen Lichtkante']) {
         assert.ok(scene.includes(part), part);
     }
@@ -281,7 +301,7 @@ test('Der Viewer zeichnet die Steinplatten der Arkadenwand mit Fugen', () => {
 });
 
 test('Die Fenster sind schlichte, hohe Rechteckfenster ohne Bogen', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     for (const altmodisch of ['Steinbogen', 'Fensterbogen', 'arch(f"a{i}"']) {
         assert.ok(!scene.includes(altmodisch), `${altmodisch} passt nicht zu modernen Fenstern`);
     }
@@ -293,7 +313,7 @@ test('Die Fenster sind schlichte, hohe Rechteckfenster ohne Bogen', () => {
 });
 
 test('Zwischen Wand und Decke gibt es keine Leiste oder Gesimse', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     for (const leiste of ['add_cornice', 'CORNICE', 'Gesims', 'Kranzgesims']) {
         assert.ok(!scene.includes(leiste), `${leiste} hat in der modernen Raumhülle keinen Platz`);
     }
@@ -301,7 +321,7 @@ test('Zwischen Wand und Decke gibt es keine Leiste oder Gesimse', () => {
 
 
 test('Die Fenster sind Glas mit schlankem Titanrahmen, ohne Sprossen und Pfosten', () => {
-    const scene = fs.readFileSync(path.join(__dirname, '..', 'museum', 'scene.py'), 'utf8');
+    const scene = museumQuelltext();
     assert.ok(scene.includes('Fensterglas {side}{i + 1}'));
     assert.ok(scene.includes('Fensterrahmen Titan {side}{i + 1}'));
     const frame = /FRAME_WIDTH = ([\d.]+)/.exec(scene);

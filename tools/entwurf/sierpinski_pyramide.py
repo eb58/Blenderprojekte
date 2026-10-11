@@ -19,7 +19,7 @@ import bpy
 from mathutils import Vector
 
 sys.path.insert(0, os.path.join(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "museum"))
+    os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "museum"))
 import sierpinski  # noqa: E402
 
 

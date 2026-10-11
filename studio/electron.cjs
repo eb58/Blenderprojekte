@@ -43,8 +43,8 @@ const serveMuseumFile = async request => {
         '/viewer.js': 'viewer.js'
     };
     const imageFiles = {
-        '/park.png': path.join('assets', 'museum_park_panorama.png'),
-        '/mandelbrot.png': path.join('assets', 'mandelbrot_tapestry.png')
+        '/park.png': path.join('assets', 'bilder', 'museum_park_panorama.png'),
+        '/mandelbrot.png': path.join('assets', 'bilder', 'mandelbrot_tapestry.png')
     };
     const media = {'/model.glb': 'model', '/preview': 'preview'};
     const frameMatch = /^\/frame\/(\d{1,6})$/.exec(url.pathname);

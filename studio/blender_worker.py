@@ -4,6 +4,7 @@ import math
 import os
 from pathlib import Path
 import runpy
+import sys
 import time
 import traceback
 
@@ -11,6 +12,8 @@ import bpy
 
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "museum"))
+import rendering  # noqa: E402
 WORK_DIR = Path(os.environ["MUSEUM_WORKER_DIR"])
 COMMAND = WORK_DIR / "command.json"
 READY = WORK_DIR / "ready.json"
@@ -31,7 +34,7 @@ def render(command):
     scene.render.resolution_y = int(command["RESOLUTION_Y"])
     scene.render.resolution_percentage = 100
     scene.render.filepath = command["output"]
-    presets[command["RENDER_PRESET"]]()
+    rendering.preset_anwenden(command["RENDER_PRESET"])
     scene.frame_set(scene.frame_start)
     bpy.context.view_layer.update()
     bpy.ops.render.render(write_still=True)
@@ -69,13 +72,7 @@ def _export_preview_model():
 
 
 WORK_DIR.mkdir(parents=True, exist_ok=True)
-namespace = runpy.run_path(str(ROOT / "museum" / "scene.py"))
-presets = {
-    "test": namespace["preset_test"],
-    "final_fast": namespace["preset_final_fast"],
-    "animation": namespace["preset_animation"],
-    "quality": namespace["preset_quality"],
-}
+runpy.run_path(str(ROOT / "museum" / "scene.py"))
 
 # Die Animation verwendet einen Treiber. Fuer Standbilder wird der Winkel direkt
 # gesetzt, damit ein neues Testbild keinen erneuten Szenenaufbau braucht.

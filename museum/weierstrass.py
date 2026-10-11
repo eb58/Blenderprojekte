@@ -58,3 +58,60 @@ def normiert(punkte, massstab, achsen=((0, 1), (1, 1), (2, 1))):
     normierung = max(math.sqrt(x * x + y * y + z * z) for x, y, z in zentriert)
     return [tuple(vorzeichen * punkt[quelle] / normierung * massstab for quelle, vorzeichen in achsen)
             for punkt in zentriert]
+
+
+# --- Die Flächen des Museums, Voreinstellungen wie auf der oben genannten Seite --------------
+NAHTUEBERLAPPUNG = 0.10
+
+
+def kusner(p, massstab):
+    """Kusner-Fläche mit p Enden; der Ring endet mit Abstand vor den Polen von f."""
+    a = math.sqrt(2 * p - 1)
+    b = 2 * a / (p - 1)
+    root_span = math.sqrt(b * b + 4)
+    inner_pole = ((root_span - b) / 2) ** (1 / p)
+    outer_pole = ((root_span + b) / 2) ** (1 / p)
+    margin = min(0.24, (outer_pole - inner_pole) * 0.38)
+
+    def f(z):
+        return 1j * (a * z**p + 1)**2 / (z**(2 * p) + b * z**p - 1)**2
+
+    def g(z):
+        return z**(p - 1) * (z**p - a) / (a * z**p + 1)
+
+    return flaeche(f, g, inner_pole + margin, outer_pole - margin, 70 + round(p * 4),
+                   361 + round(p * 40), NAHTUEBERLAPPUNG, massstab)
+
+
+def s41(m, n, r1, r2, massstab):
+    """Familie S41_m_n (S41_7_5; S41_5_3 ist das doppelte Kleeblatt)."""
+    def f(z):
+        return 1j * (z**n + 1)**2 / z**(m + 1)
+
+    def g(z):
+        return z**(m - n) * (z**n - 1) / (z**n + 1)
+
+    return flaeche(f, g, r1, r2, 58, 221, NAHTUEBERLAPPUNG, massstab)
+
+
+def henneberg(m, massstab):
+    phase = (1, 1j, -1, -1j)[(m - 1) % 4]
+
+    def f(z):
+        return phase * (z**(2 * m + 2) - 1) / z**(m + 3)
+
+    def g(z):
+        return z
+
+    return flaeche(f, g, 1.8, 2.0, 60, 241 + 24 * m, NAHTUEBERLAPPUNG, massstab)
+
+
+def cobra(m, t, massstab):
+    def f(z):
+        return t**2 * (z + 1)**2 * (z + 1j / t)**2 / z**(m + 1)
+
+    def g(z):
+        return (z**(m - 2) * (z - 1) * (z - 1j * t)
+                / (t * (z + 1) * (z + 1j / t)))
+
+    return flaeche(f, g, 1.0, 1.2, 58, 221, NAHTUEBERLAPPUNG, massstab)

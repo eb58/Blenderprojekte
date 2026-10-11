@@ -17,8 +17,10 @@ Museum Studio ist eine lokale Windows-Desktop-Anwendung. Electron steuert Blende
 - `studio/index.html` und `studio/viewer.js`: Oberfläche und Three.js-Vorschau.
 - `test/`: Tests (`*.test.cjs`, `node --test`); neue Tests gehören dorthin, nicht nach `studio/`.
 - `studio/blender_worker.py`: langlebiger Blender-Worker für schnelle Vorschaubilder.
-- `museum/scene.py`: Aufbau und Rendering der Blender-Szene.
-- `tools/assets/`: aktive Werkzeuge zur Asset-Aufbereitung; `tools/archive/` ist nur Archiv.
+- `museum/scene.py`: Einstieg und Ablauf des Szenenaufbaus. Fachlich getrennt davon: `einstellungen.py` (Standardwerte, `MUSEUM_CONFIG`), `rendering.py` (OptiX, Cycles-Presets), `materialien.py`, `bauteile.py` (Geometrie-Helfer), `ausstattung.py` (Plaketten, Wandteppich, Möbel, Garten) sowie die reinen Mathematikmodule `weierstrass.py`, `costa.py` und `sierpinski.py`.
+- Die 3D-Vorschau ordnet Objekte und Materialien über ihre Namen zu (`studio/viewer.js`). Objekt- und Materialnamen in `museum/` deshalb nur zusammen mit dem Viewer ändern.
+- `tools/assets/`: Werkzeuge zur Asset-Aufbereitung; `tools/entwurf/`: eigenständige Blender-Entwurfsskripte.
+- `assets/bilder/`: eingecheckte Bildtexturen der Szene; `assets/library/`: lokale Möbelbibliothek (Modelldateien nicht in Git).
 
 Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in die Oberfläche. Das Projekt soll lokal und serverlos bleiben, solange die Aufgabe nicht ausdrücklich eine andere Architektur verlangt.
 

@@ -77,7 +77,7 @@ npm start
 
 ### Blender direkt über die Kommandozeile rendern
 
-Die gewünschte Konfiguration wird über `MUSEUM_CONFIG` übergeben. Ein Testbild lässt sich so rendern:
+Die gewünschte Konfiguration wird über `MUSEUM_CONFIG` übergeben; ohne diese Variable gelten die Standardwerte aus `museum/einstellungen.py`. Ein Testbild lässt sich so rendern:
 
 ```powershell
 $env:MUSEUM_CONFIG = (Resolve-Path ".\Render\kusner_p7_granit_museum\test-settings.json")
@@ -134,7 +134,7 @@ Der Knopf **Übersicht** wechselt zur Rundumansicht: Dort dreht und zoomt allein
 
 Sind alle Frames einer Animation gerendert, lässt sich auch das Renderbild drehen: Mit der Maus ziehen oder ← und → drücken wählt das Einzelbild entlang der Kamerafahrt. Das setzt voraus, dass Dauer, Bildrate und Ausgabeordner der Animation noch den Einstellungen des laufenden Studios entsprechen.
 
-Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks, dem Schöpfer und dem Jahr; der Wandteppich hat rechts unten daneben eine eigene. Die Texte stehen gesammelt in `PLAKETTENTEXTE` in `museum/scene.py`.
+Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks, dem Schöpfer und dem Jahr; der Wandteppich hat rechts unten daneben eine eigene. Die Texte stehen gesammelt in `PLAKETTENTEXTE` in `museum/ausstattung.py`.
 
 Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG speichern** erzeugt ein Bild in der gewählten Auflösung, **WebM aufnehmen** zeichnet die eingestellte Kamerafahrt mit Dauer, Bildrate und Umlaufwinkel auf. Das WebM-Format kann bei Bedarf anschließend mit FFmpeg in MP4 umgewandelt werden.
 
@@ -154,7 +154,7 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG 
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 
-Auf der geschlossenen Museumswand gegenüber den Arkaden hängt ein großer, gewebter Wandteppich mit einer kupfer- und petrolfarbenen Mandelbrot-Welt. Das Motiv liegt als Projekt-Asset unter `assets/mandelbrot_tapestry.png`.
+Auf der geschlossenen Museumswand gegenüber den Arkaden hängt ein großer, gewebter Wandteppich mit einer kupfer- und petrolfarbenen Mandelbrot-Welt. Das Motiv liegt als Projekt-Asset unter `assets/bilder/mandelbrot_tapestry.png`.
 
 ## Render-Presets
 
@@ -191,7 +191,7 @@ PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Der Name ihres Or
 
 ## Lokale Möbelbibliothek
 
-`assets/models/` enthält zusätzliche Modelle wie die Marmorbüsten. `assets/library/` enthält die Möbelbibliotheken. `blenderkit_data/` ist ausschließlich der vom Add-on verwaltete Cache und bleibt getrennt sowie von Git ausgeschlossen.
+`assets/bilder/` enthält die Bildtexturen der Szene (Wandteppich, Parkkulisse). `assets/library/` enthält die Möbelbibliotheken. `blenderkit_data/` ist ausschließlich der vom Add-on verwaltete Cache und bleibt getrennt sowie von Git ausgeschlossen.
 
 Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine leichte Panorama-Parkkulisse. Weitere Möbelmodelle liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
 
@@ -207,12 +207,17 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine lei
 - `studio/viewer.js` zeigt das von Blender exportierte GLB-Modell interaktiv mit Three.js an.
 - Three.js, OrbitControls und GLTFLoader werden in der festgelegten Version `0.186.1` über jsDelivr geladen. Für die 3D-Vorschau ist deshalb eine Internetverbindung erforderlich.
 - `studio/index.html` enthält Benutzeroberfläche und Statusanzeige.
-- `museum/scene.py` baut die Blender-Szene auf, erzeugt die Skulptur und konfiguriert Kamera, Materialien und Cycles.
-- `museum/weierstrass.py` berechnet die Minimalflächen (Kusner, S41_7_5, Henneberg, Cobra, Double Trefoil) aus ihrer Weierstraß-Darstellung über einem Kreisring; die Formeln stammen von der [Seite zu nichtorientierbaren Minimalflächen](https://eb58.github.io/Non-Orientable-Minimal-Surfaces/).
+- `museum/scene.py` ist der Einstieg für Blender und baut die Szene in fester Reihenfolge auf: Skulpturen, Halle, Fenster, Licht, Exponate, Decke, Kamera.
+- `museum/einstellungen.py` enthält die Standardwerte und liest die Studio-Einstellungen aus `MUSEUM_CONFIG`.
+- `museum/rendering.py` aktiviert OptiX und enthält Ausgabeeinstellungen sowie die vier Cycles-Presets; der Blender-Worker verwendet sie direkt.
+- `museum/materialien.py` erzeugt die Materialien (Naturstein, Boden, Holz, Leder, Titan, Glas); der Node-Baum des Skulpturengranits liegt in `museum/granit_material.json`.
+- `museum/bauteile.py` enthält Geometrie-Helfer für Quader, Nischen, Flächenlichter und Collections.
+- `museum/ausstattung.py` enthält Plaketten, Wandteppich, Museumsbänke, Eckhocker und den Außengarten.
+- `museum/weierstrass.py` definiert und berechnet die Minimalflächen (Kusner, S41_7_5, Henneberg, Cobra, Double Trefoil) aus ihrer Weierstraß-Darstellung über einem Kreisring; die Formeln stammen von der [Seite zu nichtorientierbaren Minimalflächen](https://eb58.github.io/Non-Orientable-Minimal-Surfaces/).
 - `museum/costa.py` berechnet die Costa-Fläche über dem Einheitstorus (Port der Parametrisierung der oben genannten Seite, Endenausschnitt ε = 0,12).
-- `museum/sierpinski.py` enthält die gemeinsame Geometrie der Sierpiński-Pyramide. Szene und Entwurfsskript `tools/sierpinski_pyramide.py` verwenden sie gemeinsam.
+- `museum/sierpinski.py` enthält die gemeinsame Geometrie der Sierpiński-Pyramide. Szene und Entwurfsskript `tools/entwurf/sierpinski_pyramide.py` verwenden sie gemeinsam.
 - `tools/assets/` enthält aktuelle Werkzeuge zur Modellvorbereitung.
-- `tools/archive/` enthält frühere beziehungsweise aufgeteilte Hilfsskripte; sie werden vom Studio nicht verwendet.
+- `tools/entwurf/` enthält eigenständige Blender-Entwurfsskripte, die nicht vom Studio verwendet werden.
 
 ## Fehlerbehebung
 
