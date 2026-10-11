@@ -1,7 +1,8 @@
 $projectRoot = Split-Path (Split-Path $PSScriptRoot)
-$libraryRoot = Join-Path $projectRoot 'assets\library'
-foreach ($assetId in @('painted_wooden_bench', 'modular_street_seating', 'bar_chair_round_01')) {
-    $assetFolder = Join-Path $libraryRoot $assetId
+# Lädt den CC0-Barhocker von Poly Haven und prüft die MD5-Prüfsummen.
+$moebelRoot = Join-Path $projectRoot 'assets\moebel'
+foreach ($assetId in @('bar_chair_round_01')) {
+    $assetFolder = Join-Path $moebelRoot $assetId
     New-Item -ItemType Directory -Force -Path $assetFolder | Out-Null
     $files = Invoke-RestMethod "https://api.polyhaven.com/files/$assetId"
     $model = $files.blend.'1k'.blend

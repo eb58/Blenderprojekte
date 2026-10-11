@@ -20,9 +20,9 @@ const DEFAULTS = {
     SCULPTURE_SCALE: 3.55,
     THICKNESS: 0.06,
     START_ANGLE: 158,
-    ORBIT_DEGREES: 360,
-    OUTPUT_DIR: path.join(RENDER_DIR, 'kusner_p7_granit_museum')
+    ORBIT_DEGREES: 360
 };
+const TESTBILDER = 'testbilder';
 const exists = p => Boolean(p && fs.existsSync(p));
 const json = p => JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
 const writeJSON = (p, value) => fs.writeFileSync(p, JSON.stringify(value, null, 2));
@@ -43,8 +43,16 @@ const framesFolderName = settings => [
     VIDEO_ENCODING.pixelFormat
 ].join('_');
 const animationFramesFolder = settings => path.join(settings.OUTPUT_DIR, framesFolderName(settings));
+// Jede Einstellungsvariante rendert in einen eigenen Ordner: Gleiche Werte setzen denselben Lauf fort,
+// geänderte beginnen einen neuen. Die Prüfsumme deckt alle Einstellungen ab, der Name die wichtigsten.
+const variantName = settings => {
+    const hash = crypto.createHash('sha256')
+        .update(JSON.stringify(Object.keys(DEFAULTS).map(key => settings[key]))).digest('hex').slice(0, 6);
+    return `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.FPS}fps_` +
+        `${settings.DURATION}s_${settings.RENDER_PRESET}_${hash}`;
+};
 
-const validate = data => {
+const validate = (data, renderDir = RENDER_DIR) => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Ungültige Einstellungen.');
     const settings = {...DEFAULTS};
     for (const key of Object.keys(settings)) {
@@ -75,10 +83,7 @@ const validate = data => {
         settings[key] = value;
     }
     if (settings.FPS * settings.DURATION < 2) throw Error('Mindestens zwei Frames erforderlich.');
-    if (typeof settings.OUTPUT_DIR !== 'string' || !path.isAbsolute(settings.OUTPUT_DIR)) {
-        throw Error('Bitte einen absoluten Ausgabeordner angeben.');
-    }
-    settings.OUTPUT_DIR = path.resolve(settings.OUTPUT_DIR);
+    settings.OUTPUT_DIR = path.join(renderDir, variantName(settings));
     return settings;
 };
 
@@ -110,14 +115,15 @@ const blenderPath = () => {
     return found;
 };
 
-const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) => {
+const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.museum_worker')} = {}) => {
     const model = path.join(workDir, 'museum_preview.glb');
+    const stillsFolder = path.join(renderDir, TESTBILDER);
     const state = {
         process: null,
         worker: null,
         signature: null,
         job: null,
-        settings: {...DEFAULTS},
+        settings: validate(DEFAULTS, renderDir),
         kind: '',
         log: null,
         started: 0,
@@ -136,7 +142,7 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
             return null;
         }
     };
-    // Jede Änderung an Szenenmodulen oder Bildtexturen erfordert einen neu aufgebauten Worker.
+    // Jede Änderung an Szenenmodulen, Bildtexturen oder Materialdaten erfordert einen neu aufgebauten Worker.
     const sources = folder => files(folder).filter(name => /\.(py|json|png)$/.test(name)).sort()
         .map(name => [name, modified(path.join(folder, name))]);
     const signature = settings => JSON.stringify([
@@ -145,7 +151,8 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
         settings.THICKNESS,
         sources(path.join(ROOT, 'museum')),
         modified(path.join(__dirname, 'blender_worker.py')),
-        sources(path.join(ROOT, 'assets', 'bilder'))
+        sources(path.join(ROOT, 'assets', 'bilder')),
+        sources(path.join(ROOT, 'assets', 'materialien'))
     ]);
     const launch = (command, args, logFile, env, cwd) => {
         const fd = fs.openSync(logFile, 'w');
@@ -193,7 +200,8 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
             }
         }
         const config = path.join(workDir, 'settings.json');
-        writeJSON(config, {...settings, MAKE_VIDEO: false, RESUME_RENDER: true});
+        // Der Worker rendert nur Testbilder; so entsteht kein leerer Animationsordner je Einstellung.
+        writeJSON(config, {...settings, OUTPUT_DIR: stillsFolder, MAKE_VIDEO: false, RESUME_RENDER: true});
         state.log = path.join(workDir, 'worker.log');
         state.worker = launch(
             blenderPath(),
@@ -282,17 +290,15 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
     };
     const startJob = async (kind, data) => {
         if (alive(state.process) || state.job) throw Error('Ein Auftrag läuft bereits.');
-        let s = validate(data);
+        let s = validate(data, renderDir);
         const folder = s.OUTPUT_DIR;
-        fs.mkdirSync(folder, {recursive: true});
         if (kind === 'still') {
             s = {...s, MAKE_VIDEO: false, RESUME_RENDER: true};
-            writeJSON(path.join(folder, 'test-settings.json'), s);
+            fs.mkdirSync(stillsFolder, {recursive: true});
+            writeJSON(path.join(stillsFolder, 'test-settings.json'), s);
             await ensureWorker(s);
             const id = crypto.randomUUID().replaceAll('-', '');
-            const framesFolder = path.join(folder, 'frames');
-            fs.mkdirSync(framesFolder, {recursive: true});
-            const output = path.join(framesFolder, `kusner_p7_museum_test_${id}.png`);
+            const output = path.join(stillsFolder, `kusner_p7_museum_test_${id}.png`);
             const command = {id, type: 'render', output};
             for (const key of ['START_ANGLE', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET']) {
                 command[key] = s[key];
@@ -315,12 +321,13 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
         let command;
         if (kind === 'animation' || kind === 'animation_video') {
             s = {...s, MAKE_VIDEO: true, RESUME_RENDER: true, FRAMES_DIR: animationFramesFolder(s)};
+            fs.mkdirSync(folder, {recursive: true});
             const config = path.join(folder, 'settings.json');
             if (files(s.FRAMES_DIR).some(name => /^frame_.*\.png$/.test(name))) {
                 const saved = exists(config) ? json(config) : null;
                 if (!saved || Object.keys(s).some(key => saved[key] !== s[key]) ||
                     Object.keys(saved).some(key => !Object.hasOwn(s, key))) {
-                    throw Error('Vorhandene Frames gehören zu anderen Einstellungen. Bitte einen neuen Ausgabeordner wählen.');
+                    throw Error(`Vorhandene Frames in ${folder} passen nicht zu dessen settings.json.`);
                 }
             }
             await stopWorker();
@@ -336,7 +343,7 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
         } else if (kind === 'video') {
             const config = path.join(folder, 'settings.json');
             if (!exists(config)) throw Error('Bitte zuerst eine Animation rendern.');
-            s = validate(json(config));
+            s = validate(json(config), renderDir);
             // Never accept a settings file redirecting encoding into a different folder.
             if (s.OUTPUT_DIR !== folder) throw Error('Ausgabeordner stimmt nicht mit settings.json überein.');
             const video = prepareVideo(s, folder);
@@ -396,10 +403,8 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
                 state.job = null;
             }
         }
-        const folder = state.settings.OUTPUT_DIR;
         const framesFolder = animationFramesFolder(state.settings);
         const frames = files(framesFolder).filter(name => /^frame_.*\.png$/.test(name)).sort();
-        const stillsFolder = path.join(folder, 'frames');
         const stills = files(stillsFolder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
             .map(name => path.join(stillsFolder, name))
             .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
@@ -453,7 +458,7 @@ const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) 
     };
     const prepareModel = async data => {
         if (alive(state.process) || state.job) throw Error('Während eines Renderauftrags ist keine neue 3D-Vorschau verfügbar.');
-        const settings = validate(data);
+        const settings = validate(data, renderDir);
         await ensureWorker(settings);
         state.settings = settings;
         state.preparing = true;

@@ -5,8 +5,10 @@ import os
 
 import bpy
 
+from einstellungen import PROJECT_DIR
+
 D = bpy.data
-GRANIT_DATEI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "granit_material.json")
+GRANIT_DATEI = os.path.join(PROJECT_DIR, "assets", "materialien", "granit.json")
 
 
 def set_socket(node, names, value):
@@ -98,7 +100,7 @@ def ashlar_material(name, light, dark, mortar, block_width=1.8, block_height=0.6
     return material
 
 
-# --- Prozeduraler Naturgranit der Skulpturen (Node-Baum aus granit_material.json) ----------
+# --- Prozeduraler Naturgranit der Skulpturen (Node-Baum aus assets/materialien/granit.json) -
 def load_nodes(nt, spec):
     if spec["interface"]:
         for i in spec["interface"]:

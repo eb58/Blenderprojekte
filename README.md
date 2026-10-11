@@ -80,7 +80,7 @@ npm start
 Die gewünschte Konfiguration wird über `MUSEUM_CONFIG` übergeben; ohne diese Variable gelten die Standardwerte aus `museum/einstellungen.py`. Ein Testbild lässt sich so rendern:
 
 ```powershell
-$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\kusner_p7_granit_museum\test-settings.json")
+$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\test-settings.json")
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" `
     --background `
     --factory-startup `
@@ -89,10 +89,10 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\kusner_p7_granit_museum\tes
     --render-frame 1
 ```
 
-Eine Animation mit der vorhandenen `settings.json` wird so gestartet:
+Eine Animation mit der `settings.json` einer vorhandenen Variante (Ordnername als Beispiel) wird so gestartet:
 
 ```powershell
-$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\kusner_p7_granit_museum\settings.json")
+$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\settings.json")
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" `
     --background `
     --factory-startup `
@@ -104,9 +104,9 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\kusner_p7_granit_museum\set
 ### PNG-Frames manuell als MP4 zusammenfügen
 
 ```powershell
-ffmpeg -framerate 24 `
+ffmpeg -framerate 60 `
     -start_number 1 `
-    -i ".\Ausgabe\Render\kusner_p7_granit_museum\frames_1280x800_24fps_h264_crf18_yuv420p\frame_%04d.png" `
+    -i ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\frames_1920x1080_60fps_h264_crf18_yuv420p\frame_%04d.png" `
     -c:v libx264 `
     -crf 18 `
     -pix_fmt yuv420p `
@@ -132,7 +132,7 @@ Die 3D-Vorschau öffnet sich als **Rundgang** in Ich-Perspektive: ↑/↓ oder W
 
 Der Knopf **Übersicht** wechselt zur Rundumansicht: Dort dreht und zoomt allein die Maus; ein Klick auf den Boden oder ein Werk führt wieder in den Rundgang. **Rundgang** bringt dich an die letzte Stelle zurück.
 
-Sind alle Frames einer Animation gerendert, lässt sich auch das Renderbild drehen: Mit der Maus ziehen oder ← und → drücken wählt das Einzelbild entlang der Kamerafahrt. Das setzt voraus, dass Dauer, Bildrate und Ausgabeordner der Animation noch den Einstellungen des laufenden Studios entsprechen.
+Sind alle Frames einer Animation gerendert, lässt sich auch das Renderbild drehen: Mit der Maus ziehen oder ← und → drücken wählt das Einzelbild entlang der Kamerafahrt. Das Studio zeigt dafür die Frames der Variante, die zu den aktuellen Einstellungen passt.
 
 Alle Sockel tragen eine kleine Kupferplakette mit dem Namen des Werks, dem Schöpfer und dem Jahr; der Wandteppich hat rechts unten daneben eine eigene. Die Texte stehen gesammelt in `PLAKETTENTEXTE` in `museum/ausstattung.py`.
 
@@ -150,7 +150,8 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG 
 | Startposition/Grad | Startpunkt auf der kreisförmigen Kamerafahrt und Perspektive des Testbilds |
 | Umlauf/Grad | Drehwinkel der Kamerafahrt |
 | Breite/Höhe | Ausgabeauflösung in Pixeln |
-| Ausgabeordner | Ziel für Einstellungen, Testbilder, Frames und Logs; MP4-Videos werden im Projektordner `Ausgabe\Videos` gespeichert |
+
+Einen Ausgabeordner gibt es nicht mehr als Parameter; siehe [Ausgabe](#ausgabe).
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 
@@ -171,30 +172,29 @@ Alle Presets verwenden Cycles, GPU-Rendering, adaptives Sampling und OptiX-Denoi
 
 ## Ausgabe
 
-Standardmäßig werden die Ergebnisse hier abgelegt:
+Das Studio legt alle Ergebnisse fest unter `Ausgabe\` im Projektordner ab; einen Ausgabeordner muss man nicht wählen:
 
 ```text
 Projektordner\Ausgabe\
 ├── Render\
 │   ├── .museum_worker\       Arbeitsdateien des Blender-Workers (temporär)
-│   └── kusner_p7_granit_museum\
-│       ├── frames\              Testbilder
-│       ├── frames_1280x800_24fps_h264_crf18_yuv420p\
+│   ├── testbilder\
+│   │   ├── kusner_p7_museum_test_*.png   Testbilder
+│   │   └── test-settings.json            Einstellungen des letzten Testbilds
+│   └── parkett_1920x1080_60fps_20s_quality_da2cc8\   ein Ordner je Animationsvariante
+│       ├── frames_1920x1080_60fps_h264_crf18_yuv420p\
 │       │                         PNG-Einzelbilder der Animation
 │       ├── logs\                Blender- und FFmpeg-Ausgaben
-│       ├── settings.json        Einstellungen der Animation
-│       └── test-settings.json   Einstellungen des Testbilds
+│       └── settings.json        Einstellungen der Animation
 └── Videos\
     └── museum_*.mp4             Fertige Videos
 ```
 
-PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Der Name ihres Ordners dokumentiert Auflösung, Bildrate, Codec, CRF-Wert und Pixelformat der MP4-Kodierung. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen. MP4-Videos werden unabhängig vom gewählten Ausgabeordner in `Ausgabe\Videos` abgelegt. `Ausgabe\` ist vollständig von Git ausgeschlossen.
+Den Ordner einer Animation bildet das Studio aus ihren Einstellungen: Boden, Auflösung, Bildrate, Dauer und Qualität stehen lesbar im Namen, die Prüfsumme am Ende deckt alle Einstellungen ab (auch Skulpturgröße, Granitdicke, Startwinkel und Umlauf). Gleiche Einstellungen setzen deshalb automatisch den vorhandenen Lauf fort, geänderte beginnen einen neuen Ordner. PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Der Name des Frame-Ordners dokumentiert zusätzlich Codec, CRF-Wert und Pixelformat der MP4-Kodierung. Nicht mehr benötigte Varianten können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
 
-## Lokale Möbelbibliothek
+## Assets
 
-`assets/bilder/` enthält die Bildtexturen der Szene (Wandteppich, Parkkulisse). `assets/library/` enthält die Möbelbibliotheken. Ein Cache des BlenderKit-Add-ons (`blenderkit_data/`) wird nicht benötigt und ist von Git ausgeschlossen.
-
-Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine leichte Panorama-Parkkulisse. Weitere Möbelmodelle liegen unter `assets/library/`, Vorbereitungsskripte unter `tools/assets/`. Quellen, Lizenzen und Befehle stehen in der [Anleitung zur Asset-Bibliothek](assets/library/README.md).
+`assets/bilder/` enthält die Bildtexturen der Szene (Wandteppich, Parkkulisse) und liegt in Git. `assets/moebel/` enthält den Poly-Haven-Barhocker für die vier Raumecken; er liegt nicht in Git und wird bei Bedarf mit den Skripten in `tools/assets/` neu heruntergeladen und aufbereitet. Die Museumsbänke sind eigene Modelle aus `museum/ausstattung.py`. Quellen, Lizenzen und Befehle stehen in [assets/README.md](assets/README.md).
 
 ## Projektdateien
 
@@ -211,14 +211,13 @@ Das Museum verwendet eigene Lederbänke, vier Poly-Haven-Holzhocker und eine lei
 - `museum/scene.py` ist der Einstieg für Blender und baut die Szene in fester Reihenfolge auf: Skulpturen, Halle, Fenster, Licht, Exponate, Decke, Kamera.
 - `museum/einstellungen.py` enthält die Standardwerte und liest die Studio-Einstellungen aus `MUSEUM_CONFIG`.
 - `museum/rendering.py` aktiviert OptiX und enthält Ausgabeeinstellungen sowie die vier Cycles-Presets; der Blender-Worker verwendet sie direkt.
-- `museum/materialien.py` erzeugt die Materialien (Naturstein, Boden, Holz, Leder, Titan, Glas); der Node-Baum des Skulpturengranits liegt in `museum/granit_material.json`.
+- `museum/materialien.py` erzeugt die Materialien (Naturstein, Boden, Holz, Leder, Titan, Glas); der Node-Baum des Skulpturengranits liegt in `assets/materialien/granit.json`.
 - `museum/bauteile.py` enthält Geometrie-Helfer für Quader, Nischen, Flächenlichter und Collections.
 - `museum/ausstattung.py` enthält Plaketten, Wandteppich, Museumsbänke, Eckhocker und den Außengarten.
 - `museum/weierstrass.py` definiert und berechnet die Minimalflächen (Kusner, S41_7_5, Henneberg, Cobra, Double Trefoil) aus ihrer Weierstraß-Darstellung über einem Kreisring; die Formeln stammen von der [Seite zu nichtorientierbaren Minimalflächen](https://eb58.github.io/Non-Orientable-Minimal-Surfaces/).
 - `museum/costa.py` berechnet die Costa-Fläche über dem Einheitstorus (Port der Parametrisierung der oben genannten Seite, Endenausschnitt ε = 0,12).
-- `museum/sierpinski.py` enthält die gemeinsame Geometrie der Sierpiński-Pyramide. Szene und Entwurfsskript `tools/entwurf/sierpinski_pyramide.py` verwenden sie gemeinsam.
-- `tools/assets/` enthält aktuelle Werkzeuge zur Modellvorbereitung.
-- `tools/entwurf/` enthält eigenständige Blender-Entwurfsskripte, die nicht vom Studio verwendet werden.
+- `museum/sierpinski.py` enthält die Geometrie der Sierpiński-Pyramide.
+- `tools/assets/` lädt den Poly-Haven-Barhocker herunter und erzeugt daraus `assets/moebel/bar_chair_round_01_asset.blend`.
 
 ## Fehlerbehebung
 
@@ -243,7 +242,6 @@ Die Anwendung kann eine WinGet-Installation auch dann direkt erkennen, wenn das 
 
 - Die Seite mit `Strg+F5` neu laden.
 - Prüfen, ob ein alter Renderauftrag noch läuft.
-- Für eine geänderte Animation einen neuen Ausgabeordner verwenden.
 - Unter **Render-Meldungen** das aktuelle Blender-Log ansehen.
 
 ### Studio beenden

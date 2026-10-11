@@ -159,13 +159,13 @@ def museumsbaenke():
 
 
 def eckhocker(bcol):
-    """Je ein historischer Holzhocker aus der Möbelbibliothek in den vier Ecken mit Wandabstand."""
-    stool_library = os.path.join(PROJECT_DIR, "assets", "library", "bar_chair_round_01_asset.blend")
+    """Je ein historischer Holzhocker (Poly Haven, assets/moebel) in den vier Ecken mit Wandabstand."""
+    stool_library = os.path.join(PROJECT_DIR, "assets", "moebel", "bar_chair_round_01_asset.blend")
     with D.libraries.load(stool_library, link=False) as (source, imported_stools):
         imported_stools.objects = ["bar_chair_round_01"]
     stool_template = imported_stools.objects[0]
     if stool_template is None:
-        raise RuntimeError("Hocker fehlt in der Möbelbibliothek: " + stool_library)
+        raise RuntimeError("Hocker fehlt, siehe assets/README.md: " + stool_library)
     stool_transform = stool_template.matrix_basis.copy()
     points = [stool_transform @ Vector(corner) for corner in stool_template.bound_box]
     stool_center = Vector(((min(p.x for p in points) + max(p.x for p in points)) / 2,

@@ -1,9 +1,9 @@
-"""In Blender ausführen: markiert CC0-Möbel als Collection-Assets."""
+"""In Blender ausführen: erzeugt aus dem Poly-Haven-Download bar_chair_round_01_asset.blend mit eingebetteten Texturen."""
 from pathlib import Path
 import bpy
 
-root = Path(__file__).resolve().parents[2] / 'assets' / 'library'
-for asset_id in ('painted_wooden_bench', 'modular_street_seating', 'bar_chair_round_01'):
+root = Path(__file__).resolve().parents[2] / 'assets' / 'moebel'
+for asset_id in ('bar_chair_round_01',):
     path = root / asset_id / f'{asset_id}.blend'
     bpy.ops.wm.open_mainfile(filepath=str(path))
     collection = bpy.data.collections.new(asset_id + ' Asset')

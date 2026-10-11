@@ -15,9 +15,24 @@ const museumQuelltext = () => {
 test('Renderdaten und Videos liegen gemeinsam im Projektordner Ausgabe', () => {
     const ausgabe = path.join(path.resolve(__dirname, '..'), 'Ausgabe');
     assert.equal(VIDEO_DIR, path.join(ausgabe, 'Videos'));
-    assert.equal(path.dirname(DEFAULTS.OUTPUT_DIR), path.join(ausgabe, 'Render'));
+    assert.equal(path.dirname(validate(DEFAULTS).OUTPUT_DIR), path.join(ausgabe, 'Render'));
     const einstellungen = fs.readFileSync(path.join(__dirname, '..', 'museum', 'einstellungen.py'), 'utf8');
     assert.ok(einstellungen.includes('os.path.join(PROJECT_DIR, "Ausgabe", "Render", "kusner_p7_granit_museum")'));
+});
+
+test('jede Einstellungsvariante einer Animation bekommt automatisch einen eigenen Ordner', () => {
+    assert.ok(!Object.hasOwn(DEFAULTS, 'OUTPUT_DIR'), 'Ausgabeordner ist keine Einstellung mehr');
+    const ordner = validate(DEFAULTS).OUTPUT_DIR;
+    assert.match(path.basename(ordner), /^marmor_1280x800_24fps_5s_test_[0-9a-f]{6}$/);
+    assert.equal(validate({...DEFAULTS}).OUTPUT_DIR, ordner, 'gleiche Einstellungen setzen denselben Lauf fort');
+    assert.equal(validate({...DEFAULTS, OUTPUT_DIR: 'C:\\anderswo'}).OUTPUT_DIR, ordner, 'Ordner kommt nicht vom Aufrufer');
+    for (const [key, value] of Object.entries({START_ANGLE: 159, THICKNESS: 0.07, SCULPTURE_SCALE: 4, ORBIT_DEGREES: 180})) {
+        assert.notEqual(validate({...DEFAULTS, [key]: value}).OUTPUT_DIR, ordner, key);
+    }
+    const eigenerOrdner = path.join(os.tmpdir(), 'museum-render');
+    assert.equal(path.dirname(validate(DEFAULTS, eigenerOrdner).OUTPUT_DIR), eigenerOrdner);
+    const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
+    assert.ok(!page.includes('id="OUTPUT_DIR"'), 'kein Eingabefeld für den Ausgabeordner');
 });
 
 
@@ -33,8 +48,7 @@ test('validation and Python-compatible frame counts', () => {
     const invalidSettings = [
         {FPS: 24.5},
         {BODEN: 'x'},
-        {THICKNESS: Infinity},
-        {OUTPUT_DIR: 'relative'}
+        {THICKNESS: Infinity}
     ];
     for (const settings of invalidSettings) {
         assert.throws(() => validate({...DEFAULTS, ...settings}));
@@ -61,15 +75,14 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
     timeout: 240000
 }, async () => {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'museum-ipc-test-'));
-    const jobs = createStudio({workDir: path.join(folder, 'worker')});
     const output = path.join(folder, 'output');
+    const jobs = createStudio({workDir: path.join(folder, 'worker'), renderDir: output});
     try {
         const settings = {
             ...DEFAULTS,
             BODEN: 'parkett',
             RESOLUTION_X: 64,
-            RESOLUTION_Y: 64,
-            OUTPUT_DIR: output
+            RESOLUTION_Y: 64
         };
         await jobs.start('still', settings);
         let status;
@@ -82,7 +95,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.running, false);
         assert.equal(status.code, 0, status.log);
         assert.ok(fs.existsSync(jobs.mediaPath('preview')));
-        assert.equal(path.dirname(jobs.mediaPath('preview')), path.join(output, 'frames'));
+        assert.equal(path.dirname(jobs.mediaPath('preview')), path.join(output, 'testbilder'));
+        assert.deepEqual(fs.readdirSync(output).sort(), ['testbilder'], 'Testbilder legen keine Animationsordner an');
         await jobs.prepareModel(settings);
         assert.ok(fs.existsSync(jobs.mediaPath('model')));
         const model = fs.readFileSync(jobs.mediaPath('model'));
@@ -98,8 +112,9 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(floor?.pbrMetallicRoughness?.baseColorTexture?.texCoord, 1);
 
         const videoSettings = {...settings, DURATION: 0.1};
-        const frames = path.join(output, framesFolderName(videoSettings));
-        fs.mkdirSync(frames);
+        const variante = validate(videoSettings, output).OUTPUT_DIR;
+        const frames = path.join(variante, framesFolderName(videoSettings));
+        fs.mkdirSync(frames, {recursive: true});
         for (let frame = 1; frame <= 2; frame++) {
             fs.copyFileSync(
                 jobs.mediaPath('preview'),
@@ -107,8 +122,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
             );
         }
         fs.writeFileSync(
-            path.join(output, 'settings.json'),
-            JSON.stringify({...videoSettings, MAKE_VIDEO: true, RESUME_RENDER: true, FRAMES_DIR: frames})
+            path.join(variante, 'settings.json'),
+            JSON.stringify({...validate(videoSettings, output), MAKE_VIDEO: true, RESUME_RENDER: true, FRAMES_DIR: frames})
         );
         await jobs.start('animation_video', videoSettings);
         do {
@@ -135,21 +150,22 @@ test('Der Szenenaufbau ist nach Verantwortlichkeit auf Module verteilt', () => {
         assert.ok(fs.existsSync(path.join(ordner, `${modul}.py`)), `${modul}.py fehlt`);
         assert.match(scene, new RegExp(`^import ${modul}$`, 'm'), `scene.py nutzt ${modul}.py nicht`);
     }
+    // Übernommene Materialdefinitionen sind Assets mit dokumentierter Herkunft, kein Szenencode.
+    assert.ok(fs.existsSync(path.join(__dirname, '..', 'assets', 'materialien', 'granit.json')));
+    assert.ok(!fs.readdirSync(ordner).some(datei => datei.endsWith('.json')), 'JSON-Daten gehören nach assets/');
     // Die Renderpresets stehen genau einmal und werden vom Worker direkt verwendet.
     const worker = fs.readFileSync(path.join(__dirname, '..', 'studio', 'blender_worker.py'), 'utf8');
     assert.match(worker, /rendering\.preset_anwenden\(/);
     assert.doesNotMatch(museumQuelltext(), /def preset_test/);
 });
 
-test('Sierpiński-Geometrie wird von Szene und Entwurfsskript gemeinsam genutzt', {
+test('Die Szene nutzt die gemeinsame Sierpiński-Geometrie', {
     skip: !fs.existsSync(BLENDER) && 'Blender fehlt'
 }, () => {
     const root = path.resolve(__dirname, '..');
-    for (const file of [path.join('museum', 'scene.py'), path.join('tools', 'entwurf', 'sierpinski_pyramide.py')]) {
-        const source = fs.readFileSync(path.join(root, file), 'utf8');
-        assert.match(source, /import sierpinski/, file);
-        assert.doesNotMatch(source, /math\.sqrt\(8 \/ 9\)/, `${file} dupliziert die Pyramidenecken`);
-    }
+    const scene = fs.readFileSync(path.join(root, 'museum', 'scene.py'), 'utf8');
+    assert.match(scene, /import sierpinski/);
+    assert.doesNotMatch(scene, /math\.sqrt\(8 \/ 9\)/, 'scene.py dupliziert die Pyramidenecken');
     const {spawnSync} = require('node:child_process');
     const result = spawnSync(BLENDER, [
         '--background', '--factory-startup', '--python-exit-code', '1', '--python-expr',

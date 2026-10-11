@@ -19,8 +19,8 @@ Museum Studio ist eine lokale Windows-Desktop-Anwendung. Electron steuert Blende
 - `studio/blender_worker.py`: langlebiger Blender-Worker für schnelle Vorschaubilder.
 - `museum/scene.py`: Einstieg und Ablauf des Szenenaufbaus. Fachlich getrennt davon: `einstellungen.py` (Standardwerte, `MUSEUM_CONFIG`), `rendering.py` (OptiX, Cycles-Presets), `materialien.py`, `bauteile.py` (Geometrie-Helfer), `ausstattung.py` (Plaketten, Wandteppich, Möbel, Garten) sowie die reinen Mathematikmodule `weierstrass.py`, `costa.py` und `sierpinski.py`.
 - Die 3D-Vorschau ordnet Objekte und Materialien über ihre Namen zu (`studio/viewer.js`). Objekt- und Materialnamen in `museum/` deshalb nur zusammen mit dem Viewer ändern.
-- `tools/assets/`: Werkzeuge zur Asset-Aufbereitung; `tools/entwurf/`: eigenständige Blender-Entwurfsskripte.
-- `assets/bilder/`: eingecheckte Bildtexturen der Szene; `assets/library/`: lokale Möbelbibliothek (Modelldateien nicht in Git).
+- `tools/assets/`: Download und Aufbereitung des Barhockers (nicht in Git, von der Szene benötigt).
+- `assets/bilder/`: eingecheckte Bildtexturen der Szene; `assets/materialien/`: eingecheckte Materialdefinitionen (Granit-Node-Baum); `assets/moebel/`: lokaler Poly-Haven-Barhocker (nicht in Git). Quellen und Lizenzen in `assets/README.md`.
 
 Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in die Oberfläche. Das Projekt soll lokal und serverlos bleiben, solange die Aufgabe nicht ausdrücklich eine andere Architektur verlangt.
 
@@ -49,6 +49,7 @@ Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in
 - Halte Module nach Verantwortlichkeit getrennt und vermeide doppelte Konstanten oder voneinander abweichende Berechnungen in JavaScript und Python.
 - Änderungen an Einstellungen müssen zusammenhängend geprüft werden: Standardwerte, Validierung, UI, Übergabe an Blender, Persistenz und Dokumentation.
 - MP4-Auflösungen müssen gerade Werte haben. Framezahl, FPS und Dauer müssen zwischen Node.js, Blender und FFmpeg konsistent bleiben.
+- Der Animationsordner wird in `studio/jobs.cjs` (`variantName`) aus allen Einstellungen in `DEFAULTS` abgeleitet; es gibt keinen wählbaren Ausgabeordner. Eine neue Einstellung, die das Bild beeinflusst, gehört deshalb in `DEFAULTS`, damit sie in die Prüfsumme eingeht. Testbilder liegen gesammelt in `Ausgabe/Render/testbilder/`.
 - Lang laufende Blender-/FFmpeg-Prozesse müssen abbrechbar sein und beim Schließen der Anwendung zuverlässig beendet werden. Fehler sollen in Status/Log sichtbar werden und dürfen nicht still verschwinden.
 - Halte die Oberfläche auch während rechenintensiver Arbeit bedienbar. Blockiere den Electron-Hauptprozess nicht mit synchroner Langzeitarbeit.
 - TDD wenn möglich
