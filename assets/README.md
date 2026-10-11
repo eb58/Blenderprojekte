@@ -5,7 +5,7 @@
 - `mandelbrot_tapestry.png`: Motiv des Mandelbrot-Wandteppichs an der Vorderwand.
 - `museum_park_panorama.png`: Parkkulisse hinter den Fenstern. Eine zusammenhängende Panoramafläche statt einzelner 3D-Bäume verhindert erkennbar wiederholte Bäume.
 
-Die Herkunft beider Bilder ist bisher nicht dokumentiert. Sie wurden am 5. bzw. 6. Oktober 2026 ins Projekt aufgenommen.
+Beide Bilder sind KI-generiert und wurden eigens für dieses Projekt erstellt (aufgenommen am 5. bzw. 6. Oktober 2026). Vor einer Veröffentlichung die Nutzungsbedingungen des verwendeten Bildgenerators beachten.
 
 ## Materialien (`materialien/`, in Git)
 

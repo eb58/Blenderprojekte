@@ -495,4 +495,4 @@ const createStudio = ({
     };
 };
 
-module.exports = {createStudio, validate, frameCount, testbildPfad, videoName, DEFAULTS, VIDEO_DIR};
+module.exports = {createStudio, validate, frameCount, testbildPfad, videoName, blenderPath, DEFAULTS, VIDEO_DIR};

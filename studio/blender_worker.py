@@ -14,6 +14,7 @@ import bpy
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "museum"))
 import rendering  # noqa: E402
+import vorschau_export  # noqa: E402
 WORK_DIR = Path(os.environ["MUSEUM_WORKER_DIR"])
 COMMAND = WORK_DIR / "command.json"
 READY = WORK_DIR / "ready.json"
@@ -38,37 +39,6 @@ def render(command):
     scene.frame_set(scene.frame_start)
     bpy.context.view_layer.update()
     bpy.ops.render.render(write_still=True)
-
-
-def export_preview():
-    """Exportiert die sichtbare Museumsgeometrie für die Browser-Vorschau."""
-    # Bei --factory-startup ist selbst das mit Blender ausgelieferte Kern-Add-on
-    # zunächst deaktiviert und der Export-Operator noch nicht registriert.
-    bpy.ops.preferences.addon_enable(module="io_scene_gltf2")
-    _export_preview_model()
-
-
-def _export_preview_model():
-    bpy.ops.object.select_all(action="DESELECT")
-    selected = []
-    for obj in bpy.context.scene.objects:
-        if (obj.type in {"MESH", "CURVE", "FONT"} and not obj.hide_render
-                and not obj.name.startswith("Lichtschacht")):
-            obj.select_set(True)
-            selected.append(obj)
-    if not selected:
-        raise RuntimeError("Keine Geometrie für die 3D-Vorschau gefunden.")
-    bpy.context.view_layer.objects.active = selected[0]
-    print("3D-Vorschaumodell wird exportiert.", flush=True)
-    bpy.ops.export_scene.gltf(
-        filepath=str(MODEL),
-        export_format="GLB",
-        use_selection=True,
-        export_apply=True,
-        export_cameras=False,
-        export_lights=False,
-    )
-    print(f"3D-Vorschaumodell gespeichert: {MODEL}", flush=True)
 
 
 WORK_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,7 +67,7 @@ while True:
                 try:
                     if command.get("type") == "model":
                         print("3D-Vorschaumodell wird vorbereitet.", flush=True)
-                        export_preview()
+                        vorschau_export.exportieren(MODEL)
                         write_json(result_path, {"ok": True, "output": str(MODEL)})
                         print("3D-Vorschaumodell fertig.", flush=True)
                     else:

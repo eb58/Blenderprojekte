@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Museum · 3D-Rundgang</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            --accent: #d5e7a1;
+            --muted: #9fa99f
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background: #111413;
+            color: #eff1e9;
+            font: 15px/1.5 system-ui, sans-serif
+        }
+
+        #stage {
+            position: fixed;
+            inset: 0
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none
+        }
+
+        .title {
+            position: fixed;
+            top: 16px;
+            left: 20px;
+            font: 600 20px Georgia, serif;
+            text-shadow: 0 1px 6px #0009
+        }
+
+        .title span {
+            color: var(--accent)
+        }
+
+        .bar {
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 6px 6px 6px 14px;
+            border: 1px solid #ffffff1c;
+            border-radius: 12px;
+            background: #0c100ddd;
+            backdrop-filter: blur(8px);
+            font-size: 12px;
+            color: var(--muted)
+        }
+
+        button {
+            border: 1px solid #343c36;
+            background: #242d26;
+            border-radius: 9px;
+            color: #edf1e5;
+            padding: 9px 14px;
+            font: 600 13px system-ui;
+            cursor: pointer
+        }
+
+        button.active {
+            background: var(--accent);
+            color: #23311c
+        }
+
+        #status {
+            position: fixed;
+            inset: 0;
+            display: grid;
+            place-items: center;
+            text-align: center;
+            background: radial-gradient(ellipse at 50% 70%, #303c30, #171c19 70%)
+        }
+
+        #status[hidden] {
+            display: none
+        }
+
+        @media (max-width: 700px) {
+            .hilfe {
+                display: none
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="stage"><canvas id="viewer"></canvas></div>
+    <div class="title">Museum <span>3D-Rundgang</span></div>
+    <div class="bar"><span class="hilfe">W/A/S/D oder Pfeiltasten gehen · Ziehen dreht den Blick · Klick auf Boden
+            oder Werk: hingehen · Bild↑/↓ umdrehen</span><button id="viewerWalk" type="button">Rundgang</button></div>
+    <div id="status"><div><strong>Das Museum wird geladen …</strong><br><small>Beim ersten Aufruf kann das einen
+                Moment dauern.</small></div></div>
+    <script
+        type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.186.1/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.186.1/examples/jsm/"}}</script>
+    <script type="module" src="web.js"></script>
+</body>
+
+</html>

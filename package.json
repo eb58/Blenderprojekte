@@ -7,7 +7,9 @@
     "start": "node studio/launch.cjs",
     "test": "node --test \"test/**/*.test.cjs\"",
     "test:electron": "node studio/launch.cjs --smoke-test",
-    "hooks:install": "git config core.hooksPath .githooks"
+    "hooks:install": "git config core.hooksPath .githooks",
+    "web": "node tools/web/export.cjs",
+    "web:publish": "node tools/web/publish.cjs"
   },
   "engines": {
     "node": ">=22"

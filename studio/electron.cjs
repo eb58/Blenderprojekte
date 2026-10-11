@@ -39,7 +39,8 @@ const serveMuseumFile = async request => {
     const staticFiles = {
         '/index.html': 'index.html',
         '/styles.css': 'styles.css',
-        '/viewer.js': 'viewer.js'
+        '/viewer.js': 'viewer.js',
+        '/museum3d.js': 'museum3d.js'
     };
     const imageFiles = {
         '/park.png': path.join('assets', 'bilder', 'museum_park_panorama.png'),
@@ -67,7 +68,7 @@ const serveMuseumFile = async request => {
         `connect-src 'self' blob: https://cdn.jsdelivr.net; media-src 'self' blob:; ` +
         `object-src 'none'; base-uri 'none'; frame-ancestors 'none'`
     );
-    if (url.pathname === '/viewer.js') headers.set('Content-Type', 'text/javascript');
+    if (url.pathname.endsWith('.js')) headers.set('Content-Type', 'text/javascript');
     if (url.pathname === '/styles.css') headers.set('Content-Type', 'text/css; charset=utf-8');
     if (url.pathname === '/index.html') headers.set('Content-Type', 'text/html; charset=utf-8');
     return new Response(response.body, {status: response.status, headers});

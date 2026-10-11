@@ -194,21 +194,47 @@ Testbilder sammelt das Studio je Auflösung und Qualität, den einzigen Einstell
 
 Fertige Videos heißen `museum_` plus Name ihrer Variante plus Datum und Uhrzeit der Kodierung; über den Variantennamen findet man die zugehörige `settings.json`. Nicht mehr benötigte Varianten und Testbilder können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
 
+## Webversion der 3D-Ansicht
+
+Die 3D-Ansicht lässt sich auch ohne Studio als eigenständige Webseite nutzen – zum Anschauen und Herumgehen (Rundgang, Übersicht, Klick-Navigation; ohne PNG-/WebM-Export und ohne Cycles-Rendering).
+
+```powershell
+npm.cmd run web
+npx serve .\Ausgabe\Web
+```
+
+`npm run web` baut das Museum mit Blender auf, exportiert es als `museum.glb` und kopiert Seite, Viewer und Bildtexturen nach `Ausgabe\Web\`. Ein anderer Zielordner kann angegeben werden: `node tools/web/export.cjs <ordner>`. Nach Änderungen an der Szene den Befehl erneut ausführen.
+
+### Auf GitHub Pages veröffentlichen
+
+```powershell
+npm.cmd run web
+npm.cmd run web:publish
+```
+
+`npm run web:publish` schiebt den Inhalt von `Ausgabe\Web` als Branch `gh-pages` zu GitHub. Der Branch enthält immer genau eine Version; jede Veröffentlichung ersetzt die vorige, damit das Repo nicht mit jeder `museum.glb` wächst. Arbeitsverzeichnis und `main` bleiben unberührt. Einmalig in den Repo-Einstellungen unter **Settings → Pages** als Quelle „Deploy from a branch“, Branch `gh-pages`, Ordner `/ (root)` wählen. Die Seite erscheint dann unter <https://eb58.github.io/Blenderprojekte/>.
+
+### Hinweise
+
+Die Seite muss über einen Webserver aufgerufen werden; per Doppelklick (`file://`) blockiert der Browser das Laden von Modulen und Modell. Jeder statische Webserver oder statisches Hosting genügt, eigener Servercode ist nicht nötig. Three.js wird wie im Studio über jsDelivr geladen; dafür ist eine Internetverbindung nötig. Die `museum.glb` ist rund 29 MB groß: Für die 3D-Ansicht werden die Skulpturen ohne die Subdivision exportiert, die nur Cycles braucht (sonst wären es über 70 MB).
+
 ## Assets
 
 `assets/bilder/` enthält die Bildtexturen der Szene (Wandteppich, Parkkulisse) und liegt in Git. `assets/moebel/` enthält den Poly-Haven-Barhocker für die vier Raumecken; er liegt nicht in Git und wird bei Bedarf mit den Skripten in `tools/assets/` neu heruntergeladen und aufbereitet. Die Museumsbänke sind eigene Modelle aus `museum/ausstattung.py`. Quellen, Lizenzen und Befehle stehen in [assets/README.md](assets/README.md).
 
 ## Projektdateien
 
-- `package.json` enthält den Startbefehl für die Electron-App und den Testbefehl.
+- `package.json` enthält den Startbefehl für die Electron-App, den Testbefehl und `npm run web` für die Webversion.
 - `test/` enthält die Tests (`*.test.cjs`); `npm test` führt alle Dateien dort aus.
 - `studio/launch.cjs` startet Electron mit einer bereinigten Umgebung.
 - `studio/jobs.cjs` validiert Einstellungen und verwaltet Blender-/FFmpeg-Aufträge direkt im Hauptprozess, ohne Netzwerkdienst.
 - `studio/preload.cjs` stellt ausschließlich freigegebene IPC-Funktionen für die Oberfläche bereit.
 - `studio/electron.cjs` öffnet das isolierte Desktopfenster und beendet die zugehörigen Prozesse beim Schließen.
 - `studio/blender_worker.py` hält die aufgebaute Szene für aufeinanderfolgende Testbilder in Blender bereit.
-- `studio/viewer.js` zeigt das von Blender exportierte GLB-Modell interaktiv mit Three.js an.
+- `studio/museum3d.js` ist der gemeinsame Kern der 3D-Ansicht für Studio und Webversion: Three.js-Szene, Materialien, Rundgang, Übersicht und Klick-Navigation.
+- `studio/viewer.js` bindet den Kern ins Studio ein: Moduswechsel, Modell aus dem Blender-Worker, Drehen durch die gerenderten Frames, PNG- und WebM-Export.
 - Three.js, OrbitControls und GLTFLoader werden in der festgelegten Version `0.186.1` über jsDelivr geladen. Für die 3D-Vorschau ist deshalb eine Internetverbindung erforderlich.
+- `web/` enthält Seite und Anschluss der Webversion; `tools/web/` stellt sie mit `npm run web` zusammen und veröffentlicht sie mit `npm run web:publish` auf GitHub Pages.
 - `studio/index.html` enthält Benutzeroberfläche und Statusanzeige.
 - `museum/scene.py` ist der Einstieg für Blender und baut die Szene in fester Reihenfolge auf: Skulpturen, Halle, Fenster, Licht, Exponate, Decke, Kamera.
 - `museum/einstellungen.py` enthält die Standardwerte und liest die Studio-Einstellungen aus `MUSEUM_CONFIG`.
@@ -219,6 +245,7 @@ Fertige Videos heißen `museum_` plus Name ihrer Variante plus Datum und Uhrzeit
 - `museum/weierstrass.py` definiert und berechnet die Minimalflächen (Kusner, S41_7_5, Henneberg, Cobra, Double Trefoil) aus ihrer Weierstraß-Darstellung über einem Kreisring; die Formeln stammen von der [Seite zu nichtorientierbaren Minimalflächen](https://eb58.github.io/Non-Orientable-Minimal-Surfaces/).
 - `museum/costa.py` berechnet die Costa-Fläche über dem Einheitstorus (Port der Parametrisierung der oben genannten Seite, Endenausschnitt ε = 0,12).
 - `museum/sierpinski.py` enthält die Geometrie der Sierpiński-Pyramide.
+- `museum/vorschau_export.py` exportiert die sichtbare Szene als GLB; Blender-Worker und Webversion nutzen es gemeinsam.
 - `tools/assets/` lädt den Poly-Haven-Barhocker herunter und erzeugt daraus `assets/moebel/bar_chair_round_01_asset.blend`.
 
 ## Fehlerbehebung

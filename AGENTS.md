@@ -14,11 +14,13 @@ Museum Studio ist eine lokale Windows-Desktop-Anwendung. Electron steuert Blende
 - `studio/electron.cjs`: Electron-Hauptprozess, Fenster, lokales `museum://`-Protokoll und IPC.
 - `studio/preload.cjs`: schmale, ausdrücklich freigegebene IPC-Schnittstelle.
 - `studio/jobs.cjs`: Validierung sowie Lebenszyklus der Blender- und FFmpeg-Aufträge.
-- `studio/index.html` und `studio/viewer.js`: Oberfläche und Three.js-Vorschau.
+- `studio/index.html` und `studio/viewer.js`: Oberfläche und Studio-Anschluss der Three.js-Vorschau.
+- `studio/museum3d.js`: gemeinsamer Kern der 3D-Ansicht (Szene, Materialien, Navigation) für Studio und Webversion; kennt weder Studio noch IPC.
+- `web/` und `tools/web/`: eigenständige Webversion der 3D-Ansicht (`npm run web` → `Ausgabe/Web/`, statisch, ohne Servercode).
 - `test/`: Tests (`*.test.cjs`, `node --test`); neue Tests gehören dorthin, nicht nach `studio/`.
 - `studio/blender_worker.py`: langlebiger Blender-Worker für schnelle Vorschaubilder.
 - `museum/scene.py`: Einstieg und Ablauf des Szenenaufbaus. Fachlich getrennt davon: `einstellungen.py` (Standardwerte, `MUSEUM_CONFIG`), `rendering.py` (OptiX, Cycles-Presets), `materialien.py`, `bauteile.py` (Geometrie-Helfer), `ausstattung.py` (Plaketten, Wandteppich, Möbel, Garten) sowie die reinen Mathematikmodule `weierstrass.py`, `costa.py` und `sierpinski.py`.
-- Die 3D-Vorschau ordnet Objekte und Materialien über ihre Namen zu (`studio/viewer.js`). Objekt- und Materialnamen in `museum/` deshalb nur zusammen mit dem Viewer ändern.
+- Die 3D-Vorschau ordnet Objekte und Materialien über ihre Namen zu (`studio/museum3d.js`). Objekt- und Materialnamen in `museum/` deshalb nur zusammen mit dem Viewer ändern.
 - `tools/assets/`: Download und Aufbereitung des Barhockers (nicht in Git, von der Szene benötigt).
 - `assets/bilder/`: eingecheckte Bildtexturen der Szene; `assets/materialien/`: eingecheckte Materialdefinitionen (Granit-Node-Baum); `assets/moebel/`: lokaler Poly-Haven-Barhocker (nicht in Git). Quellen und Lizenzen in `assets/README.md`.
 

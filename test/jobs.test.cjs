@@ -12,6 +12,10 @@ const museumQuelltext = () => {
         .map(datei => fs.readFileSync(path.join(ordner, datei), 'utf8')).join('\n');
 };
 
+// Die 3D-Ansicht besteht aus dem gemeinsamen Kern (museum3d.js) und dem Studio-Anschluss (viewer.js).
+const viewerQuelltext = () => ['museum3d.js', 'viewer.js']
+    .map(datei => fs.readFileSync(path.join(__dirname, '..', 'studio', datei), 'utf8')).join('\n');
+
 test('Renderdaten und Videos liegen gemeinsam im Projektordner Ausgabe', () => {
     const ausgabe = path.join(path.resolve(__dirname, '..'), 'Ausgabe');
     assert.equal(VIDEO_DIR, path.join(ausgabe, 'Videos'));
@@ -246,7 +250,7 @@ test('Costa-Fläche liefert ein endliches, normiertes Netz', {
 test('Viewer ordnet jeder Granitfläche der Szene das Granitmaterial zu', () => {
     const root = path.resolve(__dirname, '..');
     const scene = museumQuelltext();
-    const viewer = fs.readFileSync(path.join(root, 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     const pattern = /\/([^/\n]*brown granite[^/\n]*)\/\.test\(identity\)/.exec(viewer);
     assert.ok(pattern, 'Granit-Zuordnung im Viewer nicht gefunden');
     const granite = new RegExp(pattern[1]);
@@ -299,8 +303,72 @@ test('3D-Vorschau und Rendern sind getrennte Arbeitsbereiche', () => {
 });
 
 test('3D-Vorschau exportiert auch Textobjekte (Sockelbeschriftungen)', () => {
-    const worker = fs.readFileSync(path.join(__dirname, '..', 'studio', 'blender_worker.py'), 'utf8');
-    assert.match(worker, /obj\.type in \{[^}]*"FONT"/);
+    const exporter = fs.readFileSync(path.join(__dirname, '..', 'museum', 'vorschau_export.py'), 'utf8');
+    assert.match(exporter, /obj\.type in \{[^}]*"FONT"/);
+});
+
+test('die 3D-Ansicht läuft auch als eigenständige Webseite', () => {
+    const datei = (...teile) => fs.readFileSync(path.join(__dirname, '..', ...teile), 'utf8');
+    const kern = datei('studio', 'museum3d.js');
+    assert.match(kern, /export const createMuseumViewer/);
+    assert.ok(!/museumStudio|museum:\/\/|getElementById/.test(kern), 'Der Kern kennt weder Studio noch Seitenaufbau');
+    const web = datei('web', 'web.js');
+    assert.match(web, /import \{ createMuseumViewer \} from '\.\/museum3d\.js'/);
+    assert.match(web, /model: 'museum\.glb'/);
+    const page = datei('web', 'index.html');
+    for (const teil of ['id="viewer"', 'id="viewerWalk"', 'src="web.js"', '"three"']) assert.ok(page.includes(teil), teil);
+    assert.ok(!/PNG speichern|WebM/.test(page), 'Die Webversion dient nur zum Anschauen und Herumgehen');
+    // Studio und Webversion exportieren das Modell mit derselben Funktion.
+    assert.match(datei('studio', 'blender_worker.py'), /vorschau_export\.exportieren\(/);
+    assert.match(datei('tools', 'web', 'blender_export.py'), /vorschau_export\.exportieren\(/);
+    assert.equal(JSON.parse(datei('package.json')).scripts.web, 'node tools/web/export.cjs');
+});
+
+test('Webversion wird als Branch gh-pages mit genau einer Version veröffentlicht', () => {
+    const {spawnSync} = require('node:child_process');
+    const ordner = fs.mkdtempSync(path.join(os.tmpdir(), 'museum-publish-'));
+    const git = (...args) => spawnSync('git', args, {encoding: 'utf8', windowsHide: true});
+    try {
+        const web = path.join(ordner, 'web');
+        fs.mkdirSync(web);
+        for (const name of ['index.html', 'museum.glb', 'web.js']) fs.writeFileSync(path.join(web, name), name);
+        const ziel = path.join(ordner, 'ziel.git');
+        assert.equal(git('init', '--bare', '--quiet', ziel).status, 0);
+        const veroeffentlichen = () => spawnSync(process.execPath,
+            [path.join(__dirname, '..', 'tools', 'web', 'publish.cjs'), web, ziel], {encoding: 'utf8', windowsHide: true});
+        for (let lauf = 0; lauf < 2; lauf++) {
+            const result = veroeffentlichen();
+            assert.equal(result.status, 0, result.stdout + result.stderr);
+        }
+        const dateien = git('--git-dir', ziel, 'ls-tree', '--name-only', 'gh-pages').stdout.trim().split('\n').sort();
+        assert.deepEqual(dateien, ['.nojekyll', 'index.html', 'museum.glb', 'web.js']);
+        // Jede Veröffentlichung ersetzt die vorige; das Repo wächst nicht mit jeder GLB-Version.
+        assert.equal(git('--git-dir', ziel, 'rev-list', '--count', 'gh-pages').stdout.trim(), '1');
+        fs.rmSync(path.join(web, 'museum.glb'));
+        assert.notEqual(veroeffentlichen().status, 0, 'ohne museum.glb wird nichts veröffentlicht');
+    } finally {
+        fs.rmSync(ordner, {recursive: true, force: true});
+    }
+    assert.equal(JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8')).scripts['web:publish'],
+        'node tools/web/publish.cjs');
+});
+
+test('Webversion lässt sich mit Blender exportieren', {
+    skip: process.env.MUSEUM_INTEGRATION !== '1',
+    timeout: 240000
+}, () => {
+    const ziel = fs.mkdtempSync(path.join(os.tmpdir(), 'museum-web-'));
+    try {
+        const {spawnSync} = require('node:child_process');
+        const result = spawnSync(process.execPath, [path.join(__dirname, '..', 'tools', 'web', 'export.cjs'), ziel],
+            {encoding: 'utf8', windowsHide: true});
+        assert.equal(result.status, 0, result.stdout + result.stderr);
+        assert.deepEqual(fs.readdirSync(ziel).sort(),
+            ['index.html', 'mandelbrot.png', 'museum.glb', 'museum3d.js', 'park.png', 'web.js']);
+        assert.ok(fs.statSync(path.join(ziel, 'museum.glb')).size > 100000);
+    } finally {
+        fs.rmSync(ziel, {recursive: true, force: true});
+    }
 });
 
 test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet', async () => {
@@ -326,7 +394,7 @@ test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet'
 });
 
 test('Viewer startet im Rundgang und bietet Klick-Navigation, Tasten, Mausrad und Drehen der Bildfolge', () => {
-    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
     for (const part of ['ArrowLeft', 'KeyW', 'WALK_BLOCKS', 'museum://studio/frame/', 'clickAt', 'goToWork', 'flyTo', 'intersectBox', 'floorMeshes.push', "addEventListener('wheel'", 'PageUp', 'turnAround']) assert.ok(viewer.includes(part), part);
     // OrbitControls.update() setzt per lookAt den Blick; im Rundgang darf es nicht laufen.
@@ -344,7 +412,7 @@ test('Content-Security-Policy erlaubt blob: für eingebettete GLB-Texturen', () 
 });
 
 test('Der Rundgang ist der Standard, die Übersicht wird per Knopf gewählt', () => {
-    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     // Nach dem Laden des Modells startet der Rundgang; in der Übersicht gibt es keine Pfeiltasten-Drehung mehr.
     assert.match(viewer, /loaded = true;[\s\S]{0,80}if \(!walk\.active\) setWalk\(true\)/);
     assert.match(viewer, /on \? 'Übersicht' : 'Rundgang'/);
@@ -352,7 +420,7 @@ test('Der Rundgang ist der Standard, die Übersicht wird per Knopf gewählt', ()
 });
 
 test('Der Viewer ersetzt das Material der Arkadenwand durch einen eigenen Stein', () => {
-    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     assert.ok(viewer.includes('arkaden kalkstein'));
     assert.ok(viewer.includes('Three.js Arkadenstein'));
 });
@@ -386,7 +454,7 @@ test('Die Arkadenwand ist modern: Steinplatten, schlichte Nischen mit Lichtkante
 });
 
 test('Der Viewer zeichnet die Steinplatten der Arkadenwand mit Fugen', () => {
-    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     assert.ok(viewer.includes('museum-arcade-slabs'));
     assert.ok(viewer.includes('wallPosition'));
 });
@@ -421,6 +489,6 @@ test('Die Fenster sind Glas mit schlankem Titanrahmen, ohne Sprossen und Pfosten
     assert.ok(!scene.includes('box("m", (x, y'), 'kein Mittelpfosten');
     // Für Schattenstrahlen ist das Glas durchsichtig, sonst bliebe das Sonnenlicht draußen.
     assert.ok(scene.includes('Is Shadow Ray'));
-    const viewer = fs.readFileSync(path.join(__dirname, '..', 'studio', 'viewer.js'), 'utf8');
+    const viewer = viewerQuelltext();
     assert.ok(viewer.includes('fensterglas') && viewer.includes('fensterrahmen titan'));
 });
