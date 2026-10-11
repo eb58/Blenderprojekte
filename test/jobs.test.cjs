@@ -12,9 +12,14 @@ const museumQuelltext = () => {
         .map(datei => fs.readFileSync(path.join(ordner, datei), 'utf8')).join('\n');
 };
 
-test('MP4-Videos werden im Videos-Ordner des Projekts gespeichert', () => {
-    assert.equal(VIDEO_DIR, path.join(path.resolve(__dirname, '..'), 'Videos'));
+test('Renderdaten und Videos liegen gemeinsam im Projektordner Ausgabe', () => {
+    const ausgabe = path.join(path.resolve(__dirname, '..'), 'Ausgabe');
+    assert.equal(VIDEO_DIR, path.join(ausgabe, 'Videos'));
+    assert.equal(path.dirname(DEFAULTS.OUTPUT_DIR), path.join(ausgabe, 'Render'));
+    const einstellungen = fs.readFileSync(path.join(__dirname, '..', 'museum', 'einstellungen.py'), 'utf8');
+    assert.ok(einstellungen.includes('os.path.join(PROJECT_DIR, "Ausgabe", "Render", "kusner_p7_granit_museum")'));
 });
+
 
 test('Animationsframes liegen in einem Ordner mit den Kodierungseinstellungen', () => {
     assert.equal(

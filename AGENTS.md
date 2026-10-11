@@ -37,7 +37,7 @@ Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in
 - Nutze Node.js 22 oder neuer und die im Lockfile festgelegten Versionen. Füge Abhängigkeiten nur hinzu, wenn die vorhandenen Plattformmittel nicht sinnvoll ausreichen.
 - Bevorzuge – wie in den anderen Projekten dieses Besitzers – lokale beziehungsweise vendorte Assets, wenn das Offline-Verhalten dadurch wesentlich verbessert wird. Dokumentiere unvermeidbare Netzwerkabhängigkeiten.
 - Bewahre Quellen und Lizenzen externer Modelle, Bilder und Bibliotheken nachvollziehbar auf.
-- `Render/`, `node_modules/`, BlenderKit-Caches, Texturen-Caches sowie Blender-, Video- und sonstige generierte Binärdateien gehören nicht in Git, soweit `.gitignore` sie ausschließt.
+- `Ausgabe/` (Renderdaten unter `Ausgabe/Render/`, Videos unter `Ausgabe/Videos/`), `node_modules/`, BlenderKit-Caches, Texturen-Caches sowie Blender-, Video- und sonstige generierte Binärdateien gehören nicht in Git, soweit `.gitignore` sie ausschließt.
 
 ## Implementierung
 

@@ -5,7 +5,7 @@
 !assets/
 !assets/bilder/*.png
 *.mp4
-Render/
+Ausgabe/
 blenderkit_data/
 __pycache__/
 *.py[cod]

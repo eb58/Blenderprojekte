@@ -21,7 +21,7 @@ START_ANGLE = 158
 SCULPTURE_SCALE = 3.55
 THICKNESS = 0.060
 
-OUTPUT_DIR = os.path.join(PROJECT_DIR, "Render", "kusner_p7_granit_museum")
+OUTPUT_DIR = os.path.join(PROJECT_DIR, "Ausgabe", "Render", "kusner_p7_granit_museum")
 FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
 # Vorhandene Frames beim erneuten Animationsrendern ueberspringen.
 # Fuer eine geaenderte Szene einen neuen OUTPUT_DIR verwenden.

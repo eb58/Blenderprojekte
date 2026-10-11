@@ -6,7 +6,9 @@ const crypto = require('node:crypto');
 const {spawn, spawnSync} = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
-const VIDEO_DIR = path.join(ROOT, 'Videos');
+const AUSGABE_DIR = path.join(ROOT, 'Ausgabe');
+const RENDER_DIR = path.join(AUSGABE_DIR, 'Render');
+const VIDEO_DIR = path.join(AUSGABE_DIR, 'Videos');
 const VIDEO_ENCODING = {codec: 'h264', crf: 18, pixelFormat: 'yuv420p'};
 const DEFAULTS = {
     RENDER_PRESET: 'test',
@@ -19,7 +21,7 @@ const DEFAULTS = {
     THICKNESS: 0.06,
     START_ANGLE: 158,
     ORBIT_DEGREES: 360,
-    OUTPUT_DIR: path.join(ROOT, 'Render', 'kusner_p7_granit_museum')
+    OUTPUT_DIR: path.join(RENDER_DIR, 'kusner_p7_granit_museum')
 };
 const exists = p => Boolean(p && fs.existsSync(p));
 const json = p => JSON.parse(fs.readFileSync(p, 'utf8').replace(/^\uFEFF/, ''));
@@ -108,7 +110,7 @@ const blenderPath = () => {
     return found;
 };
 
-const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = {}) => {
+const createStudio = ({workDir = path.join(RENDER_DIR, '.museum_worker')} = {}) => {
     const model = path.join(workDir, 'museum_preview.glb');
     const state = {
         process: null,
