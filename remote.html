@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+    <meta name="theme-color" content="#111413">
+    <title>Museum – Fernbedienung</title>
+    <link rel="stylesheet" href="remote.css">
+</head>
+
+<body>
+    <main class="remote-controller">
+        <header>
+            <span class="connection-dot" aria-hidden="true"></span>
+            <div>
+                <h1>Museum</h1>
+                <p id="connection-status">Verbindung wird aufgebaut …</p>
+            </div>
+        </header>
+        <section id="touchpad" class="touchpad" aria-label="Touchfläche zum Umschauen und Gehen">
+            <span>Zum Umschauen ziehen</span>
+            <small>Zwei Finger auseinander/zusammen: vor und zurück</small>
+        </section>
+        <section class="steuerkreuz" aria-label="Gehen">
+            <button data-halten="zoom" data-wert="-0.035" class="vor" aria-label="Vorwärts gehen">▲</button>
+            <button data-halten="object-translate" data-wert="-0.035" class="links" aria-label="Nach links gehen">◀</button>
+            <button data-halten="object-translate" data-wert="0.035" class="rechts" aria-label="Nach rechts gehen">▶</button>
+            <button data-halten="zoom" data-wert="0.035" class="zurueck" aria-label="Rückwärts gehen">▼</button>
+        </section>
+        <section class="button-grid" aria-label="Steuerung">
+            <button data-command="surface" data-direction="-1">‹ Werk</button>
+            <button data-command="surface" data-direction="1">Werk ›</button>
+            <button data-command="background" data-direction="1">Umdrehen</button>
+            <button data-command="rotation" class="accent">Rundgang / Übersicht</button>
+            <button data-command="reset" class="breit">Zum Eingang</button>
+        </section>
+    </main>
+    <script type="module" src="remote.js"></script>
+</body>
+
+</html>

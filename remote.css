@@ -1,0 +1,148 @@
+:root {
+    color-scheme: dark;
+    font-family: system-ui, sans-serif;
+    background: #111413;
+    color: #eff1e9;
+    --accent: #d5e7a1
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent
+}
+
+body {
+    margin: 0;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+    background: radial-gradient(circle at 50% 0, #303c30, #111413 60%)
+}
+
+.remote-controller {
+    display: grid;
+    grid-template-rows: auto minmax(200px, 1fr) auto auto;
+    gap: 16px;
+    width: min(100%, 520px);
+    min-height: 100dvh;
+    margin: auto;
+    padding: max(18px, env(safe-area-inset-top)) 18px max(18px, env(safe-area-inset-bottom))
+}
+
+header {
+    display: flex;
+    gap: 12px;
+    align-items: center
+}
+
+header h1 {
+    margin: 0;
+    font: 600 1.2rem Georgia, serif
+}
+
+header p {
+    margin: 3px 0 0;
+    color: #9fa99f;
+    font-size: .82rem
+}
+
+.connection-dot {
+    width: 13px;
+    height: 13px;
+    border-radius: 50%;
+    background: #d49536;
+    box-shadow: 0 0 12px currentColor
+}
+
+body.connected .connection-dot {
+    background: #9fd36a
+}
+
+body.disconnected .connection-dot {
+    background: #d95f65
+}
+
+.touchpad {
+    display: grid;
+    place-content: center;
+    border: 1px solid #ffffff22;
+    border-radius: 24px;
+    background: linear-gradient(145deg, #3a4a3a66, #141a16cc);
+    text-align: center;
+    touch-action: none;
+    user-select: none
+}
+
+.touchpad span {
+    font-weight: 650
+}
+
+.touchpad small {
+    margin-top: 6px;
+    color: #9fa99f
+}
+
+button {
+    min-height: 58px;
+    border: 1px solid #ffffff22;
+    border-radius: 14px;
+    background: #242d26;
+    color: #edf1e5;
+    font: inherit;
+    font-weight: 650;
+    touch-action: manipulation;
+    user-select: none
+}
+
+button:active {
+    background: #334036
+}
+
+button.accent {
+    background: var(--accent);
+    color: #23311c
+}
+
+.steuerkreuz {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-areas: ". vor ." "links . rechts" ". zurueck .";
+    gap: 8px;
+    width: min(100%, 300px);
+    margin: auto;
+    touch-action: none
+}
+
+.steuerkreuz button {
+    font-size: 1.4rem
+}
+
+.vor {
+    grid-area: vor
+}
+
+.links {
+    grid-area: links
+}
+
+.rechts {
+    grid-area: rechts
+}
+
+.zurueck {
+    grid-area: zurueck
+}
+
+.button-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px
+}
+
+.breit {
+    grid-column: 1 / -1
+}
+
+body:not(.connected) button,
+body:not(.connected) .touchpad {
+    opacity: .56
+}
