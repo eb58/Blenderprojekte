@@ -45,8 +45,9 @@ const variantName = settings =>
 // Fertige Videos tragen den Namen ihrer Variante; der Zeitstempel verhindert Überschreiben bei erneuter Kodierung.
 const videoName = (settings, date = new Date()) => {
     const zwei = number => String(number).padStart(2, '0');
-    const stamp = `${date.getFullYear()}${zwei(date.getMonth() + 1)}${zwei(date.getDate())}-` +
-        `${zwei(date.getHours())}${zwei(date.getMinutes())}${zwei(date.getSeconds())}`;
+    // Windows erlaubt keine Doppelpunkte in Dateinamen, daher auch die Uhrzeit mit Bindestrichen.
+    const stamp = `${date.getFullYear()}-${zwei(date.getMonth() + 1)}-${zwei(date.getDate())}_` +
+        `${zwei(date.getHours())}-${zwei(date.getMinutes())}-${zwei(date.getSeconds())}`;
     return `${path.basename(settings.OUTPUT_DIR)}_${stamp}.mp4`;
 };
 // Testbilder sammeln sich je Szene; Winkel und reine Animationswerte (Dauer, Bildrate, Umlauf) trennen sie nicht.

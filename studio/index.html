@@ -30,8 +30,7 @@
             </div>
             <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
                     class="job" id="renderAnimation">Animation erstellen</button><button id="stop"
-                    disabled>Abbrechen</button><a class="download" id="videoLink" href="#"
-                    download="museum.mp4">Video herunterladen</a></div>
+                    disabled>Abbrechen</button><button id="showVideo" type="button">Im Ordner zeigen</button></div>
             <div class="status"><span id="status">Bereit für dein erstes Testbild</span><span id="counter"></span></div>
             <progress id="progress" value="0" max="100"></progress>
             <div class="error" id="error" role="alert"></div>
@@ -172,7 +171,7 @@
                     complete: state.complete && !state.running, total: state.total,
                     start: state.orbit.start, degrees: state.orbit.degrees
                 };
-                document.getElementById('videoLink').style.display = state.video ? 'inline-block' : 'none';
+                document.getElementById('showVideo').style.display = state.video ? 'inline-block' : 'none';
                 if (state.preview && state.preview !== stamp) {
                     stamp = state.preview;
                     const image = document.getElementById('preview');
@@ -277,10 +276,9 @@
         document.getElementById('renderStill').addEventListener('click', () => start('still'));
         document.getElementById('renderAnimation').addEventListener('click', () => start('animation_video'));
         document.getElementById('stop').addEventListener('click', stop);
-        document.getElementById('videoLink').addEventListener('click', async event => {
-            event.preventDefault();
+        document.getElementById('showVideo').addEventListener('click', async () => {
             try {
-                await globalThis.museumStudio.saveVideo();
+                await globalThis.museumStudio.showVideo();
             } catch (error) {
                 errorBox.textContent = error.message;
             }

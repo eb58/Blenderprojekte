@@ -8,5 +8,5 @@ contextBridge.exposeInMainWorld('museumStudio', {
     start: (kind, settings) => ipcRenderer.invoke('museum:start', kind, settings),
     stop: () => ipcRenderer.invoke('museum:stop'),
     prepareModel: settings => ipcRenderer.invoke('museum:model', settings),
-    saveVideo: () => ipcRenderer.invoke('museum:save-video')
+    showVideo: () => ipcRenderer.invoke('museum:show-video')
 });

@@ -347,8 +347,7 @@ select:focus {
     margin: 20px 0
 }
 
-button,
-.download {
+button {
     border: 1px solid var(--line);
     background: #242d26;
     border-radius: 9px;
@@ -432,7 +431,7 @@ pre {
     display: none
 }
 
-#videoLink {
+#showVideo {
     display: none
 }
 

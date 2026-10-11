@@ -1,8 +1,7 @@
 'use strict';
 
-const {app, BrowserWindow, session, dialog, ipcMain, protocol, net} = require('electron');
+const {app, BrowserWindow, session, dialog, ipcMain, protocol, net, shell} = require('electron');
 const path = require('node:path');
-const fs = require('node:fs/promises');
 const {pathToFileURL} = require('node:url');
 const {createStudio, DEFAULTS} = require('./jobs.cjs');
 
@@ -74,18 +73,11 @@ const serveMuseumFile = async request => {
     return new Response(response.body, {status: response.status, headers});
 };
 
-const saveVideo = async () => {
-    if (!studio.status().video) throw Error('Noch kein fertiges Video vorhanden.');
-
-    const source = studio.mediaPath('video');
-    const result = await dialog.showSaveDialog(window, {
-        defaultPath: path.basename(source),
-        filters: [{name: 'MP4 Video', extensions: ['mp4']}]
-    });
-    if (!result.canceled && result.filePath && path.resolve(result.filePath) !== path.resolve(source)) {
-        await fs.copyFile(source, result.filePath);
-    }
-    return !result.canceled;
+// Öffnet den Explorer mit dem fertigen Video; den Pfad bestimmt allein der Hauptprozess.
+const showVideo = () => {
+    const video = studio.status().video && studio.mediaPath('video');
+    if (!video) throw Error('Noch kein fertiges Video vorhanden.');
+    shell.showItemInFolder(video);
 };
 
 const start = async () => {
@@ -106,7 +98,7 @@ const start = async () => {
         'museum:start': (kind, settings) => studio.start(kind, settings),
         'museum:stop': () => studio.stop(),
         'museum:model': settings => studio.prepareModel(settings),
-        'museum:save-video': saveVideo
+        'museum:show-video': showVideo
     };
     for (const [channel, action] of Object.entries(actions)) {
         ipcMain.handle(channel, (event, ...args) => {

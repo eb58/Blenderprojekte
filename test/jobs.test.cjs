@@ -56,7 +56,7 @@ test('Testbilder liegen je Szene in einem Ordner und tragen den Kamerawinkel im 
 test('fertige Videos tragen Variante und Zeitpunkt im Namen', () => {
     const settings = validate(DEFAULTS);
     assert.equal(videoName(settings, new Date(2026, 9, 11, 15, 12, 30)),
-        `${path.basename(settings.OUTPUT_DIR)}_20261011-151230.mp4`);
+        `${path.basename(settings.OUTPUT_DIR)}_2026-10-11_15-12-30.mp4`);
 });
 
 test('validation and Python-compatible frame counts', () => {
@@ -246,6 +246,20 @@ test('Viewer ordnet jeder Granitfläche der Szene das Granitmaterial zu', () => 
     assert.ok(names.length >= 5, `Granitflächen in scene.py: ${names}`);
     // Three.js ersetzt Leerzeichen in Knotennamen durch Unterstriche.
     for (const name of names) assert.match(name.toLowerCase().replaceAll(' ', '_'), granite, name);
+});
+
+test('das fertige Video wird im Explorer gezeigt statt kopiert', () => {
+    const studio = name => fs.readFileSync(path.join(__dirname, '..', 'studio', name), 'utf8');
+    const preload = studio('preload.cjs');
+    assert.match(preload, /showVideo: \(\) => ipcRenderer\.invoke\('museum:show-video'\)/);
+    assert.ok(!preload.includes('saveVideo'));
+    const main = studio('electron.cjs');
+    // Den Pfad bestimmt allein der Hauptprozess.
+    assert.match(main, /shell\.showItemInFolder\(video\)/);
+    assert.match(main, /studio\.mediaPath\('video'\)/);
+    assert.ok(!main.includes('showSaveDialog'));
+    const page = studio('index.html');
+    assert.ok(page.includes('Im Ordner zeigen') && !page.includes('Video herunterladen'));
 });
 
 test('3D-Vorschau exportiert auch Textobjekte (Sockelbeschriftungen)', () => {

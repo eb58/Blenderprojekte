@@ -120,7 +120,7 @@ Der Ordner `Ausgabe\Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. 
 1. Rechts die gewünschten Szenen- und Rendereinstellungen wählen.
 2. Mit **Testbild rendern** Licht, Material und Perspektive prüfen.
 3. Mit **Animation erstellen** fehlende PNG-Einzelbilder rendern und anschließend automatisch das MP4-Video erzeugen.
-4. Das fertige Video über **Video herunterladen** öffnen oder speichern.
+4. Das fertige Video liegt in `Ausgabe\Videos`; **Im Ordner zeigen** öffnet den Explorer mit dem Video markiert.
 
 Die Formularwerte werden im `localStorage` der Oberfläche gespeichert und beim nächsten Öffnen wiederhergestellt.
 
@@ -187,7 +187,7 @@ Projektordner\Ausgabe\
 │       ├── logs\                Blender- und FFmpeg-Ausgaben
 │       └── settings.json        Einstellungen der Animation
 └── Videos\
-    └── parkett_1920x1080_60fps_20s_quality_da2cc8_20261011-151230.mp4
+    └── parkett_1920x1080_60fps_20s_quality_da2cc8_2026-10-11_15-12-30.mp4
                                  Fertige Videos: Variante plus Datum und Uhrzeit
 ```
 
