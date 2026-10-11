@@ -80,7 +80,7 @@ npm start
 Die gewünschte Konfiguration wird über `MUSEUM_CONFIG` übergeben; ohne diese Variable gelten die Standardwerte aus `museum/einstellungen.py`. Ein Testbild lässt sich so rendern:
 
 ```powershell
-$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\test-settings.json")
+$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\parkett_800x600_test_aaabc7\test-settings.json")
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" `
     --background `
     --factory-startup `
@@ -106,14 +106,14 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\parkett_1920x1080_60fps_20s
 ```powershell
 ffmpeg -framerate 60 `
     -start_number 1 `
-    -i ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\frames_1920x1080_60fps_h264_crf18_yuv420p\frame_%04d.png" `
+    -i ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\frames\frame_%04d.png" `
     -c:v libx264 `
     -crf 18 `
     -pix_fmt yuv420p `
     ".\Ausgabe\Videos\museum.mp4"
 ```
 
-Der Ordner `Ausgabe\Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. Auflösung und Bildrate im Frame-Ordnernamen müssen den Werten in `settings.json` entsprechen. Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
+Der Ordner `Ausgabe\Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. Die Zahl hinter `-framerate` muss der Bildrate der Variante entsprechen (steht im Ordnernamen und in `settings.json`). Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
 
 ## Bedienung
 
@@ -179,18 +179,23 @@ Projektordner\Ausgabe\
 ├── Render\
 │   ├── .museum_worker\       Arbeitsdateien des Blender-Workers (temporär)
 │   ├── testbilder\
-│   │   ├── kusner_p7_museum_test_*.png   Testbilder
-│   │   └── test-settings.json            Einstellungen des letzten Testbilds
+│   │   └── parkett_800x600_test_aaabc7\  ein Ordner je Szene
+│   │       ├── testbild_158grad.png      ein Testbild je Kamerawinkel
+│   │       └── test-settings.json        Einstellungen des letzten Testbilds
 │   └── parkett_1920x1080_60fps_20s_quality_da2cc8\   ein Ordner je Animationsvariante
-│       ├── frames_1920x1080_60fps_h264_crf18_yuv420p\
-│       │                         PNG-Einzelbilder der Animation
+│       ├── frames\              PNG-Einzelbilder der Animation
 │       ├── logs\                Blender- und FFmpeg-Ausgaben
 │       └── settings.json        Einstellungen der Animation
 └── Videos\
-    └── museum_*.mp4             Fertige Videos
+    └── parkett_1920x1080_60fps_20s_quality_da2cc8_20261011-151230.mp4
+                                 Fertige Videos: Variante plus Datum und Uhrzeit
 ```
 
-Den Ordner einer Animation bildet das Studio aus ihren Einstellungen: Boden, Auflösung, Bildrate, Dauer und Qualität stehen lesbar im Namen, die Prüfsumme am Ende deckt alle Einstellungen ab (auch Skulpturgröße, Granitdicke, Startwinkel und Umlauf). Gleiche Einstellungen setzen deshalb automatisch den vorhandenen Lauf fort, geänderte beginnen einen neuen Ordner. PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Der Name des Frame-Ordners dokumentiert zusätzlich Codec, CRF-Wert und Pixelformat der MP4-Kodierung. Nicht mehr benötigte Varianten können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
+Den Ordner einer Animation bildet das Studio aus ihren Einstellungen: Boden, Auflösung, Bildrate, Dauer und Qualität stehen lesbar im Namen, die Prüfsumme am Ende deckt alle Einstellungen ab (auch Skulpturgröße, Granitdicke, Startwinkel und Umlauf). Gleiche Einstellungen setzen deshalb automatisch den vorhandenen Lauf fort, geänderte beginnen einen neuen Ordner. PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird.
+
+Testbilder sammelt das Studio je Szene: Den Ordner bestimmen nur Werte, die ein Testbild verändern (Boden, Skulpturgröße, Granitdicke, Auflösung und Qualität). Winkel, Dauer, Bildrate und Umlauf trennen die Testbilder nicht. Jedes Testbild trägt seinen Kamerawinkel im Namen; ein neues Bild mit gleichem Winkel ersetzt das vorige.
+
+Fertige Videos tragen den Namen ihrer Variante plus Datum und Uhrzeit der Kodierung; über den Variantennamen findet man die zugehörige `settings.json`. Nicht mehr benötigte Varianten und Testbilder können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
 
 ## Assets
 

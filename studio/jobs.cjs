@@ -9,7 +9,7 @@ const ROOT = path.resolve(__dirname, '..');
 const AUSGABE_DIR = path.join(ROOT, 'Ausgabe');
 const RENDER_DIR = path.join(AUSGABE_DIR, 'Render');
 const VIDEO_DIR = path.join(AUSGABE_DIR, 'Videos');
-const VIDEO_ENCODING = {codec: 'h264', crf: 18, pixelFormat: 'yuv420p'};
+const VIDEO_ENCODING = {crf: 18, pixelFormat: 'yuv420p'};
 const DEFAULTS = {
     RENDER_PRESET: 'test',
     BODEN: 'marmor',
@@ -34,23 +34,30 @@ const frameCount = settings => {
     const low = Math.floor(frames);
     return Math.max(2, frames - low === 0.5 ? low + low % 2 : Math.round(frames));
 };
-const framesFolderName = settings => [
-    'frames',
-    `${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}`,
-    `${settings.FPS}fps`,
-    VIDEO_ENCODING.codec,
-    `crf${VIDEO_ENCODING.crf}`,
-    VIDEO_ENCODING.pixelFormat
-].join('_');
-const animationFramesFolder = settings => path.join(settings.OUTPUT_DIR, framesFolderName(settings));
+const animationFramesFolder = settings => path.join(settings.OUTPUT_DIR, 'frames');
+const kurzHash = (settings, keys) => crypto.createHash('sha256')
+    .update(JSON.stringify(keys.map(key => settings[key]))).digest('hex').slice(0, 6);
 // Jede Einstellungsvariante rendert in einen eigenen Ordner: Gleiche Werte setzen denselben Lauf fort,
 // geänderte beginnen einen neuen. Die Prüfsumme deckt alle Einstellungen ab, der Name die wichtigsten.
-const variantName = settings => {
-    const hash = crypto.createHash('sha256')
-        .update(JSON.stringify(Object.keys(DEFAULTS).map(key => settings[key]))).digest('hex').slice(0, 6);
-    return `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.FPS}fps_` +
-        `${settings.DURATION}s_${settings.RENDER_PRESET}_${hash}`;
+const variantName = settings =>
+    `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.FPS}fps_` +
+    `${settings.DURATION}s_${settings.RENDER_PRESET}_${kurzHash(settings, Object.keys(DEFAULTS))}`;
+// Fertige Videos tragen den Namen ihrer Variante; der Zeitstempel verhindert Überschreiben bei erneuter Kodierung.
+const videoName = (settings, date = new Date()) => {
+    const zwei = number => String(number).padStart(2, '0');
+    const stamp = `${date.getFullYear()}${zwei(date.getMonth() + 1)}${zwei(date.getDate())}-` +
+        `${zwei(date.getHours())}${zwei(date.getMinutes())}${zwei(date.getSeconds())}`;
+    return `${path.basename(settings.OUTPUT_DIR)}_${stamp}.mp4`;
 };
+// Testbilder sammeln sich je Szene; Winkel und reine Animationswerte (Dauer, Bildrate, Umlauf) trennen sie nicht.
+// Ein neues Testbild mit gleichem Kamerawinkel ersetzt das vorige.
+const TESTBILD_KEYS = ['BODEN', 'SCULPTURE_SCALE', 'THICKNESS', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET'];
+const testbildPfad = (settings, renderDir = RENDER_DIR) => path.join(
+    renderDir, TESTBILDER,
+    `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.RENDER_PRESET}_` +
+    kurzHash(settings, TESTBILD_KEYS),
+    `testbild_${settings.START_ANGLE}grad.png`
+);
 
 const validate = (data, renderDir = RENDER_DIR) => {
     if (!data || typeof data !== 'object' || Array.isArray(data)) throw Error('Ungültige Einstellungen.');
@@ -115,7 +122,11 @@ const blenderPath = () => {
     return found;
 };
 
-const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.museum_worker')} = {}) => {
+const createStudio = ({
+    renderDir = RENDER_DIR,
+    workDir = path.join(renderDir, '.museum_worker'),
+    videoDir = VIDEO_DIR
+} = {}) => {
     const model = path.join(workDir, 'museum_preview.glb');
     const stillsFolder = path.join(renderDir, TESTBILDER);
     const state = {
@@ -275,8 +286,8 @@ const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.
         if (settings.RESOLUTION_X % 2 || settings.RESOLUTION_Y % 2) {
             throw Error('Für MP4 bitte eine gerade Bildbreite und -höhe verwenden.');
         }
-        fs.mkdirSync(VIDEO_DIR, {recursive: true});
-        const output = path.join(VIDEO_DIR, `museum_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.mp4`);
+        fs.mkdirSync(videoDir, {recursive: true});
+        const output = path.join(videoDir, videoName(settings));
         return {
             command,
             output,
@@ -294,11 +305,11 @@ const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.
         const folder = s.OUTPUT_DIR;
         if (kind === 'still') {
             s = {...s, MAKE_VIDEO: false, RESUME_RENDER: true};
-            fs.mkdirSync(stillsFolder, {recursive: true});
-            writeJSON(path.join(stillsFolder, 'test-settings.json'), s);
+            const output = testbildPfad(s, renderDir);
+            fs.mkdirSync(path.dirname(output), {recursive: true});
+            writeJSON(path.join(path.dirname(output), 'test-settings.json'), s);
             await ensureWorker(s);
             const id = crypto.randomUUID().replaceAll('-', '');
-            const output = path.join(stillsFolder, `kusner_p7_museum_test_${id}.png`);
             const command = {id, type: 'render', output};
             for (const key of ['START_ANGLE', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET']) {
                 command[key] = s[key];
@@ -405,8 +416,9 @@ const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.
         }
         const framesFolder = animationFramesFolder(state.settings);
         const frames = files(framesFolder).filter(name => /^frame_.*\.png$/.test(name)).sort();
-        const stills = files(stillsFolder).filter(name => /^kusner_p7_museum_test.*\.png$/.test(name))
-            .map(name => path.join(stillsFolder, name))
+        const sceneStills = path.dirname(testbildPfad(state.settings, renderDir));
+        const stills = files(sceneStills).filter(name => /^testbild_.*\.png$/.test(name))
+            .map(name => path.join(sceneStills, name))
             .sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs);
         state.preview = !['animation', 'animation_video'].includes(state.kind) && stills.length
             ? stills[0]
@@ -492,4 +504,4 @@ const createStudio = ({renderDir = RENDER_DIR, workDir = path.join(renderDir, '.
     };
 };
 
-module.exports = {createStudio, validate, frameCount, framesFolderName, DEFAULTS, VIDEO_DIR};
+module.exports = {createStudio, validate, frameCount, testbildPfad, videoName, DEFAULTS, VIDEO_DIR};

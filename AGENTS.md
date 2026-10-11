@@ -49,7 +49,7 @@ Behalte diese Trennung bei. Fachlogik und Validierung gehören nicht unnötig in
 - Halte Module nach Verantwortlichkeit getrennt und vermeide doppelte Konstanten oder voneinander abweichende Berechnungen in JavaScript und Python.
 - Änderungen an Einstellungen müssen zusammenhängend geprüft werden: Standardwerte, Validierung, UI, Übergabe an Blender, Persistenz und Dokumentation.
 - MP4-Auflösungen müssen gerade Werte haben. Framezahl, FPS und Dauer müssen zwischen Node.js, Blender und FFmpeg konsistent bleiben.
-- Der Animationsordner wird in `studio/jobs.cjs` (`variantName`) aus allen Einstellungen in `DEFAULTS` abgeleitet; es gibt keinen wählbaren Ausgabeordner. Eine neue Einstellung, die das Bild beeinflusst, gehört deshalb in `DEFAULTS`, damit sie in die Prüfsumme eingeht. Testbilder liegen gesammelt in `Ausgabe/Render/testbilder/`.
+- Der Animationsordner wird in `studio/jobs.cjs` (`variantName`) aus allen Einstellungen in `DEFAULTS` abgeleitet; es gibt keinen wählbaren Ausgabeordner. Eine neue Einstellung, die das Bild beeinflusst, gehört deshalb in `DEFAULTS`, damit sie in die Prüfsumme eingeht. Testbilder liegen je Szene unter `Ausgabe/Render/testbilder/` (`testbildPfad`, nur mit den Werten in `TESTBILD_KEYS`).
 - Lang laufende Blender-/FFmpeg-Prozesse müssen abbrechbar sein und beim Schließen der Anwendung zuverlässig beendet werden. Fehler sollen in Status/Log sichtbar werden und dürfen nicht still verschwinden.
 - Halte die Oberfläche auch während rechenintensiver Arbeit bedienbar. Blockiere den Electron-Hauptprozess nicht mit synchroner Langzeitarbeit.
 - TDD wenn möglich

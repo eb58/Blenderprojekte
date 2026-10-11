@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {createStudio, validate, frameCount, framesFolderName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
+const {createStudio, validate, frameCount, testbildPfad, videoName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
 
 // Der Szenenaufbau ist auf mehrere Module in museum/ verteilt.
 const museumQuelltext = () => {
@@ -36,11 +36,27 @@ test('jede Einstellungsvariante einer Animation bekommt automatisch einen eigene
 });
 
 
-test('Animationsframes liegen in einem Ordner mit den Kodierungseinstellungen', () => {
-    assert.equal(
-        framesFolderName({...DEFAULTS, RESOLUTION_X: 1920, RESOLUTION_Y: 1080, FPS: 30}),
-        'frames_1920x1080_30fps_h264_crf18_yuv420p'
-    );
+test('Testbilder liegen je Szene in einem Ordner und tragen den Kamerawinkel im Namen', () => {
+    const renderDir = path.join(os.tmpdir(), 'museum-render');
+    const bild = testbildPfad(validate(DEFAULTS), renderDir);
+    assert.equal(path.basename(bild), 'testbild_158grad.png');
+    assert.match(path.basename(path.dirname(bild)), /^marmor_1280x800_test_[0-9a-f]{6}$/);
+    assert.equal(path.dirname(path.dirname(bild)), path.join(renderDir, 'testbilder'));
+    assert.equal(path.basename(testbildPfad(validate({...DEFAULTS, START_ANGLE: -12.5}), renderDir)), 'testbild_-12.5grad.png');
+    const ordner = settings => path.dirname(testbildPfad(validate(settings), renderDir));
+    // Nur was das Testbild verändert, trennt die Szenen; Winkel und Animationswerte nicht.
+    for (const [key, value] of Object.entries({START_ANGLE: 200, DURATION: 9, FPS: 30, ORBIT_DEGREES: 90})) {
+        assert.equal(ordner({...DEFAULTS, [key]: value}), ordner(DEFAULTS), key);
+    }
+    for (const [key, value] of Object.entries({BODEN: 'parkett', SCULPTURE_SCALE: 4, THICKNESS: 0.07, RESOLUTION_X: 800, RENDER_PRESET: 'quality'})) {
+        assert.notEqual(ordner({...DEFAULTS, [key]: value}), ordner(DEFAULTS), key);
+    }
+});
+
+test('fertige Videos tragen Variante und Zeitpunkt im Namen', () => {
+    const settings = validate(DEFAULTS);
+    assert.equal(videoName(settings, new Date(2026, 9, 11, 15, 12, 30)),
+        `${path.basename(settings.OUTPUT_DIR)}_20261011-151230.mp4`);
 });
 
 test('validation and Python-compatible frame counts', () => {
@@ -76,7 +92,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
 }, async () => {
     const folder = fs.mkdtempSync(path.join(os.tmpdir(), 'museum-ipc-test-'));
     const output = path.join(folder, 'output');
-    const jobs = createStudio({workDir: path.join(folder, 'worker'), renderDir: output});
+    const videos = path.join(folder, 'videos');
+    const jobs = createStudio({workDir: path.join(folder, 'worker'), renderDir: output, videoDir: videos});
     try {
         const settings = {
             ...DEFAULTS,
@@ -95,7 +112,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.running, false);
         assert.equal(status.code, 0, status.log);
         assert.ok(fs.existsSync(jobs.mediaPath('preview')));
-        assert.equal(path.dirname(jobs.mediaPath('preview')), path.join(output, 'testbilder'));
+        assert.equal(jobs.mediaPath('preview'), testbildPfad(validate(settings, output), output));
+        assert.equal(path.basename(jobs.mediaPath('preview')), 'testbild_158grad.png');
         assert.deepEqual(fs.readdirSync(output).sort(), ['testbilder'], 'Testbilder legen keine Animationsordner an');
         await jobs.prepareModel(settings);
         assert.ok(fs.existsSync(jobs.mediaPath('model')));
@@ -113,7 +131,7 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
 
         const videoSettings = {...settings, DURATION: 0.1};
         const variante = validate(videoSettings, output).OUTPUT_DIR;
-        const frames = path.join(variante, framesFolderName(videoSettings));
+        const frames = path.join(variante, 'frames');
         fs.mkdirSync(frames, {recursive: true});
         for (let frame = 1; frame <= 2; frame++) {
             fs.copyFileSync(
@@ -134,7 +152,8 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.code, 0, status.log);
         assert.equal(status.video, true);
         assert.ok(fs.statSync(jobs.mediaPath('video')).size > 0);
-        assert.equal(path.dirname(jobs.mediaPath('video')), VIDEO_DIR);
+        assert.equal(path.dirname(jobs.mediaPath('video')), videos, 'Testvideos landen nicht im echten Videoordner');
+        assert.ok(path.basename(jobs.mediaPath('video')).startsWith(path.basename(variante) + '_'));
     } finally {
         await jobs.close();
         fs.rmSync(folder, {recursive: true, force: true});
@@ -239,7 +258,8 @@ test('fertige Frames werden begrenzt ausgeliefert und als vollständig gemeldet'
     const jobs = createStudio({workDir: path.join(folder, 'worker')});
     try {
         jobs.state.settings = {...DEFAULTS, OUTPUT_DIR: folder, FPS: 1, DURATION: 2, START_ANGLE: 30, ORBIT_DEGREES: 90};
-        const framesFolder = path.join(folder, framesFolderName(jobs.state.settings));
+        // Auflösung und Bildrate stehen schon im Variantenordner; die Frames liegen schlicht in frames/.
+        const framesFolder = path.join(folder, 'frames');
         fs.mkdirSync(framesFolder);
         fs.writeFileSync(path.join(framesFolder, 'frame_0001.png'), 'x');
         assert.equal(jobs.status().complete, false);
