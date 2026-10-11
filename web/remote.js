@@ -102,7 +102,7 @@ for (const button of document.querySelectorAll('[data-halten]')) {
         button.setPointerCapture(event.pointerId);
         stop();
         schritt();
-        timer = setInterval(schritt, 60);
+        timer = setInterval(schritt, 40);
     });
     for (const name of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(name, stop);
     button.addEventListener('contextmenu', event => event.preventDefault());

@@ -491,7 +491,6 @@ export const createMuseumViewer = ({
             walk.pitch = from.pitch + (to.pitch - from.pitch) * k;
             if (fly.t >= 1) fly = null;
         }
-        drainRemote(delta);
         walk.yaw += (down('ArrowLeft') - down('ArrowRight')) * 1.6 * delta;
         const forward = down('ArrowUp', 'KeyW') - down('ArrowDown', 'KeyS');
         const strafe = down('KeyD') - down('KeyA');
@@ -614,25 +613,8 @@ export const createMuseumViewer = ({
     // Befehle wie im Fernbedienungsprotokoll: rotate {dx, dy} schaut sich um, zoom {delta} geht vor/zurück,
     // object-translate {horizontal, vertical} geht seitwärts/vorwärts, surface {direction} geht zum nächsten
     // oder vorigen Werk, rotation wechselt Rundgang/Übersicht, background dreht um, reset führt zum Eingang.
-    // Bewegungen werden über einige Bilder verteilt, damit sie trotz Netzwerk-Takt ruckelfrei wirken.
-    const pending = {yaw: 0, pitch: 0, forward: 0, strafe: 0};
+    // Befehle wirken sofort (wie in Minimalflächen); jede Glättung wäre auf langsamen TV-Geräten als Verzögerung spürbar.
     let workIndex = -1;
-    const drainRemote = delta => {
-        const share = 1 - Math.exp(-delta * 12);
-        const take = key => {
-            const part = pending[key] * share;
-            pending[key] -= part;
-            return part;
-        };
-        walk.yaw += take('yaw');
-        walk.pitch = THREE.MathUtils.clamp(walk.pitch + take('pitch'), -WALK_PITCH, WALK_PITCH);
-        const forward = take('forward');
-        const strafe = take('strafe');
-        if (forward || strafe) {
-            walkBy(-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe,
-                -Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe);
-        }
-    };
     const fernsteuern = command => {
         if (!loaded) return;
         if (command.type === 'rotation') {
@@ -671,14 +653,15 @@ export const createMuseumViewer = ({
         ensureWalk();
         fly = null;
         if (command.type === 'rotate') {
-            pending.yaw -= command.dx * 1.2;
-            pending.pitch -= command.dy * 1.2;
-        } else if (command.type === 'zoom') {
-            pending.forward -= command.delta * 4;
-        } else if (command.type === 'object-translate') {
-            pending.strafe += command.horizontal * 4;
-            pending.forward += command.vertical * 4;
+            walk.yaw -= command.dx * 1.2;
+            walk.pitch = THREE.MathUtils.clamp(walk.pitch - command.dy * 1.2, -WALK_PITCH, WALK_PITCH);
+        } else {
+            const forward = command.type === 'zoom' ? -command.delta * 4 : command.vertical * 4;
+            const strafe = command.type === 'object-translate' ? command.horizontal * 4 : 0;
+            walkBy(-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe,
+                -Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe);
         }
+        camera.rotation.set(walk.pitch, walk.yaw, 0, 'YXZ');
     };
 
     // Lädt Modell und Bildtexturen ({model, park, mandelbrot} als URLs), ersetzt ein vorher geladenes Modell
