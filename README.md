@@ -110,10 +110,10 @@ ffmpeg -framerate 24 `
     -c:v libx264 `
     -crf 18 `
     -pix_fmt yuv420p `
-    ".\Render\kusner_p7_granit_museum\museum.mp4"
+    ".\Videos\museum.mp4"
 ```
 
-Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen. Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
+Der Ordner `Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. Die Zahl hinter `-framerate` muss dem Wert `FPS` in `settings.json` entsprechen. Existiert `museum.mp4` bereits, fragt FFmpeg vor dem Überschreiben nach; mit `-n` kann ein Überschreiben grundsätzlich verhindert werden.
 
 ## Bedienung
 
@@ -150,7 +150,7 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG 
 | Startposition/Grad | Startpunkt auf der kreisförmigen Kamerafahrt und Perspektive des Testbilds |
 | Umlauf/Grad | Drehwinkel der Kamerafahrt |
 | Breite/Höhe | Ausgabeauflösung in Pixeln |
-| Ausgabeordner | Ziel für Einstellungen, Bilder, Frames, Logs und Videos |
+| Ausgabeordner | Ziel für Einstellungen, Testbilder, Frames und Logs; MP4-Videos werden im Projektordner `Videos` gespeichert |
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 
@@ -174,15 +174,18 @@ Alle Presets verwenden Cycles, GPU-Rendering, adaptives Sampling und OptiX-Denoi
 Standardmäßig werden die Ergebnisse hier abgelegt:
 
 ```text
-Render\kusner_p7_granit_museum\
-├── frames\              Testbilder und PNG-Einzelbilder der Animation
-├── logs\                Blender- und FFmpeg-Ausgaben
-├── settings.json        Einstellungen der Animation
-├── test-settings.json   Einstellungen des Testbilds
-└── museum_*.mp4         Fertige Videos
+Projektordner\
+├── Render\
+│   └── kusner_p7_granit_museum\
+│       ├── frames\              Testbilder und PNG-Einzelbilder der Animation
+│       ├── logs\                Blender- und FFmpeg-Ausgaben
+│       ├── settings.json        Einstellungen der Animation
+│       └── test-settings.json   Einstellungen des Testbilds
+└── Videos\
+    └── museum_*.mp4             Fertige Videos
 ```
 
-PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen.
+PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird. Eine Animation kann mit identischen Einstellungen fortgesetzt werden. Werden Szenenparameter verändert, sollte ein neuer Ausgabeordner gewählt werden; andernfalls schützt das Studio vorhandene Frames vor einer versehentlichen Mischung unterschiedlicher Einstellungen. MP4-Videos werden unabhängig vom gewählten Ausgabeordner im Ordner `Videos` direkt im Projektverzeichnis abgelegt.
 
 ## Lokale Möbelbibliothek
 

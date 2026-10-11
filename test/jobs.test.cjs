@@ -3,7 +3,11 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {createStudio, validate, frameCount, DEFAULTS} = require('../studio/jobs.cjs');
+const {createStudio, validate, frameCount, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
+
+test('MP4-Videos werden im Videos-Ordner des Projekts gespeichert', () => {
+    assert.equal(VIDEO_DIR, path.join(path.resolve(__dirname, '..'), 'Videos'));
+});
 
 test('validation and Python-compatible frame counts', () => {
     assert.equal(validate({...DEFAULTS, DURATION: '5,1'}).DURATION, 5.1);
@@ -95,6 +99,7 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.code, 0, status.log);
         assert.equal(status.video, true);
         assert.ok(fs.statSync(jobs.mediaPath('video')).size > 0);
+        assert.equal(path.dirname(jobs.mediaPath('video')), VIDEO_DIR);
     } finally {
         await jobs.close();
         fs.rmSync(folder, {recursive: true, force: true});

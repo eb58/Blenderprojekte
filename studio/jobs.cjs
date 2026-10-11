@@ -6,6 +6,7 @@ const crypto = require('node:crypto');
 const {spawn, spawnSync} = require('node:child_process');
 
 const ROOT = path.resolve(__dirname, '..');
+const VIDEO_DIR = path.join(ROOT, 'Videos');
 const DEFAULTS = {
     RENDER_PRESET: 'test',
     BODEN: 'marmor',
@@ -253,7 +254,8 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
         if (settings.RESOLUTION_X % 2 || settings.RESOLUTION_Y % 2) {
             throw Error('Für MP4 bitte eine gerade Bildbreite und -höhe verwenden.');
         }
-        const output = path.join(folder, `museum_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.mp4`);
+        fs.mkdirSync(VIDEO_DIR, {recursive: true});
+        const output = path.join(VIDEO_DIR, `museum_${Date.now()}_${crypto.randomBytes(3).toString('hex')}.mp4`);
         return {
             command,
             output,
@@ -471,4 +473,4 @@ const createStudio = ({workDir = path.join(ROOT, 'Render', '.museum_worker')} = 
     };
 };
 
-module.exports = {createStudio, validate, frameCount, DEFAULTS};
+module.exports = {createStudio, validate, frameCount, DEFAULTS, VIDEO_DIR};
