@@ -307,6 +307,31 @@ test('3D-Vorschau exportiert auch Textobjekte (Sockelbeschriftungen)', () => {
     assert.match(exporter, /obj\.type in \{[^}]*"FONT"/);
 });
 
+test('Smartphone-Fernbedienung: Protokoll wie in Minimalflächen, TV-Erkennung und Anbindung', async () => {
+    const web = name => require('node:url').pathToFileURL(path.join(__dirname, '..', 'web', name)).href;
+    const protokoll = await import(web('remote-protocol.js'));
+    // Nur Befehle, die der gemeinsame Relay kennt, und nur in seinen Grenzen.
+    assert.deepEqual(protokoll.sanitizeRemoteCommand({type: 'zoom', delta: -0.05, extra: 1}), {type: 'zoom', delta: -0.05});
+    assert.deepEqual(protokoll.sanitizeRemoteCommand({type: 'surface', direction: 1}), {type: 'surface', direction: 1});
+    for (const falsch of [{type: 'zoom', delta: 2}, {type: 'surface', direction: 2}, {type: 'shell'}, null]) {
+        assert.equal(protokoll.sanitizeRemoteCommand(falsch), null, JSON.stringify(falsch));
+    }
+    const raum = protokoll.randomToken(6);
+    assert.match(raum, /^[a-f0-9]{12}$/, 'Raum-IDs wie vom Relay verlangt');
+    assert.deepEqual(protokoll.parseRemoteCredentials(`#${protokoll.remoteCredentialsHash(raum)}`),
+        {room: raum, secret: protokoll.PUBLIC_REMOTE_SECRET});
+    const anzeige = await import(web('remote-display.js'));
+    assert.ok(anzeige.isTv('Mozilla/5.0 (Linux; Android 9; AFTMM Build/PS7292) Silk/112.1'));
+    assert.ok(anzeige.isTv('Mozilla/5.0 (Web0S; Linux/SmartTV) AppleWebKit/537.41'));
+    assert.ok(!anzeige.isTv('Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/140.0'));
+    const kern = fs.readFileSync(path.join(__dirname, '..', 'studio', 'museum3d.js'), 'utf8');
+    for (const befehl of ['rotation', 'reset', 'background', 'surface', 'rotate', 'zoom', 'object-translate']) {
+        assert.ok(kern.includes(`'${befehl}'`), `museum3d.js verarbeitet ${befehl}`);
+    }
+    assert.match(fs.readFileSync(path.join(__dirname, '..', 'web', 'web.js'), 'utf8'),
+        /createRemoteDisplay\(\{onCommand: viewer\.fernsteuern\}\)/);
+});
+
 test('die 3D-Ansicht läuft auch als eigenständige Webseite', () => {
     const datei = (...teile) => fs.readFileSync(path.join(__dirname, '..', ...teile), 'utf8');
     const kern = datei('studio', 'museum3d.js');
@@ -364,7 +389,8 @@ test('Webversion lässt sich mit Blender exportieren', {
             {encoding: 'utf8', windowsHide: true});
         assert.equal(result.status, 0, result.stdout + result.stderr);
         assert.deepEqual(fs.readdirSync(ziel).sort(),
-            ['index.html', 'mandelbrot.png', 'museum.glb', 'museum3d.js', 'park.png', 'web.js']);
+            ['index.html', 'mandelbrot.png', 'museum.glb', 'museum3d.js', 'park.png', 'remote-config.js',
+                'remote-display.js', 'remote-protocol.js', 'remote.css', 'remote.html', 'remote.js', 'web.js']);
         assert.ok(fs.statSync(path.join(ziel, 'museum.glb')).size > 100000);
     } finally {
         fs.rmSync(ziel, {recursive: true, force: true});

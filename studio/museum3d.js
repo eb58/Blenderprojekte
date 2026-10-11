@@ -491,6 +491,7 @@ export const createMuseumViewer = ({
             walk.pitch = from.pitch + (to.pitch - from.pitch) * k;
             if (fly.t >= 1) fly = null;
         }
+        drainRemote(delta);
         walk.yaw += (down('ArrowLeft') - down('ArrowRight')) * 1.6 * delta;
         const forward = down('ArrowUp', 'KeyW') - down('ArrowDown', 'KeyS');
         const strafe = down('KeyD') - down('KeyA');
@@ -609,6 +610,77 @@ export const createMuseumViewer = ({
         else ensureWalk();
     });
 
+    // --- Fernsteuerung (z. B. Smartphone für einen Fernseher) -------------------------------------
+    // Befehle wie im Fernbedienungsprotokoll: rotate {dx, dy} schaut sich um, zoom {delta} geht vor/zurück,
+    // object-translate {horizontal, vertical} geht seitwärts/vorwärts, surface {direction} geht zum nächsten
+    // oder vorigen Werk, rotation wechselt Rundgang/Übersicht, background dreht um, reset führt zum Eingang.
+    // Bewegungen werden über einige Bilder verteilt, damit sie trotz Netzwerk-Takt ruckelfrei wirken.
+    const pending = {yaw: 0, pitch: 0, forward: 0, strafe: 0};
+    let workIndex = -1;
+    const drainRemote = delta => {
+        const share = 1 - Math.exp(-delta * 12);
+        const take = key => {
+            const part = pending[key] * share;
+            pending[key] -= part;
+            return part;
+        };
+        walk.yaw += take('yaw');
+        walk.pitch = THREE.MathUtils.clamp(walk.pitch + take('pitch'), -WALK_PITCH, WALK_PITCH);
+        const forward = take('forward');
+        const strafe = take('strafe');
+        if (forward || strafe) {
+            walkBy(-Math.sin(walk.yaw) * forward + Math.cos(walk.yaw) * strafe,
+                -Math.cos(walk.yaw) * forward - Math.sin(walk.yaw) * strafe);
+        }
+    };
+    const fernsteuern = command => {
+        if (!loaded) return;
+        if (command.type === 'rotation') {
+            if (walk.active) setWalk(false);
+            else ensureWalk();
+            return;
+        }
+        if (command.type === 'reset') {
+            walk.saved = null;
+            setWalk(true, DEFAULT_START);
+            return;
+        }
+        if (command.type === 'background') {
+            turnAround();
+            return;
+        }
+        if (command.type === 'surface' && workMeshes.length) {
+            // Rundgang-Reihenfolge: erst die Hauptwerke in der Halle, dann die Nischen, jeweils von links nach rechts.
+            const center = mesh => new THREE.Box3().setFromObject(mesh).getCenter(new THREE.Vector3());
+            const tour = workMeshes.map(mesh => ({mesh, at: center(mesh)}))
+                .sort((a, b) => Number(a.at.z < -8) - Number(b.at.z < -8) || a.at.x - b.at.x);
+            workIndex = (workIndex + command.direction + tour.length) % tour.length;
+            goToWork(tour[workIndex].mesh);
+            return;
+        }
+        if (!walk.active && command.type === 'rotate') {
+            // Übersicht: um das Museum herum drehen.
+            const offset = camera.position.clone().sub(controls.target)
+                .applyAxisAngle(new THREE.Vector3(0, 1, 0), -command.dx * 2);
+            camera.position.copy(controls.target).add(offset);
+            controls.update();
+            updateAngle();
+            onAngle(currentAngle);
+            return;
+        }
+        ensureWalk();
+        fly = null;
+        if (command.type === 'rotate') {
+            pending.yaw -= command.dx * 1.2;
+            pending.pitch -= command.dy * 1.2;
+        } else if (command.type === 'zoom') {
+            pending.forward -= command.delta * 4;
+        } else if (command.type === 'object-translate') {
+            pending.strafe += command.horizontal * 4;
+            pending.forward += command.vertical * 4;
+        }
+    };
+
     // Lädt Modell und Bildtexturen ({model, park, mandelbrot} als URLs), ersetzt ein vorher geladenes Modell
     // und startet im Rundgang.
     const load = async urls => {
@@ -634,6 +706,7 @@ export const createMuseumViewer = ({
         model = gltf.scene;
         floorMeshes = [];
         workMeshes = [];
+        workIndex = -1;
         improveMaterials(model, {park: parkTexture, mandelbrot: mandelbrotTexture});
         scene.add(model);
         loaded = true;
@@ -653,6 +726,7 @@ export const createMuseumViewer = ({
         load,
         leave,
         setWalk,
+        fernsteuern,
         get loaded() { return loaded; },
         get walking() { return walk.active; },
         get angle() { return currentAngle; },

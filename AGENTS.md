@@ -16,7 +16,7 @@ Museum Studio ist eine lokale Windows-Desktop-Anwendung. Electron steuert Blende
 - `studio/jobs.cjs`: Validierung sowie Lebenszyklus der Blender- und FFmpeg-Aufträge.
 - `studio/index.html` und `studio/viewer.js`: Oberfläche und Studio-Anschluss der Three.js-Vorschau.
 - `studio/museum3d.js`: gemeinsamer Kern der 3D-Ansicht (Szene, Materialien, Navigation) für Studio und Webversion; kennt weder Studio noch IPC.
-- `web/` und `tools/web/`: eigenständige Webversion der 3D-Ansicht (`npm run web` → `Ausgabe/Web/`, statisch, ohne Servercode).
+- `web/` und `tools/web/`: eigenständige Webversion der 3D-Ansicht (`npm run web` → `Ausgabe/Web/`, statisch, ohne Servercode). Die Smartphone-Fernbedienung (`web/remote*.js`) nutzt den Relay und das Befehlsprotokoll des Projekts Minimalflächen; Befehle nur innerhalb dieses Protokolls erweitern oder beide Projekte gemeinsam ändern.
 - `test/`: Tests (`*.test.cjs`, `node --test`); neue Tests gehören dorthin, nicht nach `studio/`.
 - `studio/blender_worker.py`: langlebiger Blender-Worker für schnelle Vorschaubilder.
 - `museum/scene.py`: Einstieg und Ablauf des Szenenaufbaus. Fachlich getrennt davon: `einstellungen.py` (Standardwerte, `MUSEUM_CONFIG`), `rendering.py` (OptiX, Cycles-Presets), `materialien.py`, `bauteile.py` (Geometrie-Helfer), `ausstattung.py` (Plaketten, Wandteppich, Möbel, Garten) sowie die reinen Mathematikmodule `weierstrass.py`, `costa.py` und `sierpinski.py`.

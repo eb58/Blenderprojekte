@@ -12,9 +12,9 @@ const {blenderPath} = require('../../studio/jobs.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const ziel = path.resolve(process.argv[2] || path.join(ROOT, 'Ausgabe', 'Web'));
+// Alle Dateien aus web/ (Seite, Anschluss, Fernbedienung) plus Viewer-Kern und Bildtexturen.
 const dateien = {
-    'index.html': path.join(ROOT, 'web', 'index.html'),
-    'web.js': path.join(ROOT, 'web', 'web.js'),
+    ...Object.fromEntries(fs.readdirSync(path.join(ROOT, 'web')).map(name => [name, path.join(ROOT, 'web', name)])),
     'museum3d.js': path.join(ROOT, 'studio', 'museum3d.js'),
     'park.png': path.join(ROOT, 'assets', 'bilder', 'museum_park_panorama.png'),
     'mandelbrot.png': path.join(ROOT, 'assets', 'bilder', 'mandelbrot_tapestry.png')

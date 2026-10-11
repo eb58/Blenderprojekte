@@ -205,6 +205,16 @@ npx serve .\Ausgabe\Web
 
 `npm run web` baut das Museum mit Blender auf, exportiert es als `museum.glb` und kopiert Seite, Viewer und Bildtexturen nach `Ausgabe\Web\`. Ein anderer Zielordner kann angegeben werden: `node tools/web/export.cjs <ordner>`. Nach Änderungen an der Szene den Befehl erneut ausführen.
 
+### Smartphone-Fernbedienung (für Fernseher)
+
+Läuft das Museum im Browser eines Fernsehers (oder am PC), zeigt die Seite oben rechts ein Smartphone-Symbol; auf Smart-TV-Browsern (Fire TV, Android TV, Tizen, webOS, HbbTV …) ist der QR-Code gleich aufgeklappt. Der QR-Code öffnet auf dem Smartphone `remote.html` mit:
+
+- Touchfläche: ziehen zum Umschauen, zwei Finger auseinander/zusammen zum Vor- und Zurückgehen,
+- Steuerkreuz: gedrückt halten zum Gehen (vor, zurück, seitwärts),
+- Knöpfe: voriges/nächstes Werk (erst die Hauptwerke, dann die Nischen von links nach rechts), Umdrehen, Rundgang/Übersicht und Zum Eingang.
+
+Wie im Projekt Minimalflächen laufen die Befehle über einen WebSocket-Relay (Cloudflare Worker mit Durable Object aus `Minimalflachen/remote-worker`, Adresse in `web/remote-config.js`). Das Museum nutzt denselben Relay und dessen Befehlssatz (`web/remote-protocol.js`); die Bedeutung im Museum steht in `fernsteuern` in `studio/museum3d.js`. Ändert sich der Relay in Minimalflächen, muss das Protokoll hier passen. Der QR-Code wird mit `qrcode` von jsDelivr erzeugt. Pfeiltasten einer TV-Fernbedienung gehen im Rundgang ebenfalls.
+
 ### Auf GitHub Pages veröffentlichen
 
 ```powershell
