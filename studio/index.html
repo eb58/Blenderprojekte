@@ -8,9 +8,11 @@
     <link rel="stylesheet" href="museum://studio/styles.css">
 </head>
 
-<body>
+<body data-modus="render">
     <header>
         <div class="brand">Museum <span>Studio</span></div>
+        <nav class="modes" aria-label="Arbeitsbereich"><button id="mode3d" type="button">3D-Vorschau</button><button
+                id="modeRender" class="active" type="button">Rendern</button></nav>
         <div class="badge">Lokal auf deinem Rechner · Blender / OptiX</div>
     </header>
     <main>
@@ -19,8 +21,6 @@
             <h1>Stein. Raum. Bewegung.</h1>
             <p>Gestalte die Szene und sieh dir zuerst ein Testbild an.</p>
             <div class="preview" id="previewStage">
-                <div class="preview-tools"><button id="mode3d" type="button">3D-Vorschau</button><button id="modeRender"
-                        class="active" type="button">Renderbild</button></div>
                 <div class="empty" id="empty">
                     <div class="symbol">∿</div><strong>Hier entsteht dein Museum.</strong><small>Ein Testbild zeigt
                         Licht, Material und Perspektive.</small>
@@ -28,30 +28,23 @@
                 <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button id="viewerWalk" type="button">Rundgang</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
                     alt="Gerendertes Museum" hidden>
             </div>
-            <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
-                    class="job" id="renderAnimation">Animation erstellen</button><button id="stop"
-                    disabled>Abbrechen</button><button id="showVideo" type="button">Im Ordner zeigen</button></div>
-            <div class="status"><span id="status">Bereit für dein erstes Testbild</span><span id="counter"></span></div>
-            <progress id="progress" value="0" max="100"></progress>
+            <div data-nur="render">
+                <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
+                        class="job" id="renderAnimation">Animation erstellen</button><button id="stop"
+                        disabled>Abbrechen</button><button id="showVideo" type="button">Im Ordner zeigen</button></div>
+                <div class="status"><span id="status">Bereit für dein erstes Testbild</span><span id="counter"></span>
+                </div>
+                <progress id="progress" value="0" max="100"></progress>
+            </div>
             <div class="error" id="error" role="alert"></div>
-            <details>
+            <details data-nur="render">
                 <summary>Render-Meldungen</summary>
                 <pre id="log">Noch kein Auftrag gestartet.</pre>
             </details>
-            <div class="footer">PNG-Frames bleiben bei einem Abbruch erhalten. Gleiche Einstellungen erlauben das
-                Fortsetzen.</div>
         </section>
         <aside class="panel">
-            <h2>Szene & Material</h2><label>Boden<select id="BODEN">
-                    <option value="marmor">Marmor</option>
-                    <option value="parkett">Parkett</option>
-                </select></label>
-            <div class="grid"><label>Skulpturgröße<input id="SCULPTURE_SCALE" type="number" step="0.05" min="0.1"
-                        max="10"></label><label>Granitdicke<input id="THICKNESS" type="number" step="0.005" min="0.001"
-                        max="1"></label></div>
-            <div class="divider"></div>
             <h2>Kamerafahrt</h2>
-            <div class="orbit-control">
+            <div class="orbit-control" data-nur="render">
                 <div class="orbit-dial" id="orbitDial" role="slider" tabindex="0" aria-label="Startposition der Kamera"
                     aria-valuemin="0" aria-valuemax="359">
                     <div class="orbit-pointer" id="orbitPointer"></div>
@@ -64,10 +57,10 @@
             </div><input id="START_ANGLE" type="hidden">
             <div class="grid"><label>Umlauf / Grad<input id="ORBIT_DEGREES" type="number" min="-3600" max="3600"
                         step="10"></label><label>Dauer / Sekunden<input id="DURATION" type="number" min="0.1" max="3600"
-                        step="0.1"></label></div><label>Bilder / Sekunde<input id="FPS" type="number" min="1"
+                        step="1"></label></div><label>Bilder / Sekunde<input id="FPS" type="number" min="1"
                     max="120"></label>
             <div class="divider"></div>
-            <h2>Rendern & Ausgabe</h2><label>Qualität<select id="RENDER_PRESET">
+            <h2>Ausgabe</h2><label data-nur="render">Qualität<select id="RENDER_PRESET">
                     <option value="test">Schneller Test · 16 Samples</option>
                     <option value="final_fast">Schnelles Ergebnis · 32 Samples</option>
                     <option value="animation">Animation · 48 Samples</option>
@@ -78,7 +71,9 @@
                     <option value="1920x1080">1920 × 1080 · Full HD</option>
                 </select></label><input id="RESOLUTION_X" type="hidden"><input id="RESOLUTION_Y"
                 type="hidden">
-            <p class="note">Testbilder je Szene in „Ausgabe\Render\testbilder“, jede Animationsvariante automatisch in einem
+            <p class="note" data-nur="3d">Auflösung, Dauer, Bildrate und Umlauf gelten für „PNG speichern“ und
+                „WebM aufnehmen“. Die Aufnahme beginnt beim aktuellen Winkel der Vorschau.</p>
+            <p class="note" data-nur="render">Testbilder je Auflösung und Qualität in „Ausgabe\Render\testbilder“, jede Animationsvariante automatisch in einem
                 eigenen Ordner unter „Ausgabe\Render“, fertige MP4-Videos in „Ausgabe\Videos“. Material: Granit. Keine
                 Besucher.</p>
         </aside>

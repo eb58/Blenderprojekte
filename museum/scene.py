@@ -27,7 +27,7 @@ import weierstrass
 for modul in (einstellungen, rendering, materialien, bauteile, ausstattung, costa, sierpinski, weierstrass):
     importlib.reload(modul)
 
-from einstellungen import BODEN, MAKE_VIDEO, ORBIT_DEGREES, SCULPTURE_SCALE, START_ANGLE, THICKNESS
+from einstellungen import MAKE_VIDEO, ORBIT_DEGREES, SCULPTURE_SCALE, START_ANGLE, THICKNESS
 from materialien import ashlar_material, emissive_material, simple_material
 from bauteile import add_area_light, add_box, add_niche, box, join, link, obj_by_name, sammlung
 
@@ -289,7 +289,7 @@ sun.rotation_euler = SUNDIR.to_track_quat('-Z', 'Y').to_euler()
 for o in D.objects:
     if o.type == 'LIGHT' and o.name != "Sonne": o.data.energy *= 0.35
 
-materialien.museumsboden(floor_material, BODEN, floor_obj)
+materialien.museumsboden(floor_material, floor_obj)
 
 
 # ============================================================

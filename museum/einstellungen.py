@@ -7,7 +7,6 @@ import json
 import os
 
 PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-BODEN = "marmor"  # "parkett" oder "marmor"
 RENDER_PRESET = "test"  # "test", "final_fast", "animation", "quality"
 
 # False = Testbild mit F12; True = PNG-Bildfolge mit Strg+F12
@@ -18,8 +17,9 @@ DURATION = 5
 ORBIT_DEGREES = 360
 START_ANGLE = 158
 
-SCULPTURE_SCALE = 3.55
-THICKNESS = 0.060
+# Fest eingestellt (nicht über die Oberfläche): Größe und Dicke der Granitskulpturen.
+SCULPTURE_SCALE = 4.55
+THICKNESS = 0.06
 
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "Ausgabe", "Render", "kusner_p7_granit_museum")
 FRAMES_DIR = os.path.join(OUTPUT_DIR, "frames")
@@ -33,8 +33,7 @@ config_path = os.environ.get("MUSEUM_CONFIG")
 if config_path:
     with open(config_path, encoding="utf-8-sig") as config_file:
         config = json.load(config_file)
-    for setting in ("BODEN", "RENDER_PRESET", "MAKE_VIDEO", "FPS", "DURATION",
-                    "ORBIT_DEGREES", "START_ANGLE", "SCULPTURE_SCALE", "THICKNESS",
+    for setting in ("RENDER_PRESET", "MAKE_VIDEO", "FPS", "DURATION", "ORBIT_DEGREES", "START_ANGLE",
                     "OUTPUT_DIR", "RESUME_RENDER", "RESOLUTION_X", "RESOLUTION_Y"):
         if setting in config:
             globals()[setting] = config[setting]

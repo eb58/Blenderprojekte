@@ -23,16 +23,25 @@ test('Renderdaten und Videos liegen gemeinsam im Projektordner Ausgabe', () => {
 test('jede Einstellungsvariante einer Animation bekommt automatisch einen eigenen Ordner', () => {
     assert.ok(!Object.hasOwn(DEFAULTS, 'OUTPUT_DIR'), 'Ausgabeordner ist keine Einstellung mehr');
     const ordner = validate(DEFAULTS).OUTPUT_DIR;
-    assert.match(path.basename(ordner), /^marmor_1280x800_24fps_5s_test_[0-9a-f]{6}$/);
+    assert.match(path.basename(ordner), /^1280x800_24fps_5s_test_[0-9a-f]{6}$/);
     assert.equal(validate({...DEFAULTS}).OUTPUT_DIR, ordner, 'gleiche Einstellungen setzen denselben Lauf fort');
     assert.equal(validate({...DEFAULTS, OUTPUT_DIR: 'C:\\anderswo'}).OUTPUT_DIR, ordner, 'Ordner kommt nicht vom Aufrufer');
-    for (const [key, value] of Object.entries({START_ANGLE: 159, THICKNESS: 0.07, SCULPTURE_SCALE: 4, ORBIT_DEGREES: 180})) {
+    for (const [key, value] of Object.entries({START_ANGLE: 159, ORBIT_DEGREES: 180})) {
         assert.notEqual(validate({...DEFAULTS, [key]: value}).OUTPUT_DIR, ordner, key);
     }
     const eigenerOrdner = path.join(os.tmpdir(), 'museum-render');
     assert.equal(path.dirname(validate(DEFAULTS, eigenerOrdner).OUTPUT_DIR), eigenerOrdner);
     const page = fs.readFileSync(path.join(__dirname, '..', 'studio', 'index.html'), 'utf8');
     assert.ok(!page.includes('id="OUTPUT_DIR"'), 'kein Eingabefeld für den Ausgabeordner');
+    // Boden, Skulpturgröße und Granitdicke sind fest (Parkett, 4,55, 0,06) und keine Einstellungen mehr.
+    for (const key of ['BODEN', 'SCULPTURE_SCALE', 'THICKNESS']) {
+        assert.ok(!Object.hasOwn(DEFAULTS, key), key);
+        assert.ok(!page.includes(`id="${key}"`), key);
+    }
+    const einstellungen = fs.readFileSync(path.join(__dirname, '..', 'museum', 'einstellungen.py'), 'utf8');
+    assert.match(einstellungen, /^SCULPTURE_SCALE = 4\.55$/m);
+    assert.match(einstellungen, /^THICKNESS = 0\.06$/m);
+    assert.ok(!museumQuelltext().includes('BODEN'), 'kein Marmor-/Parkett-Schalter mehr in der Szene');
 });
 
 
@@ -40,7 +49,7 @@ test('Testbilder liegen je Szene in einem Ordner und tragen den Kamerawinkel im 
     const renderDir = path.join(os.tmpdir(), 'museum-render');
     const bild = testbildPfad(validate(DEFAULTS), renderDir);
     assert.equal(path.basename(bild), 'testbild_158grad.png');
-    assert.match(path.basename(path.dirname(bild)), /^marmor_1280x800_test_[0-9a-f]{6}$/);
+    assert.match(path.basename(path.dirname(bild)), /^1280x800_test$/);
     assert.equal(path.dirname(path.dirname(bild)), path.join(renderDir, 'testbilder'));
     assert.equal(path.basename(testbildPfad(validate({...DEFAULTS, START_ANGLE: -12.5}), renderDir)), 'testbild_-12.5grad.png');
     const ordner = settings => path.dirname(testbildPfad(validate(settings), renderDir));
@@ -48,7 +57,7 @@ test('Testbilder liegen je Szene in einem Ordner und tragen den Kamerawinkel im 
     for (const [key, value] of Object.entries({START_ANGLE: 200, DURATION: 9, FPS: 30, ORBIT_DEGREES: 90})) {
         assert.equal(ordner({...DEFAULTS, [key]: value}), ordner(DEFAULTS), key);
     }
-    for (const [key, value] of Object.entries({BODEN: 'parkett', SCULPTURE_SCALE: 4, THICKNESS: 0.07, RESOLUTION_X: 800, RENDER_PRESET: 'quality'})) {
+    for (const [key, value] of Object.entries({RESOLUTION_X: 800, RENDER_PRESET: 'quality'})) {
         assert.notEqual(ordner({...DEFAULTS, [key]: value}), ordner(DEFAULTS), key);
     }
 });
@@ -56,15 +65,15 @@ test('Testbilder liegen je Szene in einem Ordner und tragen den Kamerawinkel im 
 test('fertige Videos tragen Variante und Zeitpunkt im Namen', () => {
     const settings = validate(DEFAULTS);
     assert.equal(videoName(settings, new Date(2026, 9, 11, 15, 12, 30)),
-        `${path.basename(settings.OUTPUT_DIR)}_2026-10-11_15-12-30.mp4`);
+        `museum_${path.basename(settings.OUTPUT_DIR)}_2026-10-11_15-12-30.mp4`);
 });
 
 test('validation and Python-compatible frame counts', () => {
     assert.equal(validate({...DEFAULTS, DURATION: '5,1'}).DURATION, 5.1);
     const invalidSettings = [
         {FPS: 24.5},
-        {BODEN: 'x'},
-        {THICKNESS: Infinity}
+        {DURATION: Infinity},
+        {RENDER_PRESET: 'x'}
     ];
     for (const settings of invalidSettings) {
         assert.throws(() => validate({...DEFAULTS, ...settings}));
@@ -97,7 +106,6 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
     try {
         const settings = {
             ...DEFAULTS,
-            BODEN: 'parkett',
             RESOLUTION_X: 64,
             RESOLUTION_Y: 64
         };
@@ -153,7 +161,7 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.equal(status.video, true);
         assert.ok(fs.statSync(jobs.mediaPath('video')).size > 0);
         assert.equal(path.dirname(jobs.mediaPath('video')), videos, 'Testvideos landen nicht im echten Videoordner');
-        assert.ok(path.basename(jobs.mediaPath('video')).startsWith(path.basename(variante) + '_'));
+        assert.ok(path.basename(jobs.mediaPath('video')).startsWith(`museum_${path.basename(variante)}_`));
     } finally {
         await jobs.close();
         fs.rmSync(folder, {recursive: true, force: true});
@@ -260,6 +268,34 @@ test('das fertige Video wird im Explorer gezeigt statt kopiert', () => {
     assert.ok(!main.includes('showSaveDialog'));
     const page = studio('index.html');
     assert.ok(page.includes('Im Ordner zeigen') && !page.includes('Video herunterladen'));
+});
+
+test('3D-Vorschau und Rendern sind getrennte Arbeitsbereiche', () => {
+    const studio = name => fs.readFileSync(path.join(__dirname, '..', 'studio', name), 'utf8');
+    const page = studio('index.html');
+    const header = /<header>[\s\S]*?<\/header>/.exec(page)[0];
+    assert.ok(header.includes('id="mode3d"') && header.includes('id="modeRender"'), 'Umschalter im Kopf');
+    assert.match(page, /<body data-modus="render">/);
+    // Öffnende Tags des Elements und aller umschließenden Elemente.
+    const vorfahren = id => {
+        const start = page.lastIndexOf('<', page.indexOf(`id="${id}"`));
+        const offen = [];
+        for (const match of page.slice(0, start).matchAll(/<(\/?)([a-z0-9]+)\b[^>]*>/gi)) {
+            if (match[1]) offen.pop();
+            else if (!/^(input|img|br|meta|link)$/i.test(match[2])) offen.push(match[0]);
+        }
+        return [...offen, page.slice(start, page.indexOf('>', start) + 1)];
+    };
+    const nurRender = id => vorfahren(id).some(tag => tag.includes('data-nur="render"'));
+    for (const element of ['renderStill', 'renderAnimation', 'stop', 'showVideo', 'progress', 'log', 'RENDER_PRESET', 'orbitDial']) {
+        assert.ok(nurRender(element), `${element} gehört nur zum Render-Modus`);
+    }
+    // Der 3D-Export braucht Auflösung, Dauer, Bildrate und Umlauf, deshalb bleiben sie in beiden Modi.
+    for (const element of ['RESOLUTION_PRESET', 'DURATION', 'FPS', 'ORBIT_DEGREES']) {
+        assert.ok(!nurRender(element), `${element} wird auch in der 3D-Vorschau gebraucht`);
+    }
+    assert.match(studio('styles.css'), /body\[data-modus="3d"\] \[data-nur="render"\]/);
+    assert.match(studio('viewer.js'), /document\.body\.dataset\.modus = is3d \? '3d' : 'render'/);
 });
 
 test('3D-Vorschau exportiert auch Textobjekte (Sockelbeschriftungen)', () => {

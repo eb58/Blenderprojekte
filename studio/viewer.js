@@ -28,6 +28,7 @@ let workMeshes = [];
 
 const setActiveMode = is3d => {
     globalThis.museumViewMode = is3d ? '3d' : 'render';
+    document.body.dataset.modus = is3d ? '3d' : 'render';
     mode3d.classList.toggle('active', is3d);
     modeRender.classList.toggle('active', !is3d);
     canvas.hidden = !is3d;
@@ -291,11 +292,6 @@ const improveMaterials = (root, imageTextures) => {
             `);
     };
     arcadeStone.customProgramCacheKey = () => 'museum-arcade-slabs-v1';
-    const floor = new THREE.MeshStandardMaterial({
-        map: stoneTexture([82, 64, 48], 22), color: 0x806b55,
-        roughness: 0.36, metalness: 0, envMapIntensity: 0.5
-    });
-    floor.name = 'Three.js Museumsboden';
     const parquet = parquetTexture();
     const ceilingWood = new THREE.MeshStandardMaterial({
         color: 0xffffff, roughness: 0.48, metalness: 0, envMapIntensity: 0.3,
@@ -396,18 +392,14 @@ const improveMaterials = (root, imageTextures) => {
             object.receiveShadow = true;
         } else if (/museumsboden|polierter museumsboden/.test(identity)) {
             floorMeshes.push(object);
-            // Die Boden-UVs kommen aus Blender; die Textur wird im Viewer zuverlässig erzeugt.
-            if (document.getElementById('BODEN').value === 'parkett') {
-                parquet.channel = original?.map?.channel ?? 1;
-                original.map = parquet;
-                original.color.set(0xffffff);
-                original.roughness = 0.46;
-                original.metalness = 0;
-                original.envMapIntensity = 0.32;
-                original.needsUpdate = true;
-            } else {
-                object.material = floor;
-            }
+            // Fischgrätparkett: Die Boden-UVs kommen aus Blender; die Textur wird im Viewer zuverlässig erzeugt.
+            parquet.channel = original?.map?.channel ?? 1;
+            original.map = parquet;
+            original.color.set(0xffffff);
+            original.roughness = 0.46;
+            original.metalness = 0;
+            original.envMapIntensity = 0.32;
+            original.needsUpdate = true;
             object.receiveShadow = true;
         } else {
             const materials = Array.isArray(object.material) ? object.material : [object.material];

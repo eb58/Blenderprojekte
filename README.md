@@ -80,7 +80,7 @@ npm start
 Die gewünschte Konfiguration wird über `MUSEUM_CONFIG` übergeben; ohne diese Variable gelten die Standardwerte aus `museum/einstellungen.py`. Ein Testbild lässt sich so rendern:
 
 ```powershell
-$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\parkett_800x600_test_aaabc7\test-settings.json")
+$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\800x600_test\test-settings.json")
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" `
     --background `
     --factory-startup `
@@ -92,7 +92,7 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\testbilder\parkett_800x600_
 Eine Animation mit der `settings.json` einer vorhandenen Variante (Ordnername als Beispiel) wird so gestartet:
 
 ```powershell
-$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\settings.json")
+$env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\1920x1080_60fps_20s_quality_14c6fb\settings.json")
 & "C:\Program Files\Blender Foundation\Blender 5.2\blender.exe" `
     --background `
     --factory-startup `
@@ -106,7 +106,7 @@ $env:MUSEUM_CONFIG = (Resolve-Path ".\Ausgabe\Render\parkett_1920x1080_60fps_20s
 ```powershell
 ffmpeg -framerate 60 `
     -start_number 1 `
-    -i ".\Ausgabe\Render\parkett_1920x1080_60fps_20s_quality_da2cc8\frames\frame_%04d.png" `
+    -i ".\Ausgabe\Render\1920x1080_60fps_20s_quality_14c6fb\frames\frame_%04d.png" `
     -c:v libx264 `
     -crf 18 `
     -pix_fmt yuv420p `
@@ -124,7 +124,7 @@ Der Ordner `Ausgabe\Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. 
 
 Die Formularwerte werden im `localStorage` der Oberfläche gespeichert und beim nächsten Öffnen wiederhergestellt.
 
-Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Das GLB-Modell wird unabhängig davon erst beim Öffnen der 3D-Vorschau exportiert. Änderungen an Boden, Skulpturgröße oder Granitdicke starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
+Beim ersten Testbild startet Museum Studio einen Blender-Prozess und baut darin die komplette Szene auf. Dieser Prozess bleibt anschließend im Hintergrund geöffnet. Weitere Testbilder – etwa beim Drehen des Kamerarads – ändern nur Kamera und Rendereinstellungen und müssen die Szene nicht erneut erzeugen. Deshalb ist das erste Bild weiterhin langsamer, die folgenden Perspektiven reagieren aber deutlich schneller. Das GLB-Modell wird unabhängig davon erst beim Öffnen der 3D-Vorschau exportiert. Änderungen am Szenencode, an Bildtexturen oder Materialdaten starten den Worker automatisch neu; vor einer Animation wird er beendet, damit der GPU-Speicher vollständig für den Animationsrender verfügbar ist.
 
 Über **3D-Vorschau** oberhalb des Bildes kann das Museum ohne erneutes Rendering flüssig in der App gedreht und gezoomt werden. Beim ersten Öffnen dieser Ansicht exportiert Blender dafür ein lokales GLB-Modell. Der horizontale Blickwinkel wird beim Loslassen automatisch mit dem Kamerarad synchronisiert. **Testbild rendern** verwendet dadurch immer die zuletzt gewählte Perspektive. Die 3D-Vorschau ist bewusst vereinfacht; prozedurale Materialien, Volumenlicht und OptiX-Denoising erscheinen erst im Renderbild.
 
@@ -142,16 +142,13 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG 
 
 | Parameter | Bedeutung |
 | --- | --- |
-| Boden | Marmor- oder Parkettboden |
-| Skulpturgröße | Gemeinsame Skalierung der beiden großen Granitskulpturen |
-| Granitdicke | Stärke der mittels Solidify erzeugten Oberflächen |
 | Dauer | Länge der Animation in Sekunden |
 | Bilder/Sekunde | Bildrate des Renders und des MP4-Videos |
 | Startposition/Grad | Startpunkt auf der kreisförmigen Kamerafahrt und Perspektive des Testbilds |
 | Umlauf/Grad | Drehwinkel der Kamerafahrt |
 | Breite/Höhe | Ausgabeauflösung in Pixeln |
 
-Einen Ausgabeordner gibt es nicht mehr als Parameter; siehe [Ausgabe](#ausgabe).
+Einen Ausgabeordner gibt es nicht mehr als Parameter; siehe [Ausgabe](#ausgabe). Boden, Skulpturgröße und Granitdicke sind fest: Fischgrätparkett aus Eiche, Skulpturgröße 4,55 und Granitdicke 0,06 (in `museum/einstellungen.py`).
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 
@@ -179,23 +176,23 @@ Projektordner\Ausgabe\
 ├── Render\
 │   ├── .museum_worker\       Arbeitsdateien des Blender-Workers (temporär)
 │   ├── testbilder\
-│   │   └── parkett_800x600_test_aaabc7\  ein Ordner je Szene
+│   │   └── 800x600_test\              ein Ordner je Auflösung und Qualität
 │   │       ├── testbild_158grad.png      ein Testbild je Kamerawinkel
 │   │       └── test-settings.json        Einstellungen des letzten Testbilds
-│   └── parkett_1920x1080_60fps_20s_quality_da2cc8\   ein Ordner je Animationsvariante
+│   └── 1920x1080_60fps_20s_quality_14c6fb\   ein Ordner je Animationsvariante
 │       ├── frames\              PNG-Einzelbilder der Animation
 │       ├── logs\                Blender- und FFmpeg-Ausgaben
 │       └── settings.json        Einstellungen der Animation
 └── Videos\
-    └── parkett_1920x1080_60fps_20s_quality_da2cc8_2026-10-11_15-12-30.mp4
+    └── museum_1920x1080_60fps_20s_quality_14c6fb_2026-10-11_15-12-30.mp4
                                  Fertige Videos: Variante plus Datum und Uhrzeit
 ```
 
-Den Ordner einer Animation bildet das Studio aus ihren Einstellungen: Boden, Auflösung, Bildrate, Dauer und Qualität stehen lesbar im Namen, die Prüfsumme am Ende deckt alle Einstellungen ab (auch Skulpturgröße, Granitdicke, Startwinkel und Umlauf). Gleiche Einstellungen setzen deshalb automatisch den vorhandenen Lauf fort, geänderte beginnen einen neuen Ordner. PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird.
+Den Ordner einer Animation bildet das Studio aus ihren Einstellungen: Auflösung, Bildrate, Dauer und Qualität stehen lesbar im Namen, die Prüfsumme am Ende deckt alle Einstellungen ab (auch Startwinkel und Umlauf). Gleiche Einstellungen setzen deshalb automatisch den vorhandenen Lauf fort, geänderte beginnen einen neuen Ordner. PNG-Frames bleiben erhalten, wenn ein Render abgebrochen wird.
 
-Testbilder sammelt das Studio je Szene: Den Ordner bestimmen nur Werte, die ein Testbild verändern (Boden, Skulpturgröße, Granitdicke, Auflösung und Qualität). Winkel, Dauer, Bildrate und Umlauf trennen die Testbilder nicht. Jedes Testbild trägt seinen Kamerawinkel im Namen; ein neues Bild mit gleichem Winkel ersetzt das vorige.
+Testbilder sammelt das Studio je Auflösung und Qualität, den einzigen Einstellungen, die ein Testbild verändern. Winkel, Dauer, Bildrate und Umlauf trennen die Testbilder nicht. Jedes Testbild trägt seinen Kamerawinkel im Namen; ein neues Bild mit gleichem Winkel ersetzt das vorige.
 
-Fertige Videos tragen den Namen ihrer Variante plus Datum und Uhrzeit der Kodierung; über den Variantennamen findet man die zugehörige `settings.json`. Nicht mehr benötigte Varianten und Testbilder können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
+Fertige Videos heißen `museum_` plus Name ihrer Variante plus Datum und Uhrzeit der Kodierung; über den Variantennamen findet man die zugehörige `settings.json`. Nicht mehr benötigte Varianten und Testbilder können in `Ausgabe\Render\` von Hand gelöscht werden. `Ausgabe\` ist vollständig von Git ausgeschlossen.
 
 ## Assets
 

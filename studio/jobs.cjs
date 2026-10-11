@@ -12,13 +12,10 @@ const VIDEO_DIR = path.join(AUSGABE_DIR, 'Videos');
 const VIDEO_ENCODING = {crf: 18, pixelFormat: 'yuv420p'};
 const DEFAULTS = {
     RENDER_PRESET: 'test',
-    BODEN: 'marmor',
     RESOLUTION_X: 1280,
     RESOLUTION_Y: 800,
     FPS: 24,
     DURATION: 5,
-    SCULPTURE_SCALE: 3.55,
-    THICKNESS: 0.06,
     START_ANGLE: 158,
     ORBIT_DEGREES: 360
 };
@@ -40,7 +37,7 @@ const kurzHash = (settings, keys) => crypto.createHash('sha256')
 // Jede Einstellungsvariante rendert in einen eigenen Ordner: Gleiche Werte setzen denselben Lauf fort,
 // geänderte beginnen einen neuen. Die Prüfsumme deckt alle Einstellungen ab, der Name die wichtigsten.
 const variantName = settings =>
-    `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.FPS}fps_` +
+    `${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.FPS}fps_` +
     `${settings.DURATION}s_${settings.RENDER_PRESET}_${kurzHash(settings, Object.keys(DEFAULTS))}`;
 // Fertige Videos tragen den Namen ihrer Variante; der Zeitstempel verhindert Überschreiben bei erneuter Kodierung.
 const videoName = (settings, date = new Date()) => {
@@ -48,15 +45,14 @@ const videoName = (settings, date = new Date()) => {
     // Windows erlaubt keine Doppelpunkte in Dateinamen, daher auch die Uhrzeit mit Bindestrichen.
     const stamp = `${date.getFullYear()}-${zwei(date.getMonth() + 1)}-${zwei(date.getDate())}_` +
         `${zwei(date.getHours())}-${zwei(date.getMinutes())}-${zwei(date.getSeconds())}`;
-    return `${path.basename(settings.OUTPUT_DIR)}_${stamp}.mp4`;
+    return `museum_${path.basename(settings.OUTPUT_DIR)}_${stamp}.mp4`;
 };
-// Testbilder sammeln sich je Szene; Winkel und reine Animationswerte (Dauer, Bildrate, Umlauf) trennen sie nicht.
+// Testbilder sammeln sich je Auflösung und Qualität, den einzigen Einstellungen, die ein Testbild verändern;
+// Winkel und reine Animationswerte (Dauer, Bildrate, Umlauf) trennen sie nicht.
 // Ein neues Testbild mit gleichem Kamerawinkel ersetzt das vorige.
-const TESTBILD_KEYS = ['BODEN', 'SCULPTURE_SCALE', 'THICKNESS', 'RESOLUTION_X', 'RESOLUTION_Y', 'RENDER_PRESET'];
 const testbildPfad = (settings, renderDir = RENDER_DIR) => path.join(
     renderDir, TESTBILDER,
-    `${settings.BODEN}_${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.RENDER_PRESET}_` +
-    kurzHash(settings, TESTBILD_KEYS),
+    `${settings.RESOLUTION_X}x${settings.RESOLUTION_Y}_${settings.RENDER_PRESET}`,
     `testbild_${settings.START_ANGLE}grad.png`
 );
 
@@ -69,14 +65,11 @@ const validate = (data, renderDir = RENDER_DIR) => {
     if (!['test', 'final_fast', 'animation', 'quality'].includes(settings.RENDER_PRESET)) {
         throw Error('Unbekannte Renderqualität.');
     }
-    if (!['marmor', 'parkett'].includes(settings.BODEN)) throw Error('Unbekannter Boden.');
     const limits = {
         RESOLUTION_X: [64, 8192],
         RESOLUTION_Y: [64, 8192],
         FPS: [1, 120],
         DURATION: [0.1, 3600],
-        SCULPTURE_SCALE: [0.1, 10],
-        THICKNESS: [0.001, 1],
         START_ANGLE: [-3600, 3600],
         ORBIT_DEGREES: [-3600, 3600]
     };
@@ -157,10 +150,7 @@ const createStudio = ({
     // Jede Änderung an Szenenmodulen, Bildtexturen oder Materialdaten erfordert einen neu aufgebauten Worker.
     const sources = folder => files(folder).filter(name => /\.(py|json|png)$/.test(name)).sort()
         .map(name => [name, modified(path.join(folder, name))]);
-    const signature = settings => JSON.stringify([
-        settings.BODEN,
-        settings.SCULPTURE_SCALE,
-        settings.THICKNESS,
+    const signature = () => JSON.stringify([
         sources(path.join(ROOT, 'museum')),
         modified(path.join(__dirname, 'blender_worker.py')),
         sources(path.join(ROOT, 'assets', 'bilder')),
@@ -200,7 +190,7 @@ const createStudio = ({
         state.job = null;
     };
     const ensureWorker = async settings => {
-        const sig = signature(settings);
+        const sig = signature();
         if (alive(state.worker) && state.signature === sig) return;
         await stopWorker();
         if (closed) throw Error('Studio wurde beendet.');

@@ -192,28 +192,12 @@ def elfenbein_kalkstein():
     return plinth_stone
 
 
-def museumsboden(material, art, boden_objekt):
-    """Polierter Marmor mit Schachbrett oder Parkett (`art` = BODEN) auf dem vorhandenen Bodenmaterial."""
+def museumsboden(material, boden_objekt):
+    """Fischgrätparkett aus Eiche auf dem vorhandenen Bodenmaterial, mit eigener UV-Abwicklung des Bodens."""
     nt = material.node_tree; N, L = nt.nodes, nt.links; p = N["Principled BSDF"]
-    tc, ck, nz, mix, rr = (N.new(t) for t in ("ShaderNodeTexCoord", "ShaderNodeTexChecker", "ShaderNodeTexNoise", "ShaderNodeMix", "ShaderNodeMapRange"))
-    ck.inputs["Scale"].default_value = 11; ck.inputs["Color1"].default_value = (0.82, 0.76, 0.66, 1); ck.inputs["Color2"].default_value = (0.66, 0.60, 0.51, 1)
-    nz.inputs["Scale"].default_value = 6; nz.inputs["Detail"].default_value = 12; nz.inputs["Roughness"].default_value = 0.6
-    mix.data_type, mix.blend_type = 'RGBA', 'MULTIPLY'; mix.inputs["Factor"].default_value = 0.6
-    rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.06, 0.16
-    for a, b_ in ((tc.outputs["Generated"], ck.inputs["Vector"]), (tc.outputs["Generated"], nz.inputs["Vector"]), (ck.outputs["Color"], mix.inputs["A"]), (nz.outputs["Color"], mix.inputs["B"]),
-                  (mix.outputs["Result"], p.inputs["Base Color"]), (nz.outputs["Fac"], rr.inputs["Value"]), (rr.outputs["Result"], p.inputs["Roughness"])): L.new(a, b_)
-    p.inputs["Coat Weight"].default_value = 0.6; p.inputs["Coat Roughness"].default_value = 0.03
-    if art != "parkett":
-        return
-    # Dielen im Halbverband: Brick-Textur, pro Diele leicht anderer Ton, Maserung quer zur Dielenlaenge
-    bk, wv2, gm2 = (N.new(t) for t in ("ShaderNodeTexBrick", "ShaderNodeTexWave", "ShaderNodeMix"))
-    bk.offset, bk.offset_frequency, bk.squash = 0.5, 2, 1.0
-    for k, v in (("Scale", 30), ("Color1", (0.60, 0.38, 0.19, 1)), ("Color2", (0.42, 0.25, 0.12, 1)), ("Mortar", (0.05, 0.03, 0.02, 1)), ("Mortar Size", 0.006), ("Mortar Smooth", 0.1), ("Brick Width", 1.0), ("Row Height", 0.12)): bk.inputs[k].default_value = v
-    wv2.wave_type, wv2.bands_direction = 'BANDS', 'Y'
-    for k, v in (("Scale", 250), ("Distortion", 3.0), ("Detail", 3.0), ("Detail Scale", 3.0), ("Detail Roughness", 0.6)): wv2.inputs[k].default_value = v
-    gm2.data_type, gm2.blend_type = 'RGBA', 'MULTIPLY'; gm2.inputs["Factor"].default_value = 0.45
-    mix.inputs["Factor"].default_value = 0.25; rr.inputs["To Min"].default_value, rr.inputs["To Max"].default_value = 0.2, 0.32; p.inputs["Coat Weight"].default_value = 0.3
-    for a, b_ in ((tc.outputs["Generated"], bk.inputs["Vector"]), (tc.outputs["Generated"], wv2.inputs["Vector"]), (bk.outputs["Color"], gm2.inputs["A"]), (wv2.outputs["Color"], gm2.inputs["B"]), (gm2.outputs["Result"], mix.inputs["A"])): L.new(a, b_)
+    p.inputs["Roughness"].default_value = 0.46
+    p.inputs["Coat Weight"].default_value = 0.10
+    p.inputs["Coat Roughness"].default_value = 0.03
 
     # Fischgrät als gemeinsame Bildtextur für Cycles und glTF/Three.js.
     size, plank_units = 512, 5
@@ -244,9 +228,6 @@ def museumsboden(material, art, boden_objekt):
     texture = N.new("ShaderNodeTexImage"); texture.image = parquet_image
     texture.extension = 'REPEAT'
     L.new(texture.outputs["Color"], p.inputs["Base Color"])
-    for connection in list(p.inputs["Roughness"].links): L.remove(connection)
-    p.inputs["Roughness"].default_value = 0.46
-    p.inputs["Coat Weight"].default_value = 0.10
     # 18 cm breite, 90 cm lange Stäbe, diagonal zur Raumachse verlegt.
     uv_layer = boden_objekt.data.uv_layers.new(name="Fischgraet UV")
     uv_layer.active_render = True

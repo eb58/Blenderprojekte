@@ -124,26 +124,29 @@ p {
     touch-action: none
 }
 
-.preview-tools {
-    position: absolute;
-    z-index: 4;
-    top: 12px;
-    right: 12px;
+/* Arbeitsbereiche: Elemente mit data-nur erscheinen nur im passenden Modus. */
+body[data-modus="3d"] [data-nur="render"],
+body[data-modus="render"] [data-nur="3d"] {
+    display: none !important
+}
+
+.modes {
     display: flex;
-    gap: 6px;
-    padding: 5px;
-    border: 1px solid #ffffff1c;
-    border-radius: 10px;
-    background: #0c100ddd;
-    backdrop-filter: blur(8px)
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    background: #0c100d
 }
 
-.preview-tools button {
-    padding: 7px 10px;
-    font-size: 11px
+.modes button {
+    padding: 8px 18px;
+    border: 0;
+    background: transparent;
+    color: var(--muted)
 }
 
-.preview-tools button.active {
+.modes button.active {
     background: var(--accent);
     color: #23311c
 }
@@ -435,9 +438,6 @@ pre {
     display: none
 }
 
-.footer {
-    display: none
-}
 
 @media(max-width:900px) {
     body {
