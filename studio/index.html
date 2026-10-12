@@ -13,7 +13,6 @@
         <div class="brand">Museum <span>Studio</span></div>
         <nav class="modes" aria-label="Arbeitsbereich"><button id="mode3d" type="button">3D-Vorschau</button><button
                 id="modeRender" class="active" type="button">Rendern</button></nav>
-        <div class="badge">Lokal auf deinem Rechner · Blender / OptiX</div>
     </header>
     <main>
         <section>
@@ -25,8 +24,11 @@
                     <div class="symbol">∿</div><strong>Hier entsteht dein Museum.</strong><small>Ein Testbild zeigt
                         Licht, Material und Perspektive.</small>
                 </div><canvas id="viewer" hidden></canvas>
-                <div class="viewer-angle" id="viewerAngle" hidden>0°</div><div class="viewer-actions" id="viewerActions" hidden><button id="viewerWalk" type="button">Rundgang</button><button id="viewerPng" type="button">PNG speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img id="preview"
-                    alt="Gerendertes Museum" hidden>
+                <div class="viewer-angle" id="viewerAngle" hidden>0°</div>
+                <div class="viewer-actions" id="viewerActions" hidden><button id="viewerWalk"
+                        type="button">Rundgang</button><button id="viewerPng" type="button">PNG
+                        speichern</button><button id="viewerVideo" type="button">WebM aufnehmen</button></div><img
+                    id="preview" alt="Gerendertes Museum" hidden>
             </div>
             <div data-nur="render">
                 <div class="actions"><button class="primary job" id="renderStill">Testbild rendern</button><button
@@ -48,38 +50,46 @@
                 <div class="orbit-dial" id="orbitDial" role="slider" tabindex="0" aria-label="Startposition der Kamera"
                     aria-valuemin="0" aria-valuemax="359">
                     <div class="orbit-pointer" id="orbitPointer"></div>
-                    <div class="orbit-center" id="orbitValue">0°</div><span class="orbit-mark n">0°</span><span
-                        class="orbit-mark e">90°</span><span class="orbit-mark s">180°</span><span
-                        class="orbit-mark w">270°</span>
+                    <div class="orbit-center" id="orbitValue">0°</div>
+                    <span class="orbit-mark n">0°</span>
+                    <span class="orbit-mark e">90°</span>
+                    <span class="orbit-mark s">180°</span>
+                    <span class="orbit-mark w">270°</span>
                 </div>
                 <div class="orbit-hint">Startposition durch Drehen wählen. Beim Loslassen wird das Testbild automatisch
                     neu berechnet.</div>
             </div><input id="START_ANGLE" type="hidden">
-            <div class="grid"><label>Umlauf / Grad<input id="ORBIT_DEGREES" type="number" min="-3600" max="3600"
-                        step="10"></label><label>Dauer / Sekunden<input id="DURATION" type="number" min="0.1" max="3600"
-                        step="1"></label></div><label>Bilder / Sekunde<input id="FPS" type="number" min="1"
-                    max="120"></label>
+            <div class="grid">
+                <label>Umlauf / Grad<input id="ORBIT_DEGREES" type="number" min="-3600" max="3600" step="10"></label>
+                <label>Dauer / Sekunden<input id="DURATION" type="number" min="1" max="3600" step="1"></label>
+            </div>
+            <label>Bilder / Sekunde<input id="FPS" type="number" min="1" max="120"> </label>
             <div class="divider"></div>
-            <h2>Ausgabe</h2><label data-nur="render">Qualität<select id="RENDER_PRESET">
+            <h2>Ausgabe</h2>
+            <label data-nur="render">Qualität
+                <select id="RENDER_PRESET">
                     <option value="test">Schneller Test · 16 Samples</option>
                     <option value="final_fast">Schnelles Ergebnis · 32 Samples</option>
                     <option value="animation">Animation · 48 Samples</option>
                     <option value="quality">Hohe Qualität · 128 Samples</option>
-                </select></label><label>Auflösung<select id="RESOLUTION_PRESET">
+                </select>
+            </label>
+            <label>Auflösung<select id="RESOLUTION_PRESET">
                     <option value="800x600">800 × 600 · 4:3</option>
                     <option value="1280x800">1280 × 800 · 16:10</option>
                     <option value="1920x1080">1920 × 1080 · Full HD</option>
-                </select></label><input id="RESOLUTION_X" type="hidden"><input id="RESOLUTION_Y"
-                type="hidden">
+                </select>
+            </label>
+            <input id="RESOLUTION_X" type="hidden"><input id="RESOLUTION_Y" type="hidden">
             <p class="note" data-nur="3d">Auflösung, Dauer, Bildrate und Umlauf gelten für „PNG speichern“ und
                 „WebM aufnehmen“. Die Aufnahme beginnt beim aktuellen Winkel der Vorschau.</p>
-            <p class="note" data-nur="render">Testbilder je Auflösung und Qualität in „Ausgabe\Render\testbilder“, jede Animationsvariante automatisch in einem
-                eigenen Ordner unter „Ausgabe\Render“, fertige MP4-Videos in „Ausgabe\Videos“. Material: Granit. Keine
-                Besucher.</p>
+            <p class="note" data-nur="render">Testbilder je Auflösung und Qualität in „Ausgabe\Render\testbilder“, jede
+                Animationsvariante automatisch in einem
+                eigenen Ordner unter „Ausgabe\Render“, fertige MP4-Videos in „Ausgabe\Videos“.</p>
         </aside>
     </main>
     <script>
-        const boot = {defaults: globalThis.museumStudio.defaults};
+        const boot = { defaults: globalThis.museumStudio.defaults };
         const storageKey = 'museum-studio-settings-v1';
         const resolutionPreset = document.getElementById('RESOLUTION_PRESET');
         const angleInput = document.getElementById('START_ANGLE');
@@ -127,7 +137,7 @@
             let angle = Math.atan2(x, -y) * 180 / Math.PI;
             if (angle < 0) angle += 360;
             angleInput.value = Math.round(angle / 5) * 5 % 360;
-            angleInput.dispatchEvent(new Event('input', {bubbles: true}));
+            angleInput.dispatchEvent(new Event('input', { bubbles: true }));
         };
 
         const api = async (action, data) => {
@@ -186,7 +196,7 @@
         const start = async kind => {
             errorBox.textContent = '';
             try {
-                await api('start', {kind, settings: settings()});
+                await api('start', { kind, settings: settings() });
                 await update();
             } catch (error) {
                 errorBox.textContent = error.message;
@@ -262,7 +272,7 @@
             angleInput.value = event.key === 'Home'
                 ? 0
                 : normalizedAngle() + (['ArrowLeft', 'ArrowDown'].includes(event.key) ? -5 : 5);
-            angleInput.dispatchEvent(new Event('input', {bubbles: true}));
+            angleInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
         angleInput.addEventListener('input', () => {
             updateOrbitDial();
@@ -279,7 +289,7 @@
             }
         });
 
-        globalThis.prepareMuseumModel = () => api('model', {settings: settings()});
+        globalThis.prepareMuseumModel = () => api('model', { settings: settings() });
         globalThis.setViewerAngle = angle => {
             angleInput.value = Math.round(((angle % 360) + 360) % 360);
             updateOrbitDial();

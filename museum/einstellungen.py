@@ -19,6 +19,8 @@ START_ANGLE = 158
 
 # Fest eingestellt (nicht über die Oberfläche): Größe und Dicke der Granitskulpturen.
 SCULPTURE_SCALE = 4.55
+# Die beiden Hauptwerke (Kusner, S41) auf den Sockeln sind größer als die Werke in den Nischen.
+HAUPTWERK_FAKTOR = 1.10
 THICKNESS = 0.06
 
 OUTPUT_DIR = os.path.join(PROJECT_DIR, "Ausgabe", "Render", "kusner_p7_granit_museum")

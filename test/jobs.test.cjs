@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const {createStudio, validate, frameCount, testbildPfad, videoName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
+const {createStudio, validate, frameCount, renderStatistik, testbildPfad, videoName, DEFAULTS, VIDEO_DIR} = require('../studio/jobs.cjs');
 
 // Der Szenenaufbau ist auf mehrere Module in museum/ verteilt.
 const museumQuelltext = () => {
@@ -44,6 +44,7 @@ test('jede Einstellungsvariante einer Animation bekommt automatisch einen eigene
     }
     const einstellungen = fs.readFileSync(path.join(__dirname, '..', 'museum', 'einstellungen.py'), 'utf8');
     assert.match(einstellungen, /^SCULPTURE_SCALE = 4\.55$/m);
+    assert.match(einstellungen, /^HAUPTWERK_FAKTOR = 1\.10$/m);
     assert.match(einstellungen, /^THICKNESS = 0\.06$/m);
     assert.ok(!museumQuelltext().includes('BODEN'), 'kein Marmor-/Parkett-Schalter mehr in der Szene');
 });
@@ -166,6 +167,15 @@ test('real Blender still and FFmpeg encoding through direct job calls', {
         assert.ok(fs.statSync(jobs.mediaPath('video')).size > 0);
         assert.equal(path.dirname(jobs.mediaPath('video')), videos, 'Testvideos landen nicht im echten Videoordner');
         assert.ok(path.basename(jobs.mediaPath('video')).startsWith(`museum_${path.basename(variante)}_`));
+
+        // Ein Testbild nach dem Video meldet seine eigene Phase und nicht mehr „Video wird erstellt“.
+        await jobs.start('still', settings);
+        assert.equal(jobs.status().phase, 'still');
+        do {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            status = jobs.status();
+        } while (status.running && Date.now() < deadline + 60000);
+        assert.equal(status.code, 0, status.log);
     } finally {
         await jobs.close();
         fs.rmSync(folder, {recursive: true, force: true});
@@ -517,4 +527,15 @@ test('Die Fenster sind Glas mit schlankem Titanrahmen, ohne Sprossen und Pfosten
     assert.ok(scene.includes('Is Shadow Ray'));
     const viewer = viewerQuelltext();
     assert.ok(viewer.includes('fensterglas') && viewer.includes('fensterrahmen titan'));
+});
+
+test('Renderstatistik schätzt Zeit pro Frame und Restzeit nur aus den Frames dieses Laufs', () => {
+    // 10 Frames lagen schon vor dem Fortsetzen vor, 20 sind in 100 s neu entstanden.
+    assert.deepEqual(renderStatistik({frames: 30, total: 120, startFrames: 10, elapsed: 100}),
+        {prozent: 25, neu: 20, proFrame: 5, rest: 450});
+    // Solange noch kein neues Frame fertig ist, gibt es keine Schätzung.
+    assert.deepEqual(renderStatistik({frames: 10, total: 120, startFrames: 10, elapsed: 30}),
+        {prozent: 10 / 120 * 100, neu: 0, proFrame: null, rest: null});
+    assert.deepEqual(renderStatistik({frames: 120, total: 120, startFrames: 0, elapsed: 240}),
+        {prozent: 100, neu: 120, proFrame: 2, rest: 0});
 });

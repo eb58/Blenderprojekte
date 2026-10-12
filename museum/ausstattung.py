@@ -3,7 +3,7 @@ import math
 import os
 
 import bpy
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 from bauteile import add_box, box, link, sammlung
 from einstellungen import PROJECT_DIR
@@ -137,7 +137,7 @@ def museumsbaenke():
     for index, (bench_x, bench_y, rotation) in enumerate(((-4.5, -7.0, 180), (4.5, -7.0, 180)), 1):
         bench = D.objects.new(f"Museumsbank {index}", None); bcol.objects.link(bench)
         bench.location = (bench_x, bench_y, 0); bench.rotation_euler.z = math.radians(rotation)
-        bench.scale = (1.05,) * 3
+        bench.scale = (1.26, 1.26, 1.26)
 
         def bench_piece(label, position, dimensions, material, bevel):
             part = add_box(f"Museumsbank {index} {label}", position, dimensions, material, bevel)
@@ -172,12 +172,16 @@ def eckhocker(bcol):
                            (min(p.y for p in points) + max(p.y for p in points)) / 2,
                            min(p.z for p in points)))
     stool_transform.translation -= stool_center
+    # Um den Fußpunkt skalieren, damit der Hocker auf dem Boden bleibt.
+    stool_transform = Matrix.Scale(1.30, 4) @ stool_transform
     for index, (x, y) in enumerate(((-14.7, -15.8), (14.7, -15.8),
                                     (-14.7, 19.1), (14.7, 19.1)), 1):
         stool = stool_template.copy()
         stool.name = f"Eckhocker {index} bar_chair_round_01"
         bcol.objects.link(stool)
-        stool.matrix_basis = stool_transform.copy()
+        # Die Lehne zeigt im Modell nach +Y; sie soll diagonal in die Raumecke weisen.
+        facing = math.atan2(math.copysign(1, y), math.copysign(1, x)) - math.pi / 2
+        stool.matrix_basis = Matrix.Rotation(facing, 4, 'Z') @ stool_transform
         stool.location += Vector((x, y, 0))
     D.objects.remove(stool_template, do_unlink=True)
 

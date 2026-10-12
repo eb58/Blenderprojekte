@@ -27,7 +27,7 @@ import weierstrass
 for modul in (einstellungen, rendering, materialien, bauteile, ausstattung, costa, sierpinski, weierstrass):
     importlib.reload(modul)
 
-from einstellungen import MAKE_VIDEO, ORBIT_DEGREES, SCULPTURE_SCALE, START_ANGLE, THICKNESS
+from einstellungen import HAUPTWERK_FAKTOR, MAKE_VIDEO, ORBIT_DEGREES, SCULPTURE_SCALE, START_ANGLE, THICKNESS
 from materialien import ashlar_material, emissive_material, simple_material
 from bauteile import add_area_light, add_box, add_niche, box, join, link, obj_by_name, sammlung
 
@@ -86,9 +86,9 @@ def granitskulptur(name, mesh_name, eckpunkte, flaechen):
 
 
 # Formeln und Ringbereiche wie auf https://eb58.github.io/Non-Orientable-Minimal-Surfaces/
-vertices, faces = weierstrass.kusner(P, SCULPTURE_SCALE)
+vertices, faces = weierstrass.kusner(P, SCULPTURE_SCALE * HAUPTWERK_FAKTOR)
 kusner = granitskulptur("Kusner p=7", "Kusner_p7_Mesh", vertices, faces)
-s41_vertices, s41_faces = weierstrass.s41(7, 5, 1.1, 1.3, SCULPTURE_SCALE)
+s41_vertices, s41_faces = weierstrass.s41(7, 5, 1.1, 1.3, SCULPTURE_SCALE * HAUPTWERK_FAKTOR)
 s41 = granitskulptur("S41_7_5", "S41_7_5_Mesh", s41_vertices, s41_faces)
 # Doppeltes Kleeblatt "S41_5_3 Double Trefoil" (m = 5, n = 3, Ring 1,1 bis 1,5).
 double_trefoil = granitskulptur("Double Trefoil", "Double_Trefoil_Mesh",
@@ -103,19 +103,27 @@ costa_skulptur = granitskulptur("Costa", "Costa_Mesh", *costa.flaeche(SCULPTURE_
 # SOCKEL UND POSITION DER BEIDEN HAUPTWERKE
 # ============================================================
 
-EXHIBIT_X = 4.4
+# Abstand wächst mit den Hauptwerken, damit sie sich in der Raummitte nicht berühren.
+EXHIBIT_X = 4.4 * HAUPTWERK_FAKTOR
 add_box("Sockel unten", (-EXHIBIT_X, 0, 0.30), (7.2, 4.8, 0.60), plinth_stone, 0.07)
 add_box("Sockel oben", (-EXHIBIT_X, 0, 0.68), (6.6, 4.2, 0.16), plinth_stone, 0.04)
 add_box("S41 Sockel unten", (EXHIBIT_X, 0, 0.30), (7.2, 4.8, 0.60), plinth_stone, 0.07)
 add_box("S41 Sockel oben", (EXHIBIT_X, 0, 0.68), (6.6, 4.2, 0.16), plinth_stone, 0.04)
 plinth_top = 0.77
-min_z = min(vertex[2] for vertex in vertices)
+
+
+def unterkante(skulptur):
+    """Tiefster Punkt einschließlich Granitdicke und Kantenrundung, damit nichts über dem Sockel schwebt."""
+    C.view_layer.update()
+    ausgewertet = skulptur.evaluated_get(C.evaluated_depsgraph_get())
+    return min(ecke[2] for ecke in ausgewertet.bound_box)
+
+
 kusner.location.x = -EXHIBIT_X
-kusner.location.z = plinth_top - min_z + 0.03
+kusner.location.z = plinth_top - unterkante(kusner)
 kusner.rotation_euler.z = math.radians(10)
-s41_min_z = min(vertex[2] for vertex in s41_vertices)
 s41.location.x = EXHIBIT_X
-s41.location.z = plinth_top - s41_min_z + 0.03
+s41.location.z = plinth_top - unterkante(s41)
 s41.rotation_euler.z = math.radians(-10)
 sculpture_center_z = max(
     kusner.location.z + (min(v[2] for v in vertices) + max(v[2] for v in vertices)) / 2,
@@ -319,9 +327,6 @@ def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
         C.view_layer.update()
         solid.rotation_euler = NISCHENDREHUNG.get(name, (0, 0, 0))
         solid.location = (x, y, 0)
-        C.view_layer.update()
-        lowest = min((solid.matrix_world @ Vector(corner)).z for corner in solid.bound_box)
-        solid.location.z = pedestal_height + .26 + .02 - lowest
     else:
         mesh = D.meshes.new(name + " Mesh")
         bm = bmesh.new()
@@ -332,9 +337,13 @@ def nischenexponat(index, name, x, y=18.2, pedestal_height=1.1):
         uniform_scale = 3.25 / max(solid.dimensions)
         solid.scale = (uniform_scale,) * 3
         C.view_layer.update()
-        solid.location = (x, y, pedestal_height + .26 + solid.dimensions.z / 2 - .01)
+        solid.location = (x, y, 0)
         solid.rotation_euler = (0, 0, 0)
         mesh.materials.append(sierpinski_bronze)
+    # Mit der Unterkante genau auf die Deckplatte setzen; der Ursprung liegt nicht unbedingt in der Mitte.
+    C.view_layer.update()
+    lowest = min((solid.matrix_world @ Vector(corner)).z for corner in solid.bound_box)
+    solid.location.z = pedestal_height + .26 - lowest
 
     pedestal_base = box(f"Koerpersockel Basis {index}", (x, y, .12), (1.62, 1.48, .24), scol)
     pedestal_base.data.materials.append(plinth_stone)

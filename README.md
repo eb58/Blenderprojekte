@@ -119,7 +119,7 @@ Der Ordner `Ausgabe\Videos` muss vorher existieren, da FFmpeg ihn nicht anlegt. 
 
 1. Rechts die gewünschten Szenen- und Rendereinstellungen wählen.
 2. Mit **Testbild rendern** Licht, Material und Perspektive prüfen.
-3. Mit **Animation erstellen** fehlende PNG-Einzelbilder rendern und anschließend automatisch das MP4-Video erzeugen.
+3. Mit **Animation erstellen** fehlende PNG-Einzelbilder rendern und anschließend automatisch das MP4-Video erzeugen. Unter dem Fortschrittsbalken zeigt das Studio dabei Fortschritt, Laufzeit, neu gerenderte Frames, Zeit pro Frame, Restzeit und voraussichtliches Ende; die Schätzung beruht nur auf den Frames des laufenden Durchgangs.
 4. Das fertige Video liegt in `Ausgabe\Videos`; **Im Ordner zeigen** öffnet den Explorer mit dem Video markiert.
 
 Die Formularwerte werden im `localStorage` der Oberfläche gespeichert und beim nächsten Öffnen wiederhergestellt.
@@ -148,7 +148,7 @@ Nur im 3D-Modus rendert Three.js außerdem ohne Cycles direkt in der App: **PNG 
 | Umlauf/Grad | Drehwinkel der Kamerafahrt |
 | Breite/Höhe | Ausgabeauflösung in Pixeln |
 
-Einen Ausgabeordner gibt es nicht mehr als Parameter; siehe [Ausgabe](#ausgabe). Boden, Skulpturgröße und Granitdicke sind fest: Fischgrätparkett aus Eiche, Skulpturgröße 4,55 und Granitdicke 0,06 (in `museum/einstellungen.py`).
+Einen Ausgabeordner gibt es nicht mehr als Parameter; siehe [Ausgabe](#ausgabe). Boden, Skulpturgröße und Granitdicke sind fest: Fischgrätparkett aus Eiche, Skulpturgröße 4,55 (die beiden Hauptwerke auf den Sockeln 10 % größer) und Granitdicke 0,06 (in `museum/einstellungen.py`).
 
 Für MP4 müssen Breite und Höhe gerade Zahlen sein. Die Anzahl der Animationsbilder ergibt sich aus `FPS × Dauer`.
 

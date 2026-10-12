@@ -32,7 +32,7 @@ header {
     border-bottom: 1px solid var(--line);
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    gap: 32px;
     flex: 0 0 auto
 }
 
@@ -45,23 +45,40 @@ header {
     color: var(--accent)
 }
 
-.badge {
-    font-size: 12px;
-    border: 1px solid var(--line);
-    border-radius: 20px;
-    padding: 6px 12px;
-    color: var(--muted)
-}
-
 main {
     width: 100%;
     min-height: 0;
     margin: 0;
     padding: 12px;
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 350px;
-    gap: 12px;
+    grid-template-columns: minmax(0, 1fr) 12px var(--panel-breite, 350px);
+    gap: 12px 0;
     flex: 1 1 auto
+}
+
+.splitter {
+    cursor: col-resize;
+    touch-action: none;
+    position: relative
+}
+
+.splitter::after {
+    content: '';
+    position: absolute;
+    inset: 0 5px;
+    border-radius: 2px;
+    background: transparent;
+    transition: background .15s
+}
+
+.splitter:hover::after,
+.splitter:focus-visible::after,
+.splitter.dragging::after {
+    background: var(--line)
+}
+
+.splitter:focus-visible {
+    outline: none
 }
 
 main>section {
@@ -397,6 +414,26 @@ progress {
     accent-color: var(--accent)
 }
 
+.stats {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 12px;
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--muted)
+}
+
+.stats[hidden] {
+    display: none
+}
+
+.stats dd {
+    margin: 0;
+    text-align: right;
+    color: #eff1e9;
+    font-variant-numeric: tabular-nums
+}
+
 details {
     margin-top: 8px;
     border: 1px solid var(--line);
@@ -444,6 +481,10 @@ pre {
         height: auto;
         min-height: 100%;
         overflow: auto
+    }
+
+    .splitter {
+        display: none
     }
 
     main {

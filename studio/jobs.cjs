@@ -32,6 +32,18 @@ const frameCount = settings => {
     return Math.max(2, frames - low === 0.5 ? low + low % 2 : Math.round(frames));
 };
 const animationFramesFolder = settings => path.join(settings.OUTPUT_DIR, 'frames');
+const pngFrames = folder => files(folder).filter(name => /^frame_.*\.png$/.test(name));
+// Fortgesetzte Läufe bringen fertige Frames mit; die Schätzung stützt sich nur auf die neu gerenderten.
+const renderStatistik = ({frames, total, startFrames, elapsed}) => {
+    const neu = Math.max(0, frames - startFrames);
+    const proFrame = neu > 0 ? elapsed / neu : null;
+    return {
+        prozent: total ? Math.min(100, frames / total * 100) : 0,
+        neu,
+        proFrame,
+        rest: proFrame === null ? null : Math.max(0, total - frames) * proFrame
+    };
+};
 const kurzHash = (settings, keys) => crypto.createHash('sha256')
     .update(JSON.stringify(keys.map(key => settings[key]))).digest('hex').slice(0, 6);
 // Jede Einstellungsvariante rendert in einen eigenen Ordner: Gleiche Werte setzen denselben Lauf fort,
@@ -132,6 +144,7 @@ const createStudio = ({
         kind: '',
         log: null,
         started: 0,
+        startFrames: 0,
         preview: null,
         video: null,
         code: null,
@@ -311,6 +324,7 @@ const createStudio = ({
                 job: {result: path.join(workDir, `result_${id}.json`), output},
                 settings: s,
                 kind,
+                phase: kind,
                 started: Date.now(),
                 preview: null,
                 video: null,
@@ -364,6 +378,7 @@ const createStudio = ({
             phase: kind === 'animation_video' ? 'animation' : kind,
             log,
             started: Date.now(),
+            startFrames: pngFrames(animationFramesFolder(s)).length,
             code: null
         });
         if (kind === 'animation_video') {
@@ -406,7 +421,7 @@ const createStudio = ({
             }
         }
         const framesFolder = animationFramesFolder(state.settings);
-        const frames = files(framesFolder).filter(name => /^frame_.*\.png$/.test(name)).sort();
+        const frames = pngFrames(framesFolder).sort();
         const sceneStills = path.dirname(testbildPfad(state.settings, renderDir));
         const stills = files(sceneStills).filter(name => /^testbild_.*\.png$/.test(name))
             .map(name => path.join(sceneStills, name))
@@ -441,6 +456,12 @@ const createStudio = ({
             orbit: {start: state.settings.START_ANGLE, degrees: state.settings.ORBIT_DEGREES},
             log,
             elapsed: running ? Math.floor((Date.now() - state.started) / 1000) : 0,
+            statistik: running && state.phase === 'animation' ? renderStatistik({
+                frames: frames.length,
+                total: frameCount(state.settings),
+                startFrames: state.startFrames,
+                elapsed: (Date.now() - state.started) / 1000
+            }) : null,
             ffmpeg: Boolean(findFFmpeg())
         };
     };
@@ -495,4 +516,4 @@ const createStudio = ({
     };
 };
 
-module.exports = {createStudio, validate, frameCount, testbildPfad, videoName, blenderPath, DEFAULTS, VIDEO_DIR};
+module.exports = {createStudio, validate, frameCount, renderStatistik, testbildPfad, videoName, blenderPath, DEFAULTS, VIDEO_DIR};
